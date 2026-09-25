@@ -362,11 +362,13 @@ and P/RT</a></li>
 <li><a href="#step-5-flux" id="toc-step-5-flux">Step 5: flux</a></li>
 <li><a href="#step-6-per-measurement-precision" id="toc-step-6-per-measurement-precision">Step 6: per-measurement
 precision</a></li>
-<li><a href="#step-7-minimum-detectable-flux-by-each-method" id="toc-step-7-minimum-detectable-flux-by-each-method">Step 7: minimum
-detectable flux by each method</a></li>
-<li><a href="#step-8-detection-flag" id="toc-step-8-detection-flag">Step
-8: detection flag</a></li>
-<li><a href="#step-9-quality-control" id="toc-step-9-quality-control">Step 9: quality control</a></li>
+<li><a href="#step-7-minimum-detectable-flux-by-each-method-by-hand" id="toc-step-7-minimum-detectable-flux-by-each-method-by-hand">Step 7:
+minimum detectable flux by each method, by hand</a></li>
+<li><a href="#step-8-precision-mdf-and-detection-flags-with-flag_detection" id="toc-step-8-precision-mdf-and-detection-flags-with-flag_detection">Step
+8: precision, MDF and detection flags with
+<code>flag_detection()</code></a></li>
+<li><a href="#choosing-precision-and-mdf" id="toc-choosing-precision-and-mdf">Choosing precision and MDF</a></li>
+<li><a href="#step-9-quality-screens" id="toc-step-9-quality-screens">Step 9: quality screens</a></li>
 <li><a href="#the-reported-row" id="toc-the-reported-row">The reported
 row</a></li>
 <li><a href="#summary-of-the-numbers" id="toc-summary-of-the-numbers">Summary of the numbers</a></li>
@@ -426,7 +428,7 @@ water-vapour correction. That is the one assumption in this example.</p>
 <span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="fu">str</span>(d[, <span class="fu">c</span>(<span class="st">&quot;UniqueID&quot;</span>, <span class="st">&quot;POSIX.time&quot;</span>, <span class="st">&quot;t_s&quot;</span>, <span class="st">&quot;CO2dry_ppm&quot;</span>, <span class="st">&quot;CH4dry_ppb&quot;</span>, <span class="st">&quot;flag&quot;</span>, <span class="st">&quot;Etime&quot;</span>)])</span>
 <span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="co">#&gt; &#39;data.frame&#39;:    603 obs. of  7 variables:</span></span>
 <span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="co">#&gt;  $ UniqueID  : chr  &quot;2021-05-18_5086_I_7.0&quot; &quot;2021-05-18_5086_I_7.0&quot; &quot;2021-05-18_5086_I_7.0&quot; &quot;2021-05-18_5086_I_7.0&quot; ...</span></span>
-<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a><span class="co">#&gt;  $ POSIX.time: POSIXct, format: &quot;2021-05-18 13:36:00&quot; &quot;2021-05-18 13:36:00&quot; ...</span></span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a><span class="co">#&gt;  $ POSIX.time: POSIXct, format: &quot;2021-05-18 13:36:00&quot; &quot;2021-05-18 13:36:00&quot; &quot;2021-05-18 13:36:01&quot; ...</span></span>
 <span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="co">#&gt;  $ t_s       : num  0 0.994 1.99 2.984 3.978 ...</span></span>
 <span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a><span class="co">#&gt;  $ CO2dry_ppm: num  397 399 400 400 398 ...</span></span>
 <span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a><span class="co">#&gt;  $ CH4dry_ppb: num  2070 2070 2071 2069 2069 ...</span></span>
@@ -545,16 +547,14 @@ sqrt(2).</p>
 <span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a><span class="fu">c</span>(<span class="at">sigma_CH4_ppb =</span> sigma_ch4, <span class="at">sigma_CO2_ppm =</span> sigma_co2,</span>
 <span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a>  <span class="at">datasheet_CH4_ppb =</span> <span class="fl">0.9</span>, <span class="at">datasheet_CO2_ppm =</span> <span class="fl">0.35</span>,</span>
 <span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a>  <span class="at">robust_MAD_CH4_ppb =</span> <span class="fu">precision_mad</span>(w<span class="sc">$</span>CH4dry_ppb))</span>
-<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a><span class="co">#&gt;      sigma_CH4_ppb      sigma_CO2_ppm  datasheet_CH4_ppb  datasheet_CO2_ppm </span></span>
-<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a><span class="co">#&gt;            2.22532            0.82382            0.90000            0.35000 </span></span>
-<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a><span class="co">#&gt; robust_MAD_CH4_ppb </span></span>
-<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a><span class="co">#&gt;            2.20155</span></span></code></pre></div>
+<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a><span class="co">#&gt;      sigma_CH4_ppb      sigma_CO2_ppm  datasheet_CH4_ppb  datasheet_CO2_ppm robust_MAD_CH4_ppb </span></span>
+<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a><span class="co">#&gt;            2.22532            0.82382            0.90000            0.35000            2.20155</span></span></code></pre></div>
 <p>This analyzer was about 2.5 times noisier in CH4 than its datasheet
 claims, which is why datasheet precision should not be used for
 detection limits.</p>
 </div>
-<div id="step-7-minimum-detectable-flux-by-each-method" class="section level2">
-<h2>Step 7: minimum detectable flux by each method</h2>
+<div id="step-7-minimum-detectable-flux-by-each-method-by-hand" class="section level2">
+<h2>Step 7: minimum detectable flux by each method, by hand</h2>
 <div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a>t_used <span class="ot">&lt;-</span> <span class="fu">max</span>(w<span class="sc">$</span>Etime) <span class="sc">+</span> <span class="dv">1</span>     <span class="co"># goFlux&#39;s t; = nb.obs at 1 Hz</span></span>
 <span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a>mdf <span class="ot">&lt;-</span> <span class="fu">mdf_multi</span>(<span class="at">flux.term =</span> ft, <span class="at">t =</span> t_used,</span>
 <span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a>                 <span class="at">prec =</span> <span class="fl">0.9</span>,               <span class="co"># manufacturer, for the goFlux method</span></span>
@@ -579,46 +579,210 @@ slope (<code>LM.SE</code> = 5.38^{-4} nmol m-2 s-1) is far smaller than
 any of them, which is the expected behaviour of these single-sample
 criteria.</p>
 </div>
-<div id="step-8-detection-flag" class="section level2">
-<h2>Step 8: detection flag</h2>
+<div id="step-8-precision-mdf-and-detection-flags-with-flag_detection" class="section level2">
+<h2>Step 8: precision, MDF and detection flags with
+<code>flag_detection()</code></h2>
 <p><code>flag_detection()</code> does steps 6-7 for every row of a
-<code>best.flux()</code> output and appends the flags.</p>
-<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a>sig <span class="ot">&lt;-</span> <span class="fu">precision_by_id</span>(d, <span class="st">&quot;CH4dry_ppb&quot;</span>)</span>
-<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>sig</span>
-<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a><span class="co">#&gt;                UniqueID   sigma   n method</span></span>
-<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a><span class="co">#&gt; 1 2021-05-18_5086_I_7.0 2.22532 542  allan</span></span>
-<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a>rep_ch4 <span class="ot">&lt;-</span> <span class="fu">flag_detection</span>(best_ch4, <span class="at">sigma =</span> sig, <span class="at">prec =</span> <span class="fl">0.9</span>)</span>
-<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a><span class="fu">t</span>(<span class="fu">as.data.frame</span>(rep_ch4[, <span class="fu">c</span>(<span class="st">&quot;best.flux&quot;</span>, <span class="st">&quot;sigma&quot;</span>, <span class="st">&quot;MDF_goflux&quot;</span>, <span class="st">&quot;MDF_wass95&quot;</span>, <span class="st">&quot;MDF_chr95&quot;</span>,</span>
-<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a>                            <span class="st">&quot;MDF_2sigma&quot;</span>, <span class="st">&quot;below_2sigma&quot;</span>, <span class="st">&quot;detected&quot;</span>, <span class="st">&quot;det_class&quot;</span>, <span class="st">&quot;det_method&quot;</span>)]))</span>
-<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a><span class="co">#&gt;              [,1]        </span></span>
-<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a><span class="co">#&gt; best.flux    &quot;0.255676&quot;  </span></span>
-<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a><span class="co">#&gt; sigma        &quot;2.22532&quot;   </span></span>
-<span id="cb13-11"><a href="#cb13-11" tabindex="-1"></a><span class="co">#&gt; MDF_goflux   &quot;0.00112621&quot;</span></span>
-<span id="cb13-12"><a href="#cb13-12" tabindex="-1"></a><span class="co">#&gt; MDF_wass95   &quot;0.00458034&quot;</span></span>
-<span id="cb13-13"><a href="#cb13-13" tabindex="-1"></a><span class="co">#&gt; MDF_chr95    &quot;0.0137646&quot; </span></span>
-<span id="cb13-14"><a href="#cb13-14" tabindex="-1"></a><span class="co">#&gt; MDF_2sigma   &quot;0.0055693&quot; </span></span>
-<span id="cb13-15"><a href="#cb13-15" tabindex="-1"></a><span class="co">#&gt; below_2sigma &quot;FALSE&quot;     </span></span>
-<span id="cb13-16"><a href="#cb13-16" tabindex="-1"></a><span class="co">#&gt; detected     &quot;TRUE&quot;      </span></span>
-<span id="cb13-17"><a href="#cb13-17" tabindex="-1"></a><span class="co">#&gt; det_class    &quot;emission&quot;  </span></span>
-<span id="cb13-18"><a href="#cb13-18" tabindex="-1"></a><span class="co">#&gt; det_method   &quot;2sigma&quot;</span></span></code></pre></div>
+<code>best.flux()</code> table, for every combination of precision
+estimator and MDF method you ask for, and then picks <em>one</em>
+combination as the reported <code>MDF</code> (the <code>primary</code>).
+Nothing is deleted; rows are flagged.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a>rep_ch4 <span class="ot">&lt;-</span> <span class="fu">flag_detection</span>(best_ch4, <span class="at">traces =</span> d, <span class="at">gastype =</span> <span class="st">&quot;CH4dry_ppb&quot;</span>,</span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>                          <span class="at">precision =</span> <span class="fu">c</span>(<span class="st">&quot;allan&quot;</span>, <span class="st">&quot;mad&quot;</span>, <span class="st">&quot;datasheet&quot;</span>),</span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a>                          <span class="at">mdf =</span> <span class="fu">c</span>(<span class="st">&quot;goflux&quot;</span>, <span class="st">&quot;wassmann&quot;</span>, <span class="st">&quot;christiansen&quot;</span>, <span class="st">&quot;two_sigma&quot;</span>),</span>
+<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a>                          <span class="at">conf =</span> <span class="fu">c</span>(<span class="fl">0.90</span>, <span class="fl">0.95</span>, <span class="fl">0.99</span>),</span>
+<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a>                          <span class="at">primary =</span> <span class="fu">list</span>(<span class="at">precision =</span> <span class="st">&quot;allan&quot;</span>, <span class="at">mdf =</span> <span class="st">&quot;christiansen&quot;</span>, <span class="at">conf =</span> <span class="fl">0.95</span>))</span>
+<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a><span class="fu">t</span>(<span class="fu">as.data.frame</span>(rep_ch4[, <span class="fu">grep</span>(<span class="st">&quot;^sigma_&quot;</span>, <span class="fu">names</span>(rep_ch4))]))</span>
+<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a><span class="co">#&gt;                    [,1]</span></span>
+<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a><span class="co">#&gt; sigma_allan     2.22532</span></span>
+<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a><span class="co">#&gt; sigma_mad       2.20155</span></span>
+<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a><span class="co">#&gt; sigma_datasheet 0.90000</span></span>
+<span id="cb13-11"><a href="#cb13-11" tabindex="-1"></a>mdf_cols <span class="ot">&lt;-</span> <span class="fu">setdiff</span>(<span class="fu">grep</span>(<span class="st">&quot;^MDF_&quot;</span>, <span class="fu">names</span>(rep_ch4), <span class="at">value =</span> <span class="cn">TRUE</span>), <span class="fu">c</span>(<span class="st">&quot;MDF_goflux_orig&quot;</span>, <span class="st">&quot;MDF_method&quot;</span>))</span>
+<span id="cb13-12"><a href="#cb13-12" tabindex="-1"></a><span class="fu">t</span>(<span class="fu">round</span>(<span class="fu">as.data.frame</span>(rep_ch4[, mdf_cols]), <span class="dv">6</span>))   <span class="co"># every combination</span></span>
+<span id="cb13-13"><a href="#cb13-13" tabindex="-1"></a><span class="co">#&gt;                                   [,1]</span></span>
+<span id="cb13-14"><a href="#cb13-14" tabindex="-1"></a><span class="co">#&gt; MDF_goflux_allan              0.002785</span></span>
+<span id="cb13-15"><a href="#cb13-15" tabindex="-1"></a><span class="co">#&gt; MDF_goflux_mad                0.002755</span></span>
+<span id="cb13-16"><a href="#cb13-16" tabindex="-1"></a><span class="co">#&gt; MDF_goflux_datasheet          0.001126</span></span>
+<span id="cb13-17"><a href="#cb13-17" tabindex="-1"></a><span class="co">#&gt; MDF_wassmann_allan_90         0.003569</span></span>
+<span id="cb13-18"><a href="#cb13-18" tabindex="-1"></a><span class="co">#&gt; MDF_wassmann_allan_95         0.004580</span></span>
+<span id="cb13-19"><a href="#cb13-19" tabindex="-1"></a><span class="co">#&gt; MDF_wassmann_allan_99         0.006478</span></span>
+<span id="cb13-20"><a href="#cb13-20" tabindex="-1"></a><span class="co">#&gt; MDF_wassmann_mad_90           0.003531</span></span>
+<span id="cb13-21"><a href="#cb13-21" tabindex="-1"></a><span class="co">#&gt; MDF_wassmann_mad_95           0.004531</span></span>
+<span id="cb13-22"><a href="#cb13-22" tabindex="-1"></a><span class="co">#&gt; MDF_wassmann_mad_99           0.006409</span></span>
+<span id="cb13-23"><a href="#cb13-23" tabindex="-1"></a><span class="co">#&gt; MDF_wassmann_datasheet_90     0.001443</span></span>
+<span id="cb13-24"><a href="#cb13-24" tabindex="-1"></a><span class="co">#&gt; MDF_wassmann_datasheet_95     0.001852</span></span>
+<span id="cb13-25"><a href="#cb13-25" tabindex="-1"></a><span class="co">#&gt; MDF_wassmann_datasheet_99     0.002620</span></span>
+<span id="cb13-26"><a href="#cb13-26" tabindex="-1"></a><span class="co">#&gt; MDF_christiansen_allan_90     0.010719</span></span>
+<span id="cb13-27"><a href="#cb13-27" tabindex="-1"></a><span class="co">#&gt; MDF_christiansen_allan_95     0.013765</span></span>
+<span id="cb13-28"><a href="#cb13-28" tabindex="-1"></a><span class="co">#&gt; MDF_christiansen_allan_99     0.019492</span></span>
+<span id="cb13-29"><a href="#cb13-29" tabindex="-1"></a><span class="co">#&gt; MDF_christiansen_mad_90       0.010605</span></span>
+<span id="cb13-30"><a href="#cb13-30" tabindex="-1"></a><span class="co">#&gt; MDF_christiansen_mad_95       0.013618</span></span>
+<span id="cb13-31"><a href="#cb13-31" tabindex="-1"></a><span class="co">#&gt; MDF_christiansen_mad_99       0.019284</span></span>
+<span id="cb13-32"><a href="#cb13-32" tabindex="-1"></a><span class="co">#&gt; MDF_christiansen_datasheet_90 0.004335</span></span>
+<span id="cb13-33"><a href="#cb13-33" tabindex="-1"></a><span class="co">#&gt; MDF_christiansen_datasheet_95 0.005567</span></span>
+<span id="cb13-34"><a href="#cb13-34" tabindex="-1"></a><span class="co">#&gt; MDF_christiansen_datasheet_99 0.007883</span></span>
+<span id="cb13-35"><a href="#cb13-35" tabindex="-1"></a><span class="co">#&gt; MDF_two_sigma_allan           0.005569</span></span>
+<span id="cb13-36"><a href="#cb13-36" tabindex="-1"></a><span class="co">#&gt; MDF_two_sigma_mad             0.005510</span></span>
+<span id="cb13-37"><a href="#cb13-37" tabindex="-1"></a><span class="co">#&gt; MDF_two_sigma_datasheet       0.002252</span></span>
+<span id="cb13-38"><a href="#cb13-38" tabindex="-1"></a><span class="fu">t</span>(<span class="fu">as.data.frame</span>(rep_ch4[, <span class="fu">c</span>(<span class="st">&quot;MDF&quot;</span>, <span class="st">&quot;MDF_method&quot;</span>, <span class="st">&quot;below_MDF&quot;</span>, <span class="st">&quot;detected&quot;</span>, <span class="st">&quot;det_class&quot;</span>)]))</span>
+<span id="cb13-39"><a href="#cb13-39" tabindex="-1"></a><span class="co">#&gt;            [,1]                   </span></span>
+<span id="cb13-40"><a href="#cb13-40" tabindex="-1"></a><span class="co">#&gt; MDF        &quot;0.0137646&quot;            </span></span>
+<span id="cb13-41"><a href="#cb13-41" tabindex="-1"></a><span class="co">#&gt; MDF_method &quot;christiansen_allan_95&quot;</span></span>
+<span id="cb13-42"><a href="#cb13-42" tabindex="-1"></a><span class="co">#&gt; below_MDF  &quot;FALSE&quot;                </span></span>
+<span id="cb13-43"><a href="#cb13-43" tabindex="-1"></a><span class="co">#&gt; detected   &quot;TRUE&quot;                 </span></span>
+<span id="cb13-44"><a href="#cb13-44" tabindex="-1"></a><span class="co">#&gt; det_class  &quot;emission&quot;</span></span></code></pre></div>
+<p>Column names follow
+<code>MDF_&lt;method&gt;_&lt;precision&gt;[_&lt;conf&gt;]</code>, so
+<code>MDF_christiansen_allan_95</code> is the Christiansen criterion
+with this closure’s Allan precision at 95 percent, and
+<code>MDF_goflux_datasheet</code> is goFlux’s own MDF.</p>
 </div>
-<div id="step-9-quality-control" class="section level2">
-<h2>Step 9: quality control</h2>
-<p>Two physical checks. Is the CO2 tracer positive (the chamber was
-sealed and respiration accumulated)? Did the chamber start near ambient
-(no carry-over contamination)? With one measurement the C0 screen
-compares the closure to itself, so it passes trivially; in a campaign
-the median is taken over all closures.</p>
-<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a>co2_positive <span class="ot">&lt;-</span> best_co2<span class="sc">$</span>best.flux <span class="sc">&gt;</span> <span class="dv">0</span></span>
-<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a><span class="fu">c</span>(<span class="at">CO2_flux_umol_m2_s =</span> best_co2<span class="sc">$</span>best.flux, <span class="at">CO2_tracer_positive =</span> co2_positive)</span>
-<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a><span class="co">#&gt;  CO2_flux_umol_m2_s CO2_tracer_positive </span></span>
-<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a><span class="co">#&gt;            0.712498            1.000000</span></span>
-<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a>rep_ch4 <span class="ot">&lt;-</span> <span class="fu">qc_c0_screen</span>(rep_ch4, <span class="at">k =</span> <span class="fl">1.5</span>)</span>
-<span id="cb14-6"><a href="#cb14-6" tabindex="-1"></a><span class="co">#&gt; C0 screen [all]: n = 1, median C0 = 2173.8, threshold = 3260.7 (1.5x), rejected = 0, unscreened = 0</span></span>
-<span id="cb14-7"><a href="#cb14-7" tabindex="-1"></a><span class="co">#&gt;   threshold sensitivity: 1.2x-&gt;0  1.5x-&gt;0  2.0x-&gt;0  5.0x-&gt;0  10.0x-&gt;0</span></span>
-<span id="cb14-8"><a href="#cb14-8" tabindex="-1"></a>rep_ch4[, <span class="fu">c</span>(<span class="st">&quot;C0&quot;</span>, <span class="st">&quot;qc_c0_ratio&quot;</span>, <span class="st">&quot;qc_c0_pass&quot;</span>)]</span>
-<span id="cb14-9"><a href="#cb14-9" tabindex="-1"></a><span class="co">#&gt;       C0 qc_c0_ratio qc_c0_pass</span></span>
-<span id="cb14-10"><a href="#cb14-10" tabindex="-1"></a><span class="co">#&gt; 1 2173.8           1       TRUE</span></span></code></pre></div>
+<div id="choosing-precision-and-mdf" class="section level2">
+<h2>Choosing precision and MDF</h2>
+<p>There is no single right choice; the point of computing several is
+that the report can say which one it used and readers can convert. The
+decision depends on what the number is for.</p>
+<p><strong>Which precision estimate?</strong></p>
+<table>
+<colgroup>
+<col width="25%" />
+<col width="25%" />
+<col width="25%" />
+<col width="25%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>estimator</th>
+<th>what it is</th>
+<th>use when</th>
+<th>where it comes from</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>bench sigma (Box 2 of the guidelines paper)</td>
+<td>SD of a sealed, spiked or standard-gas run on the <em>same</em>
+analyzer</td>
+<td>you ran the bench test; best single number for the instrument</td>
+<td><code>flag_detection(sigma = ...)</code> (labelled
+<code>custom</code>)</td>
+</tr>
+<tr class="even">
+<td>per-closure Allan (<code>allan</code>)</td>
+<td>SD(diff x)/sqrt(2) on each closure’s flagged rows</td>
+<td>default; tracks day-to-day analyzer state, cell fouling,
+temperature</td>
+<td><code>precision_by_id()</code>,
+<code>flag_detection(precision = &quot;allan&quot;)</code></td>
+</tr>
+<tr class="odd">
+<td>record-wide MAD (<code>mad</code>)</td>
+<td>MAD(diff x)/sqrt(2) over a whole record or closure</td>
+<td>records with breaths, moves, chamber swaps; robust global
+number</td>
+<td><code>precision_mad()</code>,
+<code>flag_detection(precision = &quot;mad&quot;)</code></td>
+</tr>
+<tr class="even">
+<td>rolling quietest windows (<code>rolling</code>)</td>
+<td>median residual SD of the flattest 5 percent of 30-s windows</td>
+<td>comparison only; biased low ~20 percent on white noise</td>
+<td><code>precision_rolling()</code>,
+<code>flag_detection(precision = &quot;rolling&quot;)</code></td>
+</tr>
+<tr class="odd">
+<td>datasheet (<code>datasheet</code>)</td>
+<td>manufacturer 1-s precision</td>
+<td>never for detection limits on field-worn analyzers (2.5x too
+optimistic here); kept for comparability with goFlux</td>
+<td><code>prec</code> argument of <code>goFlux::import.*()</code>,
+<code>flag_detection(precision = &quot;datasheet&quot;)</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Which MDF method?</strong></p>
+<table>
+<colgroup>
+<col width="33%" />
+<col width="33%" />
+<col width="33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>question</th>
+<th>recommended</th>
+<th>reason</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>campaign means, budgets, upscaling</td>
+<td>keep every flux; flag with <code>two_sigma</code> or
+<code>christiansen</code>; do not delete</td>
+<td>removing below-MDF values biases means upward; the flag documents
+the fraction below detection</td>
+</tr>
+<tr class="even">
+<td>is this individual flux non-zero?</td>
+<td><code>christiansen</code> at a stated confidence (per-measurement
+sigma, t-quantile)</td>
+<td>a per-closure test with the closure’s own noise and degrees of
+freedom</td>
+</tr>
+<tr class="odd">
+<td>comparing with other studies</td>
+<td>report all: <code>goflux</code> (datasheet), <code>wassmann</code>
+(global, z), <code>christiansen</code> (per closure, t),
+<code>two_sigma</code></td>
+<td>each literature uses a different one; the table lets readers
+convert</td>
+</tr>
+<tr class="even">
+<td>instrument-level statement (“our system detects X”)</td>
+<td><code>wassmann</code> with a global sigma (campaign median or
+bench)</td>
+<td>designed as an instrument/protocol limit rather than a per-closure
+one</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Where each is set in the pipeline.</strong> The
+<code>prec</code> argument given to <code>goFlux::import.*()</code> (or
+the <code>*_prec</code> columns) only feeds goFlux’s own
+<code>MDF</code> column and the <code>MDF</code> criterion inside
+<code>best.flux()</code>. stemflux’s estimators are applied
+<em>after</em> <code>best.flux()</code> by
+<code>flag_detection()</code>, which reads the flagged traces, adds
+<code>sigma_*</code>, <code>MDF_*</code> and <code>below_*</code>
+columns, and sets the reported
+<code>MDF</code>/<code>below_MDF</code>/<code>MDF_method</code> from
+<code>primary</code>. Nothing is deleted at any step:
+<code>det_class</code> says <code>&quot;below detection&quot;</code>, and the row
+stays.</p>
+</div>
+<div id="step-9-quality-screens" class="section level2">
+<h2>Step 9: quality screens</h2>
+<p>Physical checks, each an independent flag (<code>TRUE</code> =
+fired), never a deletion. Is the CO2 tracer positive (the chamber was
+sealed and respiration accumulated)? Did the chamber start near ambient?
+Is the trace convex? Is the window long enough? With one measurement the
+C0 screen compares the closure to itself, so it passes trivially; in a
+campaign the median is taken over all closures.</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a>rep_ch4 <span class="ot">&lt;-</span> <span class="fu">qc_screens</span>(rep_ch4, <span class="at">traces =</span> d, <span class="at">gastype =</span> <span class="st">&quot;CH4dry_ppb&quot;</span>, <span class="at">co2 =</span> best_co2,</span>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a>                      <span class="at">screens =</span> <span class="fu">list</span>(<span class="at">c0 =</span> <span class="fu">list</span>(<span class="at">k =</span> <span class="fl">1.5</span>), <span class="at">co2_tracer =</span> <span class="fu">list</span>(<span class="at">min_slope =</span> <span class="dv">0</span>),</span>
+<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a>                                     <span class="at">convex =</span> <span class="cn">TRUE</span>, <span class="at">min_window =</span> <span class="fu">list</span>(<span class="at">secs =</span> <span class="dv">120</span>)),</span>
+<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a>                      <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a><span class="fu">t</span>(<span class="fu">as.data.frame</span>(rep_ch4[, <span class="fu">c</span>(<span class="st">&quot;qc_c0&quot;</span>, <span class="st">&quot;qc_c0_ratio&quot;</span>, <span class="st">&quot;qc_co2_tracer&quot;</span>, <span class="st">&quot;qc_co2_slope&quot;</span>, <span class="st">&quot;qc_convex&quot;</span>,</span>
+<span id="cb14-6"><a href="#cb14-6" tabindex="-1"></a>                            <span class="st">&quot;qc_min_window&quot;</span>, <span class="st">&quot;qc_any&quot;</span>, <span class="st">&quot;qc_note&quot;</span>)]))</span>
+<span id="cb14-7"><a href="#cb14-7" tabindex="-1"></a><span class="co">#&gt;               [,1]      </span></span>
+<span id="cb14-8"><a href="#cb14-8" tabindex="-1"></a><span class="co">#&gt; qc_c0         &quot;FALSE&quot;   </span></span>
+<span id="cb14-9"><a href="#cb14-9" tabindex="-1"></a><span class="co">#&gt; qc_c0_ratio   &quot;1&quot;       </span></span>
+<span id="cb14-10"><a href="#cb14-10" tabindex="-1"></a><span class="co">#&gt; qc_co2_tracer &quot;FALSE&quot;   </span></span>
+<span id="cb14-11"><a href="#cb14-11" tabindex="-1"></a><span class="co">#&gt; qc_co2_slope  &quot;0.894188&quot;</span></span>
+<span id="cb14-12"><a href="#cb14-12" tabindex="-1"></a><span class="co">#&gt; qc_convex     &quot;FALSE&quot;   </span></span>
+<span id="cb14-13"><a href="#cb14-13" tabindex="-1"></a><span class="co">#&gt; qc_min_window &quot;FALSE&quot;   </span></span>
+<span id="cb14-14"><a href="#cb14-14" tabindex="-1"></a><span class="co">#&gt; qc_any        &quot;FALSE&quot;   </span></span>
+<span id="cb14-15"><a href="#cb14-15" tabindex="-1"></a><span class="co">#&gt; qc_note       NA</span></span></code></pre></div>
 </div>
 <div id="the-reported-row" class="section level2">
 <h2>The reported row</h2>
@@ -628,13 +792,13 @@ the median is taken over all closures.</p>
 <span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a>  <span class="at">model      =</span> rep_ch4<span class="sc">$</span>model,</span>
 <span id="cb15-5"><a href="#cb15-5" tabindex="-1"></a>  <span class="at">CH4_flux_nmol_m2_s =</span> <span class="fu">signif</span>(rep_ch4<span class="sc">$</span>best.flux, <span class="dv">4</span>),</span>
 <span id="cb15-6"><a href="#cb15-6" tabindex="-1"></a>  <span class="at">CH4_LM_SE  =</span> <span class="fu">signif</span>(rep_ch4<span class="sc">$</span>LM.SE, <span class="dv">3</span>),</span>
-<span id="cb15-7"><a href="#cb15-7" tabindex="-1"></a>  <span class="at">sigma_ppb  =</span> <span class="fu">signif</span>(rep_ch4<span class="sc">$</span>sigma, <span class="dv">3</span>),</span>
-<span id="cb15-8"><a href="#cb15-8" tabindex="-1"></a>  <span class="at">MDF_2sigma =</span> <span class="fu">signif</span>(rep_ch4<span class="sc">$</span>MDF_2sigma, <span class="dv">3</span>),</span>
-<span id="cb15-9"><a href="#cb15-9" tabindex="-1"></a>  <span class="at">detected   =</span> rep_ch4<span class="sc">$</span>detected,</span>
-<span id="cb15-10"><a href="#cb15-10" tabindex="-1"></a>  <span class="at">class      =</span> rep_ch4<span class="sc">$</span>det_class,</span>
-<span id="cb15-11"><a href="#cb15-11" tabindex="-1"></a>  <span class="at">CO2_flux_umol_m2_s =</span> <span class="fu">signif</span>(best_co2<span class="sc">$</span>best.flux, <span class="dv">4</span>),</span>
-<span id="cb15-12"><a href="#cb15-12" tabindex="-1"></a>  <span class="at">CO2_positive =</span> co2_positive,</span>
-<span id="cb15-13"><a href="#cb15-13" tabindex="-1"></a>  <span class="at">qc_c0_pass =</span> rep_ch4<span class="sc">$</span>qc_c0_pass)</span>
+<span id="cb15-7"><a href="#cb15-7" tabindex="-1"></a>  <span class="at">sigma_ppb  =</span> <span class="fu">signif</span>(rep_ch4<span class="sc">$</span>sigma_allan, <span class="dv">3</span>),</span>
+<span id="cb15-8"><a href="#cb15-8" tabindex="-1"></a>  <span class="at">MDF        =</span> <span class="fu">signif</span>(rep_ch4<span class="sc">$</span>MDF, <span class="dv">3</span>),</span>
+<span id="cb15-9"><a href="#cb15-9" tabindex="-1"></a>  <span class="at">MDF_method =</span> rep_ch4<span class="sc">$</span>MDF_method,</span>
+<span id="cb15-10"><a href="#cb15-10" tabindex="-1"></a>  <span class="at">detected   =</span> rep_ch4<span class="sc">$</span>detected,</span>
+<span id="cb15-11"><a href="#cb15-11" tabindex="-1"></a>  <span class="at">class      =</span> rep_ch4<span class="sc">$</span>det_class,</span>
+<span id="cb15-12"><a href="#cb15-12" tabindex="-1"></a>  <span class="at">CO2_flux_umol_m2_s =</span> <span class="fu">signif</span>(best_co2<span class="sc">$</span>best.flux, <span class="dv">4</span>),</span>
+<span id="cb15-13"><a href="#cb15-13" tabindex="-1"></a>  <span class="at">qc_any     =</span> rep_ch4<span class="sc">$</span>qc_any)</span>
 <span id="cb15-14"><a href="#cb15-14" tabindex="-1"></a><span class="fu">t</span>(report)</span>
 <span id="cb15-15"><a href="#cb15-15" tabindex="-1"></a><span class="co">#&gt;                    [,1]                   </span></span>
 <span id="cb15-16"><a href="#cb15-16" tabindex="-1"></a><span class="co">#&gt; UniqueID           &quot;2021-05-18_5086_I_7.0&quot;</span></span>
@@ -643,12 +807,27 @@ the median is taken over all closures.</p>
 <span id="cb15-19"><a href="#cb15-19" tabindex="-1"></a><span class="co">#&gt; CH4_flux_nmol_m2_s &quot;0.2557&quot;               </span></span>
 <span id="cb15-20"><a href="#cb15-20" tabindex="-1"></a><span class="co">#&gt; CH4_LM_SE          &quot;0.000538&quot;             </span></span>
 <span id="cb15-21"><a href="#cb15-21" tabindex="-1"></a><span class="co">#&gt; sigma_ppb          &quot;2.23&quot;                 </span></span>
-<span id="cb15-22"><a href="#cb15-22" tabindex="-1"></a><span class="co">#&gt; MDF_2sigma         &quot;0.00557&quot;              </span></span>
-<span id="cb15-23"><a href="#cb15-23" tabindex="-1"></a><span class="co">#&gt; detected           &quot;TRUE&quot;                 </span></span>
-<span id="cb15-24"><a href="#cb15-24" tabindex="-1"></a><span class="co">#&gt; class              &quot;emission&quot;             </span></span>
-<span id="cb15-25"><a href="#cb15-25" tabindex="-1"></a><span class="co">#&gt; CO2_flux_umol_m2_s &quot;0.7125&quot;               </span></span>
-<span id="cb15-26"><a href="#cb15-26" tabindex="-1"></a><span class="co">#&gt; CO2_positive       &quot;TRUE&quot;                 </span></span>
-<span id="cb15-27"><a href="#cb15-27" tabindex="-1"></a><span class="co">#&gt; qc_c0_pass         &quot;TRUE&quot;</span></span></code></pre></div>
+<span id="cb15-22"><a href="#cb15-22" tabindex="-1"></a><span class="co">#&gt; MDF                &quot;0.0138&quot;               </span></span>
+<span id="cb15-23"><a href="#cb15-23" tabindex="-1"></a><span class="co">#&gt; MDF_method         &quot;christiansen_allan_95&quot;</span></span>
+<span id="cb15-24"><a href="#cb15-24" tabindex="-1"></a><span class="co">#&gt; detected           &quot;TRUE&quot;                 </span></span>
+<span id="cb15-25"><a href="#cb15-25" tabindex="-1"></a><span class="co">#&gt; class              &quot;emission&quot;             </span></span>
+<span id="cb15-26"><a href="#cb15-26" tabindex="-1"></a><span class="co">#&gt; CO2_flux_umol_m2_s &quot;0.7125&quot;               </span></span>
+<span id="cb15-27"><a href="#cb15-27" tabindex="-1"></a><span class="co">#&gt; qc_any             &quot;FALSE&quot;</span></span></code></pre></div>
+<p>The same row comes out of the one-call wrapper:</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a>res <span class="ot">&lt;-</span> <span class="fu">suppressWarnings</span>(<span class="fu">process_fluxes</span>(d, <span class="at">gastype =</span> <span class="st">&quot;CH4dry_ppb&quot;</span>,</span>
+<span id="cb16-2"><a href="#cb16-2" tabindex="-1"></a>                       <span class="at">precision =</span> <span class="fu">c</span>(<span class="st">&quot;allan&quot;</span>, <span class="st">&quot;mad&quot;</span>, <span class="st">&quot;datasheet&quot;</span>),</span>
+<span id="cb16-3"><a href="#cb16-3" tabindex="-1"></a>                       <span class="at">mdf =</span> <span class="fu">c</span>(<span class="st">&quot;goflux&quot;</span>, <span class="st">&quot;wassmann&quot;</span>, <span class="st">&quot;christiansen&quot;</span>, <span class="st">&quot;two_sigma&quot;</span>),</span>
+<span id="cb16-4"><a href="#cb16-4" tabindex="-1"></a>                       <span class="at">conf =</span> <span class="fu">c</span>(<span class="fl">0.90</span>, <span class="fl">0.95</span>, <span class="fl">0.99</span>),</span>
+<span id="cb16-5"><a href="#cb16-5" tabindex="-1"></a>                       <span class="at">primary =</span> <span class="fu">list</span>(<span class="at">precision =</span> <span class="st">&quot;allan&quot;</span>, <span class="at">mdf =</span> <span class="st">&quot;christiansen&quot;</span>, <span class="at">conf =</span> <span class="fl">0.95</span>),</span>
+<span id="cb16-6"><a href="#cb16-6" tabindex="-1"></a>                       <span class="at">qc =</span> <span class="fu">list</span>(<span class="at">c0 =</span> <span class="cn">TRUE</span>, <span class="at">co2_tracer =</span> <span class="cn">TRUE</span>, <span class="at">convex =</span> <span class="cn">TRUE</span>, <span class="at">min_window =</span> <span class="fu">list</span>(<span class="at">secs =</span> <span class="dv">120</span>)),</span>
+<span id="cb16-7"><a href="#cb16-7" tabindex="-1"></a>                       <span class="at">co2 =</span> best_co2))</span>
+<span id="cb16-8"><a href="#cb16-8" tabindex="-1"></a><span class="co">#&gt;   |                                                                                             |                                                                                     |   0%  |                                                                                             |=====================================================================================| 100%</span></span>
+<span id="cb16-9"><a href="#cb16-9" tabindex="-1"></a>res</span>
+<span id="cb16-10"><a href="#cb16-10" tabindex="-1"></a><span class="co">#&gt; stemflux result: 1 closures, CH4dry_ppb </span></span>
+<span id="cb16-11"><a href="#cb16-11" tabindex="-1"></a><span class="co">#&gt;   MDF: christiansen_allan_95 | detected: 1 | qc_any: 0</span></span>
+<span id="cb16-12"><a href="#cb16-12" tabindex="-1"></a><span class="fu">c</span>(<span class="at">best.flux =</span> res<span class="sc">$</span>fluxes<span class="sc">$</span>best.flux, <span class="at">MDF =</span> res<span class="sc">$</span>fluxes<span class="sc">$</span>MDF, <span class="at">method =</span> res<span class="sc">$</span>fluxes<span class="sc">$</span>MDF_method)</span>
+<span id="cb16-13"><a href="#cb16-13" tabindex="-1"></a><span class="co">#&gt;               best.flux                     MDF                  method </span></span>
+<span id="cb16-14"><a href="#cb16-14" tabindex="-1"></a><span class="co">#&gt;     &quot;0.255675995743301&quot;     &quot;0.013764641300051&quot; &quot;christiansen_allan_95&quot;</span></span></code></pre></div>
 </div>
 <div id="summary-of-the-numbers" class="section level2">
 <h2>Summary of the numbers</h2>
@@ -706,25 +885,29 @@ the median is taken over all closures.</p>
 </tr>
 <tr class="even">
 <td align="left">MDF goFlux (datasheet)</td>
-<td align="left">0.001131</td>
+<td align="left">0.001126</td>
 </tr>
 <tr class="odd">
-<td align="left">MDF Wassmann 95%</td>
-<td align="left">0.004599</td>
+<td align="left">MDF Wassmann 95% (allan)</td>
+<td align="left">0.00458</td>
 </tr>
 <tr class="even">
-<td align="left">MDF Christiansen 95%</td>
-<td align="left">0.01382</td>
+<td align="left">MDF Christiansen 95% (allan)</td>
+<td align="left">0.01376</td>
 </tr>
 <tr class="odd">
-<td align="left">MDF 2-sigma</td>
-<td align="left">0.005592</td>
+<td align="left">MDF 2-sigma (allan)</td>
+<td align="left">0.005569</td>
 </tr>
 <tr class="even">
+<td align="left">reported MDF / method</td>
+<td align="left">0.01376 christiansen_allan_95</td>
+</tr>
+<tr class="odd">
 <td align="left">detected</td>
 <td align="left">emission</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">CO2 flux (umol m-2 s-1)</td>
 <td align="left">0.7125</td>
 </tr>

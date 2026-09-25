@@ -9,4 +9,6 @@
 vignettes/*.html
 vignettes/*_files/
 vignettes/*_cache/
+tests/testthat/Rplots.pdf
+Rplots.pdf
 .DS_Store

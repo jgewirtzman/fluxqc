@@ -350,29 +350,30 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <li><a href="#auxfile" id="toc-auxfile">2. Auxfile</a></li>
 <li><a href="#window-selection" id="toc-window-selection">3. Window
 selection</a></li>
-<li><a href="#flux-calculation-and-model-selection" id="toc-flux-calculation-and-model-selection">4. Flux calculation and
-model selection</a></li>
-<li><a href="#empirical-precision-and-detection-limits" id="toc-empirical-precision-and-detection-limits">5. Empirical precision
-and detection limits</a></li>
-<li><a href="#quality-control" id="toc-quality-control">6. Quality
-control</a></li>
-<li><a href="#plots-and-report" id="toc-plots-and-report">7. Plots and
-report</a></li>
-<li><a href="#ebullition-water-saturated-soil-only" id="toc-ebullition-water-saturated-soil-only">8. Ebullition (water /
-saturated soil only)</a></li>
+<li><a href="#flux-detection-limits-and-qc-in-one-call" id="toc-flux-detection-limits-and-qc-in-one-call">4. Flux, detection
+limits and QC in one call</a></li>
+<li><a href="#where-the-outputs-go" id="toc-where-the-outputs-go">5.
+Where the outputs go</a></li>
+<li><a href="#plots-by-hand" id="toc-plots-by-hand">6. Plots by
+hand</a></li>
 </ul>
 </div>
 
-<p>This vignette lays out the end-to-end pipeline for stem (and soil /
-water) chamber fluxes as it is run in practice, and shows where each
+<p>This vignette lays out the end-to-end pipeline for stem (and soil)
+chamber fluxes as it is run in practice, and shows where each
 <code>stemflux</code> function plugs into the standard
 <code>goFlux</code> sequence. Chunks that require an interactive
 graphics device are marked and not evaluated when the vignette is built;
-the non-interactive alternatives are shown next to them. See the
-companion vignette “From raw trace to reported flux” for a fully
-evaluated single closure.</p>
-<pre><code>import -&gt; auxfile -&gt; obs.win -&gt; window selection -&gt; goFlux -&gt; best.flux
-       -&gt; precision -&gt; flag_detection -&gt; qc -&gt; flux_pdf -&gt; report</code></pre>
+the non-interactive alternatives are shown next to them. See “From raw
+trace to reported flux” for a fully evaluated single closure.</p>
+<pre><code>import -&gt; auxfile -&gt; obs.win -&gt; window selection -&gt; process_fluxes()
+                                                     = goFlux -&gt; best.flux -&gt; flag_detection -&gt; qc_screens
+                                                  -&gt; write_outputs()</code></pre>
+<p>Ebullition (bubbles under floating chambers or from flooded stems) is
+an opt-in add-on switched on with
+<code>process_fluxes(ebullition = ...)</code>; see
+<code>vignette(&quot;ebullition&quot;, &quot;stemflux&quot;)</code>. Upland soil and stem
+users never need it.</p>
 <div id="import" class="section level2">
 <h2>1. Import</h2>
 <p>For an LI-7810, subset the campaign-long <code>.data</code> file to
@@ -381,119 +382,256 @@ subdirectories and occasional corrupt files, import file by file.</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">library</span>(goFlux)</span>
 <span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="fu">library</span>(stemflux)</span>
 <span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a></span>
-<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="co"># LI-7810: a 160 MB file -&gt; only the six field days</span></span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="co"># LI-7810: a 160 MB file -&gt; only the field days</span></span>
 <span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a>licor <span class="ot">&lt;-</span> <span class="fu">import_li7810_subset</span>(</span>
 <span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a>  <span class="st">&quot;data/licor/TG10-01503-2026-05-01T000000.data&quot;</span>,</span>
 <span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a>  <span class="at">dates =</span> <span class="fu">c</span>(<span class="st">&quot;2026-05-22&quot;</span>, <span class="st">&quot;2026-05-23&quot;</span>, <span class="st">&quot;2026-05-24&quot;</span>),</span>
 <span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a>  <span class="at">outfile =</span> <span class="st">&quot;data/licor/subset.data&quot;</span>,</span>
 <span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a>  <span class="at">date.format =</span> <span class="st">&quot;ymd&quot;</span>, <span class="at">timezone =</span> <span class="st">&quot;UTC&quot;</span>,</span>
-<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a>  <span class="at">prec =</span> <span class="fu">c</span>(<span class="fl">3.5</span>, <span class="fl">0.6</span>, <span class="dv">45</span>))                    <span class="co"># LI-7810 datasheet, 1 s</span></span>
+<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a>  <span class="at">prec =</span> <span class="fu">c</span>(<span class="fl">3.5</span>, <span class="fl">0.6</span>, <span class="dv">45</span>))                    <span class="co"># LI-7810 datasheet, 1 s (feeds goFlux&#39;s own MDF only)</span></span>
 <span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a></span>
 <span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a><span class="co"># LGR / UGGA: recursive, one file at a time, nothing written to getwd()</span></span>
 <span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a>lgr <span class="ot">&lt;-</span> <span class="fu">import2RData_flat</span>(<span class="st">&quot;data/LGR1&quot;</span>, <span class="at">instrument =</span> <span class="st">&quot;UGGA&quot;</span>,</span>
 <span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a>                         <span class="at">pattern =</span> <span class="st">&quot;_f</span><span class="sc">\\</span><span class="st">d+</span><span class="sc">\\</span><span class="st">.txt$&quot;</span>,</span>
 <span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a>                         <span class="at">date.format =</span> <span class="st">&quot;mdy&quot;</span>, <span class="at">timezone =</span> <span class="st">&quot;UTC&quot;</span>,</span>
 <span id="cb2-16"><a href="#cb2-16" tabindex="-1"></a>                         <span class="at">prec =</span> <span class="fu">c</span>(<span class="fl">0.35</span>, <span class="fl">0.9</span>, <span class="dv">200</span>))</span></code></pre></div>
-<p>If an LGR file contains a clock reset (two interleaved time streams),
-split it first:</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>cs <span class="ot">&lt;-</span> <span class="fu">detect_clock_streams</span>(<span class="st">&quot;data/LGR2/2022-10-25/micro_2022-10-25_f0001.txt&quot;</span>)</span>
-<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="cf">if</span> (cs<span class="sc">$</span>has_reset) {</span>
-<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>  files <span class="ot">&lt;-</span> <span class="fu">write_stream_files</span>(cs, <span class="st">&quot;micro_2022-10-25_f0001.txt&quot;</span>, <span class="st">&quot;data/LGR2_split&quot;</span>)</span>
-<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>  <span class="co"># import each stream separately with import.UGGA() and tag it</span></span>
-<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>}</span></code></pre></div>
 </div>
 <div id="auxfile" class="section level2">
 <h2>2. Auxfile</h2>
 <p>One row per closure with goFlux’s column names.
 <code>start.time</code> is instrument time; <code>obs.length</code> is
-the planned closure length.</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>aux <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
-<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>  <span class="at">UniqueID   =</span> <span class="fu">c</span>(<span class="st">&quot;T26_DBH_r1&quot;</span>, <span class="st">&quot;T26_Base_r1&quot;</span>),</span>
-<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>  <span class="at">start.time =</span> <span class="fu">as.POSIXct</span>(<span class="fu">c</span>(<span class="st">&quot;2026-05-23 10:12:10&quot;</span>, <span class="st">&quot;2026-05-23 10:50:30&quot;</span>), <span class="at">tz =</span> <span class="st">&quot;UTC&quot;</span>),</span>
-<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>  <span class="at">obs.length =</span> <span class="dv">600</span>,</span>
-<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>  <span class="at">Area  =</span> <span class="dv">4254</span>,      <span class="co"># cm2</span></span>
-<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>  <span class="at">Vtot  =</span> <span class="fl">7.08</span>,      <span class="co"># L</span></span>
-<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>  <span class="at">Tcham =</span> <span class="fl">24.5</span>,      <span class="co"># C</span></span>
-<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a>  <span class="at">Pcham =</span> <span class="fl">101.3</span>)     <span class="co"># kPa</span></span>
-<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a>ow <span class="ot">&lt;-</span> <span class="fu">obs.win</span>(<span class="at">inputfile =</span> licor, <span class="at">auxfile =</span> aux, <span class="at">obs.length =</span> <span class="dv">600</span>, <span class="at">shoulder =</span> <span class="dv">120</span>)</span></code></pre></div>
+the planned closure length. If notebook times were written on a watch
+that disagrees with the analyzer clock, estimate the constant offset
+first (a utility, not part of the default path):</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>aux <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>  <span class="at">UniqueID   =</span> <span class="fu">c</span>(<span class="st">&quot;T26_DBH_r1&quot;</span>, <span class="st">&quot;T26_Base_r1&quot;</span>),</span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>  <span class="at">start.time =</span> <span class="fu">as.POSIXct</span>(<span class="fu">c</span>(<span class="st">&quot;2026-05-23 10:12:10&quot;</span>, <span class="st">&quot;2026-05-23 10:50:30&quot;</span>), <span class="at">tz =</span> <span class="st">&quot;UTC&quot;</span>),</span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>  <span class="at">obs.length =</span> <span class="dv">600</span>,</span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>  <span class="at">Area  =</span> <span class="dv">4254</span>,      <span class="co"># cm2</span></span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>  <span class="at">Vtot  =</span> <span class="fl">7.08</span>,      <span class="co"># L</span></span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>  <span class="at">Tcham =</span> <span class="fl">24.5</span>,      <span class="co"># C</span></span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>  <span class="at">Pcham =</span> <span class="fl">101.3</span>,     <span class="co"># kPa</span></span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>  <span class="at">campaign =</span> <span class="st">&quot;May-2026&quot;</span>, <span class="at">tissue =</span> <span class="st">&quot;live&quot;</span>)</span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a></span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a>fc  <span class="ot">&lt;-</span> <span class="fu">find_clock_offset</span>(licor, aux, <span class="at">gas =</span> <span class="st">&quot;CO2dry_ppm&quot;</span>, <span class="at">search =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1800</span>, <span class="dv">1800</span>), <span class="at">auxfile =</span> aux)</span>
+<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a>fc<span class="sc">$</span>offset                 <span class="co"># seconds to add to notebook times; inspect fc$scores before trusting it</span></span>
+<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a>aux <span class="ot">&lt;-</span> fc<span class="sc">$</span>auxfile         <span class="co"># start.time corrected, notebook value kept in start.time_notebook</span></span>
+<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a></span>
+<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a>ow <span class="ot">&lt;-</span> <span class="fu">obs.win</span>(<span class="at">inputfile =</span> licor, <span class="at">auxfile =</span> aux, <span class="at">obs.length =</span> <span class="dv">600</span>, <span class="at">shoulder =</span> <span class="dv">120</span>)</span></code></pre></div>
 </div>
 <div id="window-selection" class="section level2">
 <h2>3. Window selection</h2>
 <p>Three routes to the same object (a <code>manID</code> data frame with
 <code>flag</code>, <code>Etime</code>, <code>start.time_corr</code>,
 <code>end.time_corr</code>, <code>obs.length_corr</code>):</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="co"># (a) interactive, both gases visible -- needs a graphics window (not RStudio&#39;s pane)</span></span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>manID <span class="ot">&lt;-</span> <span class="fu">click_peak2_stacked</span>(ow, <span class="at">gastype =</span> <span class="st">&quot;CO2dry_ppm&quot;</span>, <span class="at">gastype2 =</span> <span class="st">&quot;CH4dry_ppb&quot;</span>,</span>
-<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>                             <span class="at">ref.secs =</span> <span class="dv">600</span>, <span class="at">save.plots =</span> <span class="st">&quot;plots/windows.pdf&quot;</span>)</span></code></pre></div>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="co"># (b) non-interactive: sustained CO2 rise, notebook end times as a fallback/cap</span></span>
-<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>ends <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">UniqueID =</span> aux<span class="sc">$</span>UniqueID,</span>
-<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>                   <span class="at">end.time =</span> <span class="fu">as.POSIXct</span>(<span class="fu">c</span>(<span class="st">&quot;2026-05-23 10:22:30&quot;</span>, <span class="st">&quot;2026-05-23 11:02:00&quot;</span>), <span class="at">tz =</span> <span class="st">&quot;UTC&quot;</span>))</span>
-<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>manID <span class="ot">&lt;-</span> <span class="fu">auto_id_rise</span>(ow, <span class="at">end.times =</span> ends, <span class="at">trim.secs =</span> <span class="dv">30</span>, <span class="at">max.secs =</span> <span class="dv">600</span>,</span>
-<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>                      <span class="at">plot.dir =</span> <span class="st">&quot;plots/auto_id&quot;</span>)</span>
-<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="fu">attr</span>(manID, <span class="st">&quot;log&quot;</span>)          <span class="co"># review; redo any window with (a) or (c)</span></span>
-<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a></span>
-<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a><span class="co"># (c) explicit windows from notebooks / screenshots</span></span>
-<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>win <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">UniqueID =</span> <span class="st">&quot;T26_Base_r1&quot;</span>,</span>
-<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a>                  <span class="at">start =</span> <span class="st">&quot;2026-05-23 10:51:00&quot;</span>, <span class="at">end =</span> <span class="st">&quot;2026-05-23 11:01:30&quot;</span>)</span>
-<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a>manID_c <span class="ot">&lt;-</span> <span class="fu">windows_from_table</span>(ow, win)</span>
-<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a>manID <span class="ot">&lt;-</span> <span class="fu">rbind</span>(manID[manID<span class="sc">$</span>UniqueID <span class="sc">!=</span> <span class="st">&quot;T26_Base_r1&quot;</span>, ], manID_c)</span></code></pre></div>
-<p>For records with interleaved clock streams, replace
-<code>obs.win()</code> with <code>obs_win_deinterleave()</code> (keeps
-the smoother stream per window) or use <code>click_flux_2d()</code> to
-draw a time x concentration box around the good points and calculate the
-flux in one step.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="co"># (a) interactive, every gas visible -- needs a graphics window (not RStudio&#39;s pane)</span></span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>manID <span class="ot">&lt;-</span> <span class="fu">click_peak2_stacked</span>(ow, <span class="at">gases =</span> <span class="fu">c</span>(<span class="st">&quot;CO2dry_ppm&quot;</span>, <span class="st">&quot;CH4dry_ppb&quot;</span>, <span class="st">&quot;H2O_ppm&quot;</span>),</span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>                             <span class="at">ref.secs =</span> <span class="dv">600</span>, <span class="at">save.plots =</span> <span class="st">&quot;plots/windows.pdf&quot;</span>)</span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>manID <span class="ot">&lt;-</span> <span class="fu">click_peak2_stacked</span>(ow, <span class="at">gases =</span> <span class="st">&quot;auto&quot;</span>)     <span class="co"># every recognised gas column present</span></span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="co"># (b) non-interactive: sustained CO2 rise, notebook end times as a fallback/cap</span></span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>ends <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">UniqueID =</span> aux<span class="sc">$</span>UniqueID,</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>                   <span class="at">end.time =</span> <span class="fu">as.POSIXct</span>(<span class="fu">c</span>(<span class="st">&quot;2026-05-23 10:22:30&quot;</span>, <span class="st">&quot;2026-05-23 11:02:00&quot;</span>), <span class="at">tz =</span> <span class="st">&quot;UTC&quot;</span>))</span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>manID <span class="ot">&lt;-</span> <span class="fu">auto_id_rise</span>(ow, <span class="at">detect.gas =</span> <span class="st">&quot;CO2dry_ppm&quot;</span>, <span class="at">gases =</span> <span class="st">&quot;auto&quot;</span>, <span class="at">end.times =</span> ends,</span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>                      <span class="at">trim.secs =</span> <span class="dv">30</span>, <span class="at">max.secs =</span> <span class="dv">600</span>, <span class="at">plot.dir =</span> <span class="st">&quot;plots/auto_id&quot;</span>)</span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="fu">attr</span>(manID, <span class="st">&quot;log&quot;</span>)          <span class="co"># review; redo any window with (a) or (c)</span></span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="co"># (c) explicit windows from notebooks / screenshots</span></span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>win <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">UniqueID =</span> <span class="st">&quot;T26_Base_r1&quot;</span>,</span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>                  <span class="at">start =</span> <span class="st">&quot;2026-05-23 10:51:00&quot;</span>, <span class="at">end =</span> <span class="st">&quot;2026-05-23 11:01:30&quot;</span>)</span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a>manID_c <span class="ot">&lt;-</span> <span class="fu">windows_from_table</span>(ow, win)</span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a>manID <span class="ot">&lt;-</span> <span class="fu">rbind</span>(manID[manID<span class="sc">$</span>UniqueID <span class="sc">!=</span> <span class="st">&quot;T26_Base_r1&quot;</span>, ], manID_c)</span></code></pre></div>
 </div>
-<div id="flux-calculation-and-model-selection" class="section level2">
-<h2>4. Flux calculation and model selection</h2>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>CO2_flux <span class="ot">&lt;-</span> <span class="fu">goFlux</span>(manID, <span class="st">&quot;CO2dry_ppm&quot;</span>)</span>
-<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>CH4_flux <span class="ot">&lt;-</span> <span class="fu">goFlux</span>(manID, <span class="st">&quot;CH4dry_ppb&quot;</span>)</span>
-<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>CO2_best <span class="ot">&lt;-</span> <span class="fu">best.flux</span>(CO2_flux)</span>
-<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>CH4_best <span class="ot">&lt;-</span> <span class="fu">best.flux</span>(CH4_flux)</span></code></pre></div>
-</div>
-<div id="empirical-precision-and-detection-limits" class="section level2">
-<h2>5. Empirical precision and detection limits</h2>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>sig_ch4 <span class="ot">&lt;-</span> <span class="fu">precision_by_id</span>(manID, <span class="st">&quot;CH4dry_ppb&quot;</span>)          <span class="co"># sigma = SD(diff x)/sqrt(2), per closure</span></span>
-<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>sig_co2 <span class="ot">&lt;-</span> <span class="fu">precision_by_id</span>(manID, <span class="st">&quot;CO2dry_ppm&quot;</span>)</span>
-<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>sigma_global_ch4 <span class="ot">&lt;-</span> <span class="fu">precision_mad</span>(licor<span class="sc">$</span>CH4dry_ppb)      <span class="co"># robust, whole record</span></span>
-<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a></span>
-<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>CH4_best <span class="ot">&lt;-</span> <span class="fu">flag_detection</span>(CH4_best, <span class="at">sigma =</span> sig_ch4, <span class="at">sigma.global =</span> sigma_global_ch4,</span>
-<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>                           <span class="at">primary =</span> <span class="st">&quot;2sigma&quot;</span>)</span>
-<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a>CO2_best <span class="ot">&lt;-</span> <span class="fu">flag_detection</span>(CO2_best, <span class="at">sigma =</span> sig_co2)</span>
-<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="fu">table</span>(CH4_best<span class="sc">$</span>det_class)</span></code></pre></div>
+<div id="flux-detection-limits-and-qc-in-one-call" class="section level2">
+<h2>4. Flux, detection limits and QC in one call</h2>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>CH4 <span class="ot">&lt;-</span> <span class="fu">process_fluxes</span>(</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>  manID, <span class="at">aux =</span> aux, <span class="at">gastype =</span> <span class="st">&quot;CH4dry_ppb&quot;</span>,</span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>  <span class="at">precision =</span> <span class="fu">c</span>(<span class="st">&quot;allan&quot;</span>, <span class="st">&quot;mad&quot;</span>, <span class="st">&quot;datasheet&quot;</span>),               <span class="co"># sigma_* columns</span></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>  <span class="at">mdf       =</span> <span class="fu">c</span>(<span class="st">&quot;goflux&quot;</span>, <span class="st">&quot;wassmann&quot;</span>, <span class="st">&quot;christiansen&quot;</span>, <span class="st">&quot;two_sigma&quot;</span>),</span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>  <span class="at">conf      =</span> <span class="fu">c</span>(<span class="fl">0.90</span>, <span class="fl">0.95</span>, <span class="fl">0.99</span>),</span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>  <span class="at">primary   =</span> <span class="fu">list</span>(<span class="at">precision =</span> <span class="st">&quot;allan&quot;</span>, <span class="at">mdf =</span> <span class="st">&quot;christiansen&quot;</span>, <span class="at">conf =</span> <span class="fl">0.95</span>),  <span class="co"># -&gt; MDF, below_MDF</span></span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>  <span class="at">qc        =</span> <span class="fu">list</span>(<span class="at">c0 =</span> <span class="fu">list</span>(<span class="at">k =</span> <span class="fl">1.5</span>), <span class="at">co2_tracer =</span> <span class="fu">list</span>(<span class="at">min_slope =</span> <span class="dv">0</span>), <span class="at">convex =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>                   <span class="at">min_window =</span> <span class="fu">list</span>(<span class="at">secs =</span> <span class="dv">120</span>), <span class="at">ambient_start =</span> <span class="fu">list</span>(<span class="at">sigma =</span> <span class="dv">3</span>, <span class="at">secs =</span> <span class="dv">10</span>),</span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>                   <span class="at">leak =</span> <span class="fu">list</span>(<span class="at">rate =</span> <span class="fl">2e-5</span>)),               <span class="co"># bench leak rate, s-1; omit to skip</span></span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a>  <span class="at">group =</span> <span class="st">&quot;campaign&quot;</span>, <span class="at">tissue =</span> <span class="st">&quot;tissue&quot;</span>)</span>
+<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a>CO2 <span class="ot">&lt;-</span> <span class="fu">process_fluxes</span>(manID, <span class="at">aux =</span> aux, <span class="at">gastype =</span> <span class="st">&quot;CO2dry_ppm&quot;</span>, <span class="at">primary =</span> <span class="fu">list</span>(<span class="at">precision =</span> <span class="st">&quot;allan&quot;</span>, <span class="at">mdf =</span> <span class="st">&quot;two_sigma&quot;</span>))</span>
+<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a>CH4</span>
+<span id="cb6-13"><a href="#cb6-13" tabindex="-1"></a><span class="fu">table</span>(CH4<span class="sc">$</span>fluxes<span class="sc">$</span>det_class); <span class="fu">table</span>(CH4<span class="sc">$</span>fluxes<span class="sc">$</span>qc_any)</span></code></pre></div>
+<p>The same steps by hand, if you want them one at a time:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>CH4_flux <span class="ot">&lt;-</span> <span class="fu">goFlux</span>(manID, <span class="st">&quot;CH4dry_ppb&quot;</span>)</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>CH4_best <span class="ot">&lt;-</span> <span class="fu">best.flux</span>(CH4_flux)</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>CH4_best <span class="ot">&lt;-</span> <span class="fu">flag_detection</span>(CH4_best, <span class="at">traces =</span> manID, <span class="at">gastype =</span> <span class="st">&quot;CH4dry_ppb&quot;</span>,</span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>                           <span class="at">precision =</span> <span class="fu">c</span>(<span class="st">&quot;allan&quot;</span>, <span class="st">&quot;datasheet&quot;</span>), <span class="at">mdf =</span> <span class="fu">c</span>(<span class="st">&quot;goflux&quot;</span>, <span class="st">&quot;christiansen&quot;</span>),</span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>                           <span class="at">conf =</span> <span class="fl">0.95</span>, <span class="at">primary =</span> <span class="fu">list</span>(<span class="at">precision =</span> <span class="st">&quot;allan&quot;</span>, <span class="at">mdf =</span> <span class="st">&quot;christiansen&quot;</span>, <span class="at">conf =</span> <span class="fl">0.95</span>))</span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>CH4_best <span class="ot">&lt;-</span> <span class="fu">qc_screens</span>(CH4_best, <span class="at">traces =</span> manID, <span class="at">gastype =</span> <span class="st">&quot;CH4dry_ppb&quot;</span>, <span class="at">co2 =</span> CO2<span class="sc">$</span>fluxes,</span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>                       <span class="at">screens =</span> <span class="fu">list</span>(<span class="at">c0 =</span> <span class="cn">TRUE</span>, <span class="at">co2_tracer =</span> <span class="cn">TRUE</span>, <span class="at">convex =</span> <span class="cn">TRUE</span>))</span></code></pre></div>
 <p>Optionally feed the empirical precision back into goFlux so its own
 <code>MDF</code> column and <code>flux.plot()</code> annotations use
 it:</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>manID<span class="sc">$</span>CH4_prec <span class="ot">&lt;-</span> sig_ch4<span class="sc">$</span>sigma[<span class="fu">match</span>(manID<span class="sc">$</span>UniqueID, sig_ch4<span class="sc">$</span>UniqueID)]</span>
-<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>CH4_flux <span class="ot">&lt;-</span> <span class="fu">goFlux</span>(manID, <span class="st">&quot;CH4dry_ppb&quot;</span>)     <span class="co"># goFlux reads the *_prec columns</span></span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>sig <span class="ot">&lt;-</span> <span class="fu">precision_by_id</span>(manID, <span class="st">&quot;CH4dry_ppb&quot;</span>)</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>manID<span class="sc">$</span>CH4_prec <span class="ot">&lt;-</span> sig<span class="sc">$</span>sigma[<span class="fu">match</span>(manID<span class="sc">$</span>UniqueID, sig<span class="sc">$</span>UniqueID)]</span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>CH4_flux <span class="ot">&lt;-</span> <span class="fu">goFlux</span>(manID, <span class="st">&quot;CH4dry_ppb&quot;</span>)     <span class="co"># goFlux reads the *_prec columns</span></span></code></pre></div>
 </div>
-<div id="quality-control" class="section level2">
-<h2>6. Quality control</h2>
-<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>CH4_best <span class="ot">&lt;-</span> <span class="fu">qc_c0_screen</span>(CH4_best, <span class="at">k =</span> <span class="fl">1.5</span>)            <span class="co"># chamber not at ambient at closure?</span></span>
-<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>co2_ok   <span class="ot">&lt;-</span> CO2_best<span class="sc">$</span>best.flux <span class="sc">&gt;</span> <span class="dv">0</span>                      <span class="co"># sealed chamber: CO2 must accumulate</span></span>
-<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a>CH4_best<span class="sc">$</span>qc_co2_positive <span class="ot">&lt;-</span> co2_ok[<span class="fu">match</span>(CH4_best<span class="sc">$</span>UniqueID, CO2_best<span class="sc">$</span>UniqueID)]</span>
-<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a>keep <span class="ot">&lt;-</span> CH4_best<span class="sc">$</span>qc_c0_pass <span class="sc">&amp;</span> CH4_best<span class="sc">$</span>qc_co2_positive  <span class="co"># rows are flagged, not deleted</span></span></code></pre></div>
+<div id="where-the-outputs-go" class="section level2">
+<h2>5. Where the outputs go</h2>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">write_outputs</span>(CH4, <span class="st">&quot;results/CH4&quot;</span>)</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a><span class="co">#&gt; results/CH4/fluxes.csv        one row per UniqueID</span></span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a><span class="co">#&gt; results/CH4/settings.json     every option used (methods section)</span></span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="co">#&gt; results/CH4/flux_plots.pdf    one page per closure (goFlux::flux.plot via flux_pdf)</span></span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a><span class="co">#&gt; results/CH4/ebullition_events.csv   only when the ebullition add-on ran</span></span></code></pre></div>
+<p><code>process_fluxes()</code> returns a list: <code>fluxes</code>,
+<code>events</code> (<code>NULL</code> unless the ebullition add-on
+ran), <code>traces</code> (the concentration data actually fitted),
+<code>gastype</code>, <code>settings</code>. Every column of
+<code>fluxes</code> and where it comes from:</p>
+<table>
+<colgroup>
+<col width="33%" />
+<col width="33%" />
+<col width="33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>column(s)</th>
+<th>produced by</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>UniqueID</code></td>
+<td>auxfile / <code>obs.win()</code></td>
+<td>closure identifier</td>
+</tr>
+<tr class="even">
+<td><code>LM.flux</code>, <code>LM.C0</code>, <code>LM.Ct</code>,
+<code>LM.slope</code>, <code>LM.MAE</code>, <code>LM.RMSE</code>,
+<code>LM.AICc</code>, <code>LM.SE</code>, <code>LM.se.rel</code>,
+<code>LM.r2</code>, <code>LM.p.val</code></td>
+<td><code>goFlux::goFlux()</code></td>
+<td>linear model fit</td>
+</tr>
+<tr class="odd">
+<td><code>HM.flux</code>, <code>HM.C0</code>, <code>HM.Ci</code>,
+<code>HM.slope</code>, <code>HM.MAE</code>, <code>HM.RMSE</code>,
+<code>HM.AICc</code>, <code>HM.SE</code>, <code>HM.se.rel</code>,
+<code>HM.r2</code>, <code>HM.k</code></td>
+<td><code>goFlux::goFlux()</code></td>
+<td>Hutchinson-Mosier fit</td>
+</tr>
+<tr class="even">
+<td><code>C0</code>, <code>Ct</code>, <code>MDF</code>,
+<code>prec</code>, <code>flux.term</code>, <code>nb.obs</code>,
+<code>k.max</code>, <code>k.mult</code>, <code>g.fact</code></td>
+<td><code>goFlux::goFlux()</code></td>
+<td>start/end concentration, goFlux’s MDF (datasheet <code>prec</code>),
+(V/A)(P/RT), n, kappa bounds, g-factor</td>
+</tr>
+<tr class="odd">
+<td><code>best.flux</code>, <code>model</code>,
+<code>quality.check</code>, <code>HM.diagnose</code>,
+<code>LM.diagnose</code>, <code>HM.score</code>, <code>LM.score</code>,
+<code>*.lim</code>, <code>warn.nb.obs</code></td>
+<td><code>goFlux::best.flux()</code></td>
+<td>selected flux and why</td>
+</tr>
+<tr class="even">
+<td><code>sigma_&lt;precision&gt;</code></td>
+<td><code>flag_detection()</code></td>
+<td>per-closure precision by estimator (<code>allan</code>,
+<code>mad</code>, <code>rolling</code>, <code>datasheet</code>,
+<code>custom</code>)</td>
+</tr>
+<tr class="odd">
+<td><code>MDF_&lt;mdf&gt;_&lt;precision&gt;[_&lt;conf&gt;]</code>,
+<code>below_&lt;mdf&gt;_&lt;precision&gt;[_&lt;conf&gt;]</code></td>
+<td><code>flag_detection()</code></td>
+<td>every requested MDF and its below-detection flag</td>
+</tr>
+<tr class="even">
+<td><code>MDF_goflux_orig</code></td>
+<td><code>flag_detection()</code></td>
+<td>goFlux’s original <code>MDF</code> column, preserved</td>
+</tr>
+<tr class="odd">
+<td><code>MDF</code>, <code>below_MDF</code>, <code>MDF_method</code>,
+<code>detected</code>, <code>det_class</code></td>
+<td><code>flag_detection()</code> (<code>primary</code>)</td>
+<td>the one reported MDF and classification (<code>emission</code> /
+<code>uptake</code> / <code>below detection</code>)</td>
+</tr>
+<tr class="even">
+<td><code>qc_c0</code>, <code>qc_c0_ratio</code></td>
+<td><code>qc_screens()</code></td>
+<td>C0 &gt; k x group median</td>
+</tr>
+<tr class="odd">
+<td><code>qc_co2_tracer</code>, <code>qc_co2_slope</code></td>
+<td><code>qc_screens()</code></td>
+<td>CO2 slope &lt;= min_slope (NA for exempt tissue)</td>
+</tr>
+<tr class="even">
+<td><code>qc_convex</code></td>
+<td><code>qc_screens()</code></td>
+<td>accelerating trace</td>
+</tr>
+<tr class="odd">
+<td><code>qc_min_window</code></td>
+<td><code>qc_screens()</code></td>
+<td>window shorter than <code>secs</code></td>
+</tr>
+<tr class="even">
+<td><code>qc_ambient_start</code>,
+<code>qc_ambient_dev_sigma</code></td>
+<td><code>qc_screens()</code></td>
+<td>start already enriched vs pre-closure ambient</td>
+</tr>
+<tr class="odd">
+<td><code>qc_leak</code>, <code>qc_leak_apparent_flux</code></td>
+<td><code>qc_screens()</code></td>
+<td>leak-equivalent flux &gt;= MDF</td>
+</tr>
+<tr class="even">
+<td><code>qc_any</code>, <code>qc_note</code></td>
+<td><code>qc_screens()</code></td>
+<td>any screen fired; which</td>
+</tr>
+<tr class="odd">
+<td><code>&lt;group&gt;</code>, <code>&lt;tissue&gt;</code></td>
+<td>auxfile via <code>process_fluxes()</code></td>
+<td>grouping / tissue columns merged for the screens</td>
+</tr>
+<tr class="even">
+<td><code>ebullition_handling</code>, <code>n_ebullition_events</code>,
+<code>ebullition_flag</code></td>
+<td>ebullition add-on (<code>&quot;flag&quot;</code> or <code>&quot;split&quot;</code>)</td>
+<td>present only when the add-on ran</td>
+</tr>
+<tr class="odd">
+<td><code>flux_diffusive</code>, <code>flux_ebullitive</code>,
+<code>flux_total</code>, <code>ebullition_method</code></td>
+<td>ebullition add-on (<code>&quot;split&quot;</code>)</td>
+<td>diffusive term (= <code>best.flux</code> on the de-ebulliated
+trace), bubble term, sum</td>
+</tr>
+</tbody>
+</table>
+<p><code>events</code> (add-on only): <code>UniqueID</code>,
+<code>POSIX.time</code>, <code>Etime</code>, <code>dC</code> (event
+size, gas units), <code>threshold</code>. <code>settings</code>:
+<code>stemflux_version</code>, <code>goFlux_version</code>,
+<code>gastype</code>, <code>precision</code>, <code>mdf</code>,
+<code>conf</code>, <code>primary</code>, <code>sigma_global</code>,
+<code>qc</code> (parameters of each screen), <code>group</code>,
+<code>tissue</code>, <code>ebullition*</code>, <code>goFlux_args</code>,
+<code>best.flux_args</code>, <code>n_closures</code>,
+<code>date</code>.</p>
 </div>
-<div id="plots-and-report" class="section level2">
-<h2>7. Plots and report</h2>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>CO2_plots <span class="ot">&lt;-</span> <span class="fu">flux.plot</span>(CO2_best, manID, <span class="st">&quot;CO2dry_ppm&quot;</span>, <span class="at">shoulder =</span> <span class="dv">20</span>,</span>
-<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a>                       <span class="at">plot.display =</span> <span class="fu">c</span>(<span class="st">&quot;MDF&quot;</span>, <span class="st">&quot;prec&quot;</span>, <span class="st">&quot;nb.obs&quot;</span>, <span class="st">&quot;flux.term&quot;</span>))</span>
-<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a>CH4_plots <span class="ot">&lt;-</span> <span class="fu">flux.plot</span>(CH4_best, manID, <span class="st">&quot;CH4dry_ppb&quot;</span>, <span class="at">shoulder =</span> <span class="dv">20</span>)</span>
-<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a><span class="fu">flux_pdf</span>(<span class="fu">c</span>(CO2_plots, CH4_plots), <span class="st">&quot;plots/flux_results.pdf&quot;</span>)   <span class="co"># ggplot2 &gt;= 3.5 safe</span></span>
-<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a></span>
-<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a>report <span class="ot">&lt;-</span> <span class="fu">merge</span>(</span>
-<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a>  CH4_best[, <span class="fu">c</span>(<span class="st">&quot;UniqueID&quot;</span>, <span class="st">&quot;best.flux&quot;</span>, <span class="st">&quot;model&quot;</span>, <span class="st">&quot;LM.SE&quot;</span>, <span class="st">&quot;sigma&quot;</span>, <span class="st">&quot;MDF_2sigma&quot;</span>,</span>
-<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a>               <span class="st">&quot;detected&quot;</span>, <span class="st">&quot;det_class&quot;</span>, <span class="st">&quot;qc_c0_pass&quot;</span>, <span class="st">&quot;qc_co2_positive&quot;</span>)],</span>
-<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a>  CO2_best[, <span class="fu">c</span>(<span class="st">&quot;UniqueID&quot;</span>, <span class="st">&quot;best.flux&quot;</span>)], <span class="at">by =</span> <span class="st">&quot;UniqueID&quot;</span>, <span class="at">suffixes =</span> <span class="fu">c</span>(<span class="st">&quot;_CH4&quot;</span>, <span class="st">&quot;_CO2&quot;</span>))</span>
-<span id="cb11-10"><a href="#cb11-10" tabindex="-1"></a><span class="fu">write.csv</span>(report, <span class="st">&quot;results/stem_fluxes.csv&quot;</span>, <span class="at">row.names =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
-</div>
-<div id="ebullition-water-saturated-soil-only" class="section level2">
-<h2>8. Ebullition (water / saturated soil only)</h2>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a>one <span class="ot">&lt;-</span> manID[manID<span class="sc">$</span>UniqueID <span class="sc">==</span> <span class="st">&quot;BL60_water_03&quot;</span> <span class="sc">&amp;</span> manID<span class="sc">$</span>flag <span class="sc">==</span> <span class="dv">1</span>, ]</span>
-<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a>eb  <span class="ot">&lt;-</span> <span class="fu">detect_ebullition</span>(one, <span class="st">&quot;CH4dry_ppb&quot;</span>, <span class="at">jump.thresh =</span> <span class="dv">100</span>)   <span class="co"># 0.1 ppm steps</span></span>
-<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a>part <span class="ot">&lt;-</span> <span class="fu">split_ebullition</span>(eb, <span class="at">Vtot =</span> <span class="fl">4.318</span>, <span class="at">Area =</span> <span class="fl">324.3</span>, <span class="at">Tcham =</span> <span class="dv">28</span>, <span class="at">Pcham =</span> <span class="fl">101.3</span>)</span>
-<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a>part[, <span class="fu">c</span>(<span class="st">&quot;diffusive_flux&quot;</span>, <span class="st">&quot;ebullitive_flux&quot;</span>, <span class="st">&quot;total_flux&quot;</span>, <span class="st">&quot;ebullitive_fraction&quot;</span>, <span class="st">&quot;n_jumps&quot;</span>)]</span></code></pre></div>
-<p>Review <code>eb$jumps</code> against the trace before believing them:
-analyzer artefacts produce identical steps.</p>
+<div id="plots-by-hand" class="section level2">
+<h2>6. Plots by hand</h2>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>CH4_plots <span class="ot">&lt;-</span> <span class="fu">flux.plot</span>(CH4<span class="sc">$</span>fluxes, CH4<span class="sc">$</span>traces, <span class="st">&quot;CH4dry_ppb&quot;</span>, <span class="at">shoulder =</span> <span class="dv">20</span>,</span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>                       <span class="at">plot.display =</span> <span class="fu">c</span>(<span class="st">&quot;MDF&quot;</span>, <span class="st">&quot;prec&quot;</span>, <span class="st">&quot;nb.obs&quot;</span>, <span class="st">&quot;flux.term&quot;</span>))</span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a>CO2_plots <span class="ot">&lt;-</span> <span class="fu">flux.plot</span>(CO2<span class="sc">$</span>fluxes, CO2<span class="sc">$</span>traces, <span class="st">&quot;CO2dry_ppm&quot;</span>, <span class="at">shoulder =</span> <span class="dv">20</span>)</span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a><span class="fu">flux_pdf</span>(<span class="fu">c</span>(CO2_plots, CH4_plots), <span class="st">&quot;plots/flux_results.pdf&quot;</span>)   <span class="co"># ggplot2 &gt;= 3.5 safe</span></span></code></pre></div>
 </div>
 
 

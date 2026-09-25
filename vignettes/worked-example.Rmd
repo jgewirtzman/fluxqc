@@ -13,7 +13,7 @@ vignette: >
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 4.5)
-options(digits = 6, width = 90)
+options(digits = 6, width = 95)
 ```
 
 This vignette walks one real chamber closure through every step between the
@@ -163,7 +163,7 @@ c(sigma_CH4_ppb = sigma_ch4, sigma_CO2_ppm = sigma_co2,
 This analyzer was about 2.5 times noisier in CH4 than its datasheet claims,
 which is why datasheet precision should not be used for detection limits.
 
-## Step 7: minimum detectable flux by each method
+## Step 7: minimum detectable flux by each method, by hand
 
 ```{r mdf}
 t_used <- max(w$Etime) + 1     # goFlux's t; = nb.obs at 1 Hz
@@ -180,32 +180,78 @@ All MDFs are in nmol m-2 s-1. The regression standard error of the slope
 (`LM.SE` = `r signif(best_ch4$LM.SE, 3)` nmol m-2 s-1) is far smaller than any of
 them, which is the expected behaviour of these single-sample criteria.
 
-## Step 8: detection flag
+## Step 8: precision, MDF and detection flags with `flag_detection()`
 
-`flag_detection()` does steps 6-7 for every row of a `best.flux()` output and
-appends the flags.
+`flag_detection()` does steps 6-7 for every row of a `best.flux()` table, for
+every combination of precision estimator and MDF method you ask for, and then
+picks *one* combination as the reported `MDF` (the `primary`). Nothing is
+deleted; rows are flagged.
 
 ```{r flag}
-sig <- precision_by_id(d, "CH4dry_ppb")
-sig
-rep_ch4 <- flag_detection(best_ch4, sigma = sig, prec = 0.9)
-t(as.data.frame(rep_ch4[, c("best.flux", "sigma", "MDF_goflux", "MDF_wass95", "MDF_chr95",
-                            "MDF_2sigma", "below_2sigma", "detected", "det_class", "det_method")]))
+rep_ch4 <- flag_detection(best_ch4, traces = d, gastype = "CH4dry_ppb",
+                          precision = c("allan", "mad", "datasheet"),
+                          mdf = c("goflux", "wassmann", "christiansen", "two_sigma"),
+                          conf = c(0.90, 0.95, 0.99),
+                          primary = list(precision = "allan", mdf = "christiansen", conf = 0.95))
+t(as.data.frame(rep_ch4[, grep("^sigma_", names(rep_ch4))]))
+mdf_cols <- setdiff(grep("^MDF_", names(rep_ch4), value = TRUE), c("MDF_goflux_orig", "MDF_method"))
+t(round(as.data.frame(rep_ch4[, mdf_cols]), 6))   # every combination
+t(as.data.frame(rep_ch4[, c("MDF", "MDF_method", "below_MDF", "detected", "det_class")]))
 ```
 
-## Step 9: quality control
+Column names follow `MDF_<method>_<precision>[_<conf>]`, so
+`MDF_christiansen_allan_95` is the Christiansen criterion with this closure's
+Allan precision at 95 percent, and `MDF_goflux_datasheet` is goFlux's own MDF.
 
-Two physical checks. Is the CO2 tracer positive (the chamber was sealed and
-respiration accumulated)? Did the chamber start near ambient (no carry-over
-contamination)? With one measurement the C0 screen compares the closure to
+## Choosing precision and MDF
+
+There is no single right choice; the point of computing several is that the
+report can say which one it used and readers can convert. The decision
+depends on what the number is for.
+
+**Which precision estimate?**
+
+| estimator | what it is | use when | where it comes from |
+|---|---|---|---|
+| bench sigma (Box 2 of the guidelines paper) | SD of a sealed, spiked or standard-gas run on the *same* analyzer | you ran the bench test; best single number for the instrument | `flag_detection(sigma = ...)` (labelled `custom`) |
+| per-closure Allan (`allan`) | SD(diff x)/sqrt(2) on each closure's flagged rows | default; tracks day-to-day analyzer state, cell fouling, temperature | `precision_by_id()`, `flag_detection(precision = "allan")` |
+| record-wide MAD (`mad`) | MAD(diff x)/sqrt(2) over a whole record or closure | records with breaths, moves, chamber swaps; robust global number | `precision_mad()`, `flag_detection(precision = "mad")` |
+| rolling quietest windows (`rolling`) | median residual SD of the flattest 5 percent of 30-s windows | comparison only; biased low ~20 percent on white noise | `precision_rolling()`, `flag_detection(precision = "rolling")` |
+| datasheet (`datasheet`) | manufacturer 1-s precision | never for detection limits on field-worn analyzers (2.5x too optimistic here); kept for comparability with goFlux | `prec` argument of `goFlux::import.*()`, `flag_detection(precision = "datasheet")` |
+
+**Which MDF method?**
+
+| question | recommended | reason |
+|---|---|---|
+| campaign means, budgets, upscaling | keep every flux; flag with `two_sigma` or `christiansen`; do not delete | removing below-MDF values biases means upward; the flag documents the fraction below detection |
+| is this individual flux non-zero? | `christiansen` at a stated confidence (per-measurement sigma, t-quantile) | a per-closure test with the closure's own noise and degrees of freedom |
+| comparing with other studies | report all: `goflux` (datasheet), `wassmann` (global, z), `christiansen` (per closure, t), `two_sigma` | each literature uses a different one; the table lets readers convert |
+| instrument-level statement ("our system detects X") | `wassmann` with a global sigma (campaign median or bench) | designed as an instrument/protocol limit rather than a per-closure one |
+
+**Where each is set in the pipeline.** The `prec` argument given to
+`goFlux::import.*()` (or the `*_prec` columns) only feeds goFlux's own `MDF`
+column and the `MDF` criterion inside `best.flux()`. stemflux's estimators are
+applied *after* `best.flux()` by `flag_detection()`, which reads the flagged
+traces, adds `sigma_*`, `MDF_*` and `below_*` columns, and sets the reported
+`MDF`/`below_MDF`/`MDF_method` from `primary`. Nothing is deleted at any step:
+`det_class` says `"below detection"`, and the row stays.
+
+## Step 9: quality screens
+
+Physical checks, each an independent flag (`TRUE` = fired), never a deletion.
+Is the CO2 tracer positive (the chamber was sealed and respiration
+accumulated)? Did the chamber start near ambient? Is the trace convex? Is the
+window long enough? With one measurement the C0 screen compares the closure to
 itself, so it passes trivially; in a campaign the median is taken over all
 closures.
 
 ```{r qc}
-co2_positive <- best_co2$best.flux > 0
-c(CO2_flux_umol_m2_s = best_co2$best.flux, CO2_tracer_positive = co2_positive)
-rep_ch4 <- qc_c0_screen(rep_ch4, k = 1.5)
-rep_ch4[, c("C0", "qc_c0_ratio", "qc_c0_pass")]
+rep_ch4 <- qc_screens(rep_ch4, traces = d, gastype = "CH4dry_ppb", co2 = best_co2,
+                      screens = list(c0 = list(k = 1.5), co2_tracer = list(min_slope = 0),
+                                     convex = TRUE, min_window = list(secs = 120)),
+                      verbose = FALSE)
+t(as.data.frame(rep_ch4[, c("qc_c0", "qc_c0_ratio", "qc_co2_tracer", "qc_co2_slope", "qc_convex",
+                            "qc_min_window", "qc_any", "qc_note")]))
 ```
 
 ## The reported row
@@ -217,14 +263,28 @@ report <- data.frame(
   model      = rep_ch4$model,
   CH4_flux_nmol_m2_s = signif(rep_ch4$best.flux, 4),
   CH4_LM_SE  = signif(rep_ch4$LM.SE, 3),
-  sigma_ppb  = signif(rep_ch4$sigma, 3),
-  MDF_2sigma = signif(rep_ch4$MDF_2sigma, 3),
+  sigma_ppb  = signif(rep_ch4$sigma_allan, 3),
+  MDF        = signif(rep_ch4$MDF, 3),
+  MDF_method = rep_ch4$MDF_method,
   detected   = rep_ch4$detected,
   class      = rep_ch4$det_class,
   CO2_flux_umol_m2_s = signif(best_co2$best.flux, 4),
-  CO2_positive = co2_positive,
-  qc_c0_pass = rep_ch4$qc_c0_pass)
+  qc_any     = rep_ch4$qc_any)
 t(report)
+```
+
+The same row comes out of the one-call wrapper:
+
+```{r wrapper}
+res <- suppressWarnings(process_fluxes(d, gastype = "CH4dry_ppb",
+                       precision = c("allan", "mad", "datasheet"),
+                       mdf = c("goflux", "wassmann", "christiansen", "two_sigma"),
+                       conf = c(0.90, 0.95, 0.99),
+                       primary = list(precision = "allan", mdf = "christiansen", conf = 0.95),
+                       qc = list(c0 = TRUE, co2_tracer = TRUE, convex = TRUE, min_window = list(secs = 120)),
+                       co2 = best_co2))
+res
+c(best.flux = res$fluxes$best.flux, MDF = res$fluxes$MDF, method = res$fluxes$MDF_method)
 ```
 
 ## Summary of the numbers
@@ -234,12 +294,15 @@ knitr::kable(data.frame(
   quantity = c("observations used", "fit span (s)", "CH4 slope (ppb/s)", "CH4 LM r2",
                "V/A (m)", "P/RT (mol m-3)", "flux.term (mol m-2)",
                "CH4 flux LM (nmol m-2 s-1)", "CH4 flux HM (nmol m-2 s-1)", "CH4 flux reported",
-               "sigma CH4 (ppb, Allan)", "MDF goFlux (datasheet)", "MDF Wassmann 95%",
-               "MDF Christiansen 95%", "MDF 2-sigma", "detected", "CO2 flux (umol m-2 s-1)"),
+               "sigma CH4 (ppb, Allan)", "MDF goFlux (datasheet)", "MDF Wassmann 95% (allan)",
+               "MDF Christiansen 95% (allan)", "MDF 2-sigma (allan)", "reported MDF / method",
+               "detected", "CO2 flux (umol m-2 s-1)"),
   value = c(n_used, t_span, signif(slope_ch4, 5), signif(summary(fit_ch4)$r.squared, 4),
             signif(VA, 5), signif(PRT, 5), signif(ft, 5),
             signif(best_ch4$LM.flux, 5), signif(best_ch4$HM.flux, 5), signif(best_ch4$best.flux, 5),
-            signif(sigma_ch4, 4), signif(mdf$MDF_goflux, 4), signif(mdf$MDF_wass95, 4),
-            signif(mdf$MDF_chr95, 4), signif(mdf$MDF_2sigma, 4), rep_ch4$det_class,
+            signif(sigma_ch4, 4), signif(rep_ch4$MDF_goflux_datasheet, 4),
+            signif(rep_ch4$MDF_wassmann_allan_95, 4), signif(rep_ch4$MDF_christiansen_allan_95, 4),
+            signif(rep_ch4$MDF_two_sigma_allan, 4),
+            paste(signif(rep_ch4$MDF, 4), rep_ch4$MDF_method), rep_ch4$det_class,
             signif(best_co2$best.flux, 5))))
 ```

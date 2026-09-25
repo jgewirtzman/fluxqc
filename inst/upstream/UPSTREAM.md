@@ -224,33 +224,36 @@ or, since the old names were removed a version ago, drop the shim.
 
 | stemflux function | Upstream candidate? | Proposal |
 |---|---|---|
-| `click_peak2_stacked()` | **Yes** | `click.peak2(..., gastype2 = NULL)` (or `stacked = TRUE`): when a second gas is given, draw two `split.screen()` panels sharing the time axis and identify on the top one. Output is unchanged. Small diff, no new dependency. |
+| `click_peak2_stacked()` | **Yes** | `click.peak2(..., gases = NULL)`: when more than one gas is given, draw one `split.screen()` panel per gas sharing the time axis and identify on the top one. Output is unchanged. Small diff, no new dependency. |
 | `precision_allan()`, `precision_by_id()` | **Yes** | A `prec.empirical()` helper (or a `prec = "empirical"` option in `goFlux()`) that fills the `*_prec` columns from `SD(diff(x))/sqrt(2)` of the flagged window, so `MDF` and `flux.plot()` use measured noise. Document that datasheet precision underestimates noise on field-worn analyzers (2.5x on the example closure). |
 | `precision_mad()` | Maybe | Same helper with `method = "mad"`; document as the robust whole-record option. |
-| `mdf_multi()`, `flag_detection()` | **Yes**, partially | `best.flux()` already applies an `MDF` criterion; propose an `MDF.method` argument (`"prec"`, `"2sigma"`, `"christiansen"`, `"wassmann"`) and a `det_class` column (`emission` / `uptake` / `below detection`). Keep the full 8-column comparison table in stemflux. |
+| `flag_detection()`, `mdf_multi()` | **Yes**, partially | `best.flux()` already applies an `MDF` criterion; propose an `MDF.method` argument (`"prec"`, `"two_sigma"`, `"christiansen"`, `"wassmann"`) and a `det_class` column (`emission` / `uptake` / `below detection`). Keep the full precision x method table in stemflux. |
 | `flux_pdf()` | **Yes** | Just the `inherits()` fix and the defensive `plot_env` read (Issue 1). |
 | `import2RData_flat()` | **Yes** (as a fix) | Issues 2 and 3; the function itself need not go upstream if `import2RData()` is fixed. |
 | `import_li7810_subset()` | **Yes** (as an argument) | Issue 4. |
 | `auto_id_rise()`, `find_rise()`, `windows_from_table()`, `flag_window()` | Maybe later | goFlux has `autoID()` for LI-8200 only; a generic rise-based window finder could sit beside it. Propose after it has been used on more campaigns; keep in stemflux for now. |
-| `qc_c0_screen()` | Stay | Campaign-level QC policy, not a flux-calculation step. |
-| `detect_clock_streams()`, `separate_window_streams()`, `obs_win_deinterleave()`, `click_flux_2d()` | Stay | Rescue tools for damaged LGR records; too specific for goFlux. `click_flux_2d()` could be mentioned in goFlux's docs as an alternative selection mode. |
-| `detect_ebullition()`, `split_ebullition()` | Stay | Out of goFlux's scope (it fits one smooth model per closure). |
+| `qc_screens()`, `qc_c0_screen()` | Stay | Campaign-level QC policy, not a flux-calculation step. |
+| `process_fluxes()`, `write_outputs()` | Stay | Opinionated wrapper around goFlux; goFlux keeps its modular design. |
+| `detect_clock_streams()`, `find_clock_offset()` | Stay | Data-rescue utilities; could be linked from goFlux's documentation. |
+| Rescue scripts in `inst/rescue/` (`separate_window_streams()`, `obs_win_deinterleave()`, `click_flux_2d()`, `write_stream_files()`) | **No** | One-off tools for a specific data-damage problem; no longer exported from stemflux and not upstream candidates. |
+| Ebullition add-on (`detect_ebullition()`, `split_ebullition()`, `merge_ebullition()`) | Stay | Out of goFlux's scope (it fits one smooth model per closure, and its source has no ebullition handling); the add-on produces a goFlux-shaped input so no goFlux change is needed. |
 | `example_closure()` | Stay | goFlux has its own example data. |
 
 ## (c) Practical steps
 
 1. Fork `Qepanna/goFlux` to `jongewirtzman/goFlux` and clone it. Add the
    upstream remote (`git remote add upstream https://github.com/Qepanna/goFlux`).
-2. Open the four issues above on `Qepanna/goFlux` first, so each PR can say
+2. Open the five issues above on `Qepanna/goFlux` first, so each PR can say
    "Fixes #N". Bug-fix PRs are more likely to be merged quickly than feature
    PRs, so send them first, one branch per fix:
    - `fix/flux2pdf-class-check` (Issue 1; touches `R/flux2pdf.R` only)
    - `fix/import2RData-error-handling` (Issue 3; `R/import2RData.R`)
+   - `fix/import-namespace-call` (Issue 5; one line per importer)
    - `feat/import2RData-outdir-recursive` (Issue 2)
    - `feat/import-LI7810-dates` (Issue 4)
 3. Feature PRs, each after the corresponding issue/discussion:
    - `feat/click-peak2-stacked` porting `click_peak2_stacked()` into
-     `click.peak2()` behind a `gastype2` argument;
+     `click.peak2()` behind a `gases` argument;
    - `feat/empirical-prec` adding the precision helper and a `prec =
      "empirical"` path;
    - `feat/best-flux-mdf-method` adding `MDF.method` and `det_class` to

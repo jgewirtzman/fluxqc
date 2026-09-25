@@ -15,18 +15,22 @@ vignette: >
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
 ```
 
-This vignette lays out the end-to-end pipeline for stem (and soil / water)
-chamber fluxes as it is run in practice, and shows where each `stemflux`
-function plugs into the standard `goFlux` sequence. Chunks that require an
-interactive graphics device are marked and not evaluated when the vignette is
-built; the non-interactive alternatives are shown next to them. See the
-companion vignette "From raw trace to reported flux" for a fully evaluated
-single closure.
+This vignette lays out the end-to-end pipeline for stem (and soil) chamber
+fluxes as it is run in practice, and shows where each `stemflux` function
+plugs into the standard `goFlux` sequence. Chunks that require an interactive
+graphics device are marked and not evaluated when the vignette is built; the
+non-interactive alternatives are shown next to them. See "From raw trace to
+reported flux" for a fully evaluated single closure.
 
 ```
-import -> auxfile -> obs.win -> window selection -> goFlux -> best.flux
-       -> precision -> flag_detection -> qc -> flux_pdf -> report
+import -> auxfile -> obs.win -> window selection -> process_fluxes()
+                                                     = goFlux -> best.flux -> flag_detection -> qc_screens
+                                                  -> write_outputs()
 ```
+
+Ebullition (bubbles under floating chambers or from flooded stems) is an
+opt-in add-on switched on with `process_fluxes(ebullition = ...)`; see
+`vignette("ebullition", "stemflux")`. Upland soil and stem users never need it.
 
 ## 1. Import
 
@@ -38,13 +42,13 @@ files, import file by file.
 library(goFlux)
 library(stemflux)
 
-# LI-7810: a 160 MB file -> only the six field days
+# LI-7810: a 160 MB file -> only the field days
 licor <- import_li7810_subset(
   "data/licor/TG10-01503-2026-05-01T000000.data",
   dates = c("2026-05-22", "2026-05-23", "2026-05-24"),
   outfile = "data/licor/subset.data",
   date.format = "ymd", timezone = "UTC",
-  prec = c(3.5, 0.6, 45))                    # LI-7810 datasheet, 1 s
+  prec = c(3.5, 0.6, 45))                    # LI-7810 datasheet, 1 s (feeds goFlux's own MDF only)
 
 # LGR / UGGA: recursive, one file at a time, nothing written to getwd()
 lgr <- import2RData_flat("data/LGR1", instrument = "UGGA",
@@ -53,21 +57,12 @@ lgr <- import2RData_flat("data/LGR1", instrument = "UGGA",
                          prec = c(0.35, 0.9, 200))
 ```
 
-If an LGR file contains a clock reset (two interleaved time streams), split it
-first:
-
-```{r clock}
-cs <- detect_clock_streams("data/LGR2/2022-10-25/micro_2022-10-25_f0001.txt")
-if (cs$has_reset) {
-  files <- write_stream_files(cs, "micro_2022-10-25_f0001.txt", "data/LGR2_split")
-  # import each stream separately with import.UGGA() and tag it
-}
-```
-
 ## 2. Auxfile
 
 One row per closure with goFlux's column names. `start.time` is instrument
-time; `obs.length` is the planned closure length.
+time; `obs.length` is the planned closure length. If notebook times were
+written on a watch that disagrees with the analyzer clock, estimate the
+constant offset first (a utility, not part of the default path):
 
 ```{r aux}
 aux <- data.frame(
@@ -77,7 +72,13 @@ aux <- data.frame(
   Area  = 4254,      # cm2
   Vtot  = 7.08,      # L
   Tcham = 24.5,      # C
-  Pcham = 101.3)     # kPa
+  Pcham = 101.3,     # kPa
+  campaign = "May-2026", tissue = "live")
+
+fc  <- find_clock_offset(licor, aux, gas = "CO2dry_ppm", search = c(-1800, 1800), auxfile = aux)
+fc$offset                 # seconds to add to notebook times; inspect fc$scores before trusting it
+aux <- fc$auxfile         # start.time corrected, notebook value kept in start.time_notebook
+
 ow <- obs.win(inputfile = licor, auxfile = aux, obs.length = 600, shoulder = 120)
 ```
 
@@ -87,17 +88,18 @@ Three routes to the same object (a `manID` data frame with `flag`, `Etime`,
 `start.time_corr`, `end.time_corr`, `obs.length_corr`):
 
 ```{r windows-interactive}
-# (a) interactive, both gases visible -- needs a graphics window (not RStudio's pane)
-manID <- click_peak2_stacked(ow, gastype = "CO2dry_ppm", gastype2 = "CH4dry_ppb",
+# (a) interactive, every gas visible -- needs a graphics window (not RStudio's pane)
+manID <- click_peak2_stacked(ow, gases = c("CO2dry_ppm", "CH4dry_ppb", "H2O_ppm"),
                              ref.secs = 600, save.plots = "plots/windows.pdf")
+manID <- click_peak2_stacked(ow, gases = "auto")     # every recognised gas column present
 ```
 
 ```{r windows-auto}
 # (b) non-interactive: sustained CO2 rise, notebook end times as a fallback/cap
 ends <- data.frame(UniqueID = aux$UniqueID,
                    end.time = as.POSIXct(c("2026-05-23 10:22:30", "2026-05-23 11:02:00"), tz = "UTC"))
-manID <- auto_id_rise(ow, end.times = ends, trim.secs = 30, max.secs = 600,
-                      plot.dir = "plots/auto_id")
+manID <- auto_id_rise(ow, detect.gas = "CO2dry_ppm", gases = "auto", end.times = ends,
+                      trim.secs = 30, max.secs = 600, plot.dir = "plots/auto_id")
 attr(manID, "log")          # review; redo any window with (a) or (c)
 
 # (c) explicit windows from notebooks / screenshots
@@ -107,73 +109,92 @@ manID_c <- windows_from_table(ow, win)
 manID <- rbind(manID[manID$UniqueID != "T26_Base_r1", ], manID_c)
 ```
 
-For records with interleaved clock streams, replace `obs.win()` with
-`obs_win_deinterleave()` (keeps the smoother stream per window) or use
-`click_flux_2d()` to draw a time x concentration box around the good points
-and calculate the flux in one step.
+## 4. Flux, detection limits and QC in one call
 
-## 4. Flux calculation and model selection
-
-```{r goflux}
-CO2_flux <- goFlux(manID, "CO2dry_ppm")
-CH4_flux <- goFlux(manID, "CH4dry_ppb")
-CO2_best <- best.flux(CO2_flux)
-CH4_best <- best.flux(CH4_flux)
+```{r process}
+CH4 <- process_fluxes(
+  manID, aux = aux, gastype = "CH4dry_ppb",
+  precision = c("allan", "mad", "datasheet"),               # sigma_* columns
+  mdf       = c("goflux", "wassmann", "christiansen", "two_sigma"),
+  conf      = c(0.90, 0.95, 0.99),
+  primary   = list(precision = "allan", mdf = "christiansen", conf = 0.95),  # -> MDF, below_MDF
+  qc        = list(c0 = list(k = 1.5), co2_tracer = list(min_slope = 0), convex = TRUE,
+                   min_window = list(secs = 120), ambient_start = list(sigma = 3, secs = 10),
+                   leak = list(rate = 2e-5)),               # bench leak rate, s-1; omit to skip
+  group = "campaign", tissue = "tissue")
+CO2 <- process_fluxes(manID, aux = aux, gastype = "CO2dry_ppm", primary = list(precision = "allan", mdf = "two_sigma"))
+CH4
+table(CH4$fluxes$det_class); table(CH4$fluxes$qc_any)
 ```
 
-## 5. Empirical precision and detection limits
+The same steps by hand, if you want them one at a time:
 
-```{r detection}
-sig_ch4 <- precision_by_id(manID, "CH4dry_ppb")          # sigma = SD(diff x)/sqrt(2), per closure
-sig_co2 <- precision_by_id(manID, "CO2dry_ppm")
-sigma_global_ch4 <- precision_mad(licor$CH4dry_ppb)      # robust, whole record
-
-CH4_best <- flag_detection(CH4_best, sigma = sig_ch4, sigma.global = sigma_global_ch4,
-                           primary = "2sigma")
-CO2_best <- flag_detection(CO2_best, sigma = sig_co2)
-table(CH4_best$det_class)
+```{r manual}
+CH4_flux <- goFlux(manID, "CH4dry_ppb")
+CH4_best <- best.flux(CH4_flux)
+CH4_best <- flag_detection(CH4_best, traces = manID, gastype = "CH4dry_ppb",
+                           precision = c("allan", "datasheet"), mdf = c("goflux", "christiansen"),
+                           conf = 0.95, primary = list(precision = "allan", mdf = "christiansen", conf = 0.95))
+CH4_best <- qc_screens(CH4_best, traces = manID, gastype = "CH4dry_ppb", co2 = CO2$fluxes,
+                       screens = list(c0 = TRUE, co2_tracer = TRUE, convex = TRUE))
 ```
 
 Optionally feed the empirical precision back into goFlux so its own `MDF`
 column and `flux.plot()` annotations use it:
 
 ```{r prec-back}
-manID$CH4_prec <- sig_ch4$sigma[match(manID$UniqueID, sig_ch4$UniqueID)]
+sig <- precision_by_id(manID, "CH4dry_ppb")
+manID$CH4_prec <- sig$sigma[match(manID$UniqueID, sig$UniqueID)]
 CH4_flux <- goFlux(manID, "CH4dry_ppb")     # goFlux reads the *_prec columns
 ```
 
-## 6. Quality control
+## 5. Where the outputs go
 
-```{r qc}
-CH4_best <- qc_c0_screen(CH4_best, k = 1.5)            # chamber not at ambient at closure?
-co2_ok   <- CO2_best$best.flux > 0                      # sealed chamber: CO2 must accumulate
-CH4_best$qc_co2_positive <- co2_ok[match(CH4_best$UniqueID, CO2_best$UniqueID)]
-keep <- CH4_best$qc_c0_pass & CH4_best$qc_co2_positive  # rows are flagged, not deleted
+```{r outputs}
+write_outputs(CH4, "results/CH4")
+#> results/CH4/fluxes.csv        one row per UniqueID
+#> results/CH4/settings.json     every option used (methods section)
+#> results/CH4/flux_plots.pdf    one page per closure (goFlux::flux.plot via flux_pdf)
+#> results/CH4/ebullition_events.csv   only when the ebullition add-on ran
 ```
 
-## 7. Plots and report
+`process_fluxes()` returns a list: `fluxes`, `events` (`NULL` unless the
+ebullition add-on ran), `traces` (the concentration data actually fitted),
+`gastype`, `settings`. Every column of `fluxes` and where it comes from:
+
+| column(s) | produced by | meaning |
+|---|---|---|
+| `UniqueID` | auxfile / `obs.win()` | closure identifier |
+| `LM.flux`, `LM.C0`, `LM.Ct`, `LM.slope`, `LM.MAE`, `LM.RMSE`, `LM.AICc`, `LM.SE`, `LM.se.rel`, `LM.r2`, `LM.p.val` | `goFlux::goFlux()` | linear model fit |
+| `HM.flux`, `HM.C0`, `HM.Ci`, `HM.slope`, `HM.MAE`, `HM.RMSE`, `HM.AICc`, `HM.SE`, `HM.se.rel`, `HM.r2`, `HM.k` | `goFlux::goFlux()` | Hutchinson-Mosier fit |
+| `C0`, `Ct`, `MDF`, `prec`, `flux.term`, `nb.obs`, `k.max`, `k.mult`, `g.fact` | `goFlux::goFlux()` | start/end concentration, goFlux's MDF (datasheet `prec`), (V/A)(P/RT), n, kappa bounds, g-factor |
+| `best.flux`, `model`, `quality.check`, `HM.diagnose`, `LM.diagnose`, `HM.score`, `LM.score`, `*.lim`, `warn.nb.obs` | `goFlux::best.flux()` | selected flux and why |
+| `sigma_<precision>` | `flag_detection()` | per-closure precision by estimator (`allan`, `mad`, `rolling`, `datasheet`, `custom`) |
+| `MDF_<mdf>_<precision>[_<conf>]`, `below_<mdf>_<precision>[_<conf>]` | `flag_detection()` | every requested MDF and its below-detection flag |
+| `MDF_goflux_orig` | `flag_detection()` | goFlux's original `MDF` column, preserved |
+| `MDF`, `below_MDF`, `MDF_method`, `detected`, `det_class` | `flag_detection()` (`primary`) | the one reported MDF and classification (`emission` / `uptake` / `below detection`) |
+| `qc_c0`, `qc_c0_ratio` | `qc_screens()` | C0 > k x group median |
+| `qc_co2_tracer`, `qc_co2_slope` | `qc_screens()` | CO2 slope <= min_slope (NA for exempt tissue) |
+| `qc_convex` | `qc_screens()` | accelerating trace |
+| `qc_min_window` | `qc_screens()` | window shorter than `secs` |
+| `qc_ambient_start`, `qc_ambient_dev_sigma` | `qc_screens()` | start already enriched vs pre-closure ambient |
+| `qc_leak`, `qc_leak_apparent_flux` | `qc_screens()` | leak-equivalent flux >= MDF |
+| `qc_any`, `qc_note` | `qc_screens()` | any screen fired; which |
+| `<group>`, `<tissue>` | auxfile via `process_fluxes()` | grouping / tissue columns merged for the screens |
+| `ebullition_handling`, `n_ebullition_events`, `ebullition_flag` | ebullition add-on (`"flag"` or `"split"`) | present only when the add-on ran |
+| `flux_diffusive`, `flux_ebullitive`, `flux_total`, `ebullition_method` | ebullition add-on (`"split"`) | diffusive term (= `best.flux` on the de-ebulliated trace), bubble term, sum |
+
+`events` (add-on only): `UniqueID`, `POSIX.time`, `Etime`, `dC` (event size,
+gas units), `threshold`. `settings`: `stemflux_version`, `goFlux_version`,
+`gastype`, `precision`, `mdf`, `conf`, `primary`, `sigma_global`, `qc`
+(parameters of each screen), `group`, `tissue`, `ebullition*`, `goFlux_args`,
+`best.flux_args`, `n_closures`, `date`.
+
+## 6. Plots by hand
 
 ```{r plots}
-CO2_plots <- flux.plot(CO2_best, manID, "CO2dry_ppm", shoulder = 20,
+CH4_plots <- flux.plot(CH4$fluxes, CH4$traces, "CH4dry_ppb", shoulder = 20,
                        plot.display = c("MDF", "prec", "nb.obs", "flux.term"))
-CH4_plots <- flux.plot(CH4_best, manID, "CH4dry_ppb", shoulder = 20)
+CO2_plots <- flux.plot(CO2$fluxes, CO2$traces, "CO2dry_ppm", shoulder = 20)
 flux_pdf(c(CO2_plots, CH4_plots), "plots/flux_results.pdf")   # ggplot2 >= 3.5 safe
-
-report <- merge(
-  CH4_best[, c("UniqueID", "best.flux", "model", "LM.SE", "sigma", "MDF_2sigma",
-               "detected", "det_class", "qc_c0_pass", "qc_co2_positive")],
-  CO2_best[, c("UniqueID", "best.flux")], by = "UniqueID", suffixes = c("_CH4", "_CO2"))
-write.csv(report, "results/stem_fluxes.csv", row.names = FALSE)
 ```
-
-## 8. Ebullition (water / saturated soil only)
-
-```{r ebullition}
-one <- manID[manID$UniqueID == "BL60_water_03" & manID$flag == 1, ]
-eb  <- detect_ebullition(one, "CH4dry_ppb", jump.thresh = 100)   # 0.1 ppm steps
-part <- split_ebullition(eb, Vtot = 4.318, Area = 324.3, Tcham = 28, Pcham = 101.3)
-part[, c("diffusive_flux", "ebullitive_flux", "total_flux", "ebullitive_fraction", "n_jumps")]
-```
-
-Review `eb$jumps` against the trace before believing them: analyzer artefacts
-produce identical steps.
