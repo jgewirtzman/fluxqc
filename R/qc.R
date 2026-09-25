@@ -42,9 +42,10 @@
 #'     of the headspace exchanged per second, e.g. the decay constant of a
 #'     spiked, sealed chamber) times the largest headspace-ambient difference
 #'     during the closure gives the apparent slope a leak alone could produce;
-#'     if that, times `flux.term`, is at least the row's `MDF`, the flux cannot
-#'     be separated from leakage. Uses `traces` for the concentration range,
-#'     else `abs(Ct - C0)`. Skipped when `rate` is `NULL`.}
+#'     if that, times `flux.term`, is at least the row's `MDF_emp` (from
+#'     [flag_detection()]; goFlux's `MDF` if `MDF_emp` is absent), the flux
+#'     cannot be separated from leakage. Uses `traces` for the concentration
+#'     range, else `abs(Ct - C0)`. Skipped when `rate` is `NULL`.}
 #' }
 #'
 #' @param fluxes data.frame from [goFlux::best.flux()] / [goFlux::goFlux()],
@@ -204,7 +205,7 @@ qc_screens <- function(fluxes, traces = NULL,
       else if (all(c("C0", "Ct") %in% names(fx))) abs(fx$Ct - fx$C0) else rep(NA_real_, n)
       app <- cfg$leak$rate * dC * fx$flux.term
       fx$qc_leak_apparent_flux <- app
-      mdfv <- if ("MDF" %in% names(fx)) fx$MDF else rep(NA_real_, n)
+      mdfv <- if ("MDF_emp" %in% names(fx)) fx$MDF_emp else if ("MDF" %in% names(fx)) fx$MDF else rep(NA_real_, n)
       fired("leak", ifelse(is.na(app) | is.na(mdfv), NA, app >= mdfv), "leak-equivalent flux >= MDF")
     }
   }

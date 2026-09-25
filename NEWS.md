@@ -6,12 +6,17 @@ Revision after author review.
   columns (`"auto"` = every recognised goFlux gas present); `auto_id_rise()`
   gained `detect.gas` and `gases` for its diagnostic plots. Replaces the
   `gastype` / `gastype2` arguments.
-* `flag_detection()` now takes `traces`, `precision = c("allan", "mad",
-  "rolling", "datasheet")`, `mdf = c("goflux", "wassmann", "christiansen",
-  "two_sigma")`, `conf` and `primary`; computes every combination as
-  `sigma_<precision>` / `MDF_<mdf>_<precision>[_<conf>]` / `below_...`
-  columns and sets the reported `MDF`, `below_MDF`, `MDF_method` from
-  `primary`. goFlux's original `MDF` is kept as `MDF_goflux_orig`.
+* `flag_detection(flux.result, traces, precision = "allan", mdf =
+  "christiansen", conf = 0.95, extra = NULL)` appends exactly `sigma_emp`,
+  `MDF_emp`, `below_MDF_emp`, `MDF_emp_method` (plus `detected_emp`,
+  `det_class_emp`). The multi-method comparison (`sigma_<precision>`,
+  `MDF_<mdf>_<precision>[_<conf>]`) is appended only with `extra = list(...)`
+  or `extra = "all"`. goFlux's columns (`MDF`, `best.flux`, ...) are never
+  modified or duplicated; a test checks that `goFlux::flux.plot()` runs
+  unchanged on `process_fluxes()$fluxes`.
+* Provenance statement for the ebullition add-on (no code copied from the
+  Hoffmann et al. 2017 script or fluxCH4) in the vignette and `inst/CITATION`;
+  "Analyzer independence" section in the README.
 * New `qc_screens()` with toggleable screens `c0`, `co2_tracer`, `convex`,
   `min_window`, `ambient_start`, `leak`, each a `qc_<screen>` flag column plus
   `qc_any` and `qc_note`; rows are never deleted. `qc_c0_screen()` is a thin

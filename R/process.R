@@ -2,16 +2,19 @@
 #'
 #' The core path is `goFlux::goFlux()` -> `goFlux::best.flux()` ->
 #' [flag_detection()] -> [qc_screens()], with every option recorded in a
-#' `settings` element for the methods section. That is all that runs by
+#' `settings` element for the methods section. goFlux's columns are returned
+#' exactly as `best.flux()` produced them; stemflux only appends columns
+#' (`sigma_emp`, `MDF_emp`, `below_MDF_emp`, `MDF_emp_method`,
+#' `detected_emp`, `det_class_emp`, `qc_*`). That is all that runs by
 #' default. The ebullition add-on (for flooded stems and aquatic chambers) is
 #' opt-in through the single `ebullition` switch: `"flag"` fits the whole
 #' trace but detects events and adds `n_ebullition_events` /
 #' `ebullition_flag`; `"split"` fits the diffusive term on the de-ebulliated
 #' trace and adds `flux_diffusive`, `flux_ebullitive`, `flux_total`,
 #' `ebullition_method` (see [detect_ebullition()] and
-#' `vignette("ebullition", "stemflux")`). Closures can be treated differently
-#' in one call: `ebullition_ids` (or a logical `ebullition` column in `aux`)
-#' selects the closures that get the add-on; the rest run the core path.
+#' `vignette("ebullition", "stemflux")`). `ebullition_ids` (or a logical
+#' `ebullition` column in `aux`) selects the closures that get the add-on; the
+#' rest run the core path.
 #'
 #' @param manID_data flagged concentration data for all closures (output of
 #'   [goFlux::click.peak2()], [click_peak2_stacked()], [auto_id_rise()] or
@@ -20,14 +23,12 @@
 #'   `ebullition` logical column and for `group` / `tissue` columns of the QC
 #'   screens, which are merged into the flux table by `UniqueID`.
 #' @param gastype gas column to process (one gas per call).
-#' @param precision,mdf,conf,primary passed to [flag_detection()].
+#' @param precision,mdf,conf,extra passed to [flag_detection()].
 #' @param qc list of screens passed to [qc_screens()] (`screens` argument), or
 #'   `FALSE` to skip QC.
 #' @param group,tissue column names (in `aux` or the flux table) passed to
 #'   [qc_screens()].
-#' @param co2 optional CO2 flux table for the `co2_tracer` screen; when
-#'   `manID_data` also holds `CO2dry_ppm` the screen falls back to a linear fit
-#'   of the trace.
+#' @param co2 optional CO2 flux table for the `co2_tracer` screen.
 #' @param ebullition `"none"` (default, core path only), `"flag"` or `"split"`.
 #' @param ebullition_method method passed to [detect_ebullition()] (add-on only).
 #' @param ebullition_ids optional `UniqueID`s that get the add-on; default all
@@ -45,18 +46,12 @@
 #' @seealso [write_outputs()]
 #' @examples
 #' d <- example_closure()
-#' res <- process_fluxes(d, gastype = "CH4dry_ppb", precision = c("allan", "datasheet"),
-#'                       mdf = c("goflux", "christiansen"), conf = 0.95,
-#'                       qc = list(c0 = TRUE, convex = TRUE, min_window = list(secs = 120)))
+#' res <- process_fluxes(d, gastype = "CH4dry_ppb", qc = list(c0 = TRUE, convex = TRUE))
 #' res
-#' res$fluxes[, c("UniqueID", "best.flux", "MDF", "MDF_method", "det_class", "qc_any")]
-#' is.null(res$events)
+#' res$fluxes[, c("UniqueID", "best.flux", "MDF", "MDF_emp", "MDF_emp_method", "det_class_emp", "qc_any")]
 #' @export
 process_fluxes <- function(manID_data, aux = NULL, gastype = "CH4dry_ppb",
-                           precision = c("allan", "mad", "rolling", "datasheet"),
-                           mdf = c("goflux", "wassmann", "christiansen", "two_sigma"),
-                           conf = c(0.90, 0.95, 0.99),
-                           primary = list(precision = "allan", mdf = "christiansen", conf = 0.95),
+                           precision = "allan", mdf = "christiansen", conf = 0.95, extra = NULL,
                            qc = list(c0 = TRUE, co2_tracer = TRUE, convex = TRUE,
                                      min_window = TRUE, ambient_start = TRUE),
                            group = NULL, tissue = NULL, co2 = NULL,
@@ -65,7 +60,6 @@ process_fluxes <- function(manID_data, aux = NULL, gastype = "CH4dry_ppb",
                            ebullition_ids = NULL, ebullition_args = list(),
                            H2O_col = "H2O_ppm", best.flux_args = list(), ...) {
   ebullition <- match.arg(ebullition); ebullition_method <- match.arg(ebullition_method)
-  precision <- match.arg(precision, several.ok = TRUE); mdf <- match.arg(mdf, several.ok = TRUE)
   d <- as.data.frame(manID_data)
   if (!gastype %in% names(d)) stop("column '", gastype, "' not in 'manID_data'")
   if (!"flag" %in% names(d)) stop("'manID_data' needs a 'flag' column (run window selection first)")
@@ -90,12 +84,12 @@ process_fluxes <- function(manID_data, aux = NULL, gastype = "CH4dry_ppb",
   gf <- goFlux::goFlux(fit_data, gastype, H2O_col = H2O_col, ...)
   best <- as.data.frame(do.call(goFlux::best.flux, c(list(flux.result = gf), best.flux_args)))
   if (!is.null(aux)) {
-    extra <- setdiff(intersect(c(group, tissue), names(aux)), names(best))
+    extra_cols <- setdiff(intersect(c(group, tissue), names(aux)), names(best))
     i <- match(best$UniqueID, aux$UniqueID)
-    for (cc in extra) best[[cc]] <- aux[[cc]][i]
+    for (cc in extra_cols) best[[cc]] <- aux[[cc]][i]
   }
   best <- flag_detection(best, traces = fit_data, gastype = gastype, precision = precision,
-                         mdf = mdf, conf = conf, primary = primary)
+                         mdf = mdf, conf = conf, extra = extra)
   if (!isFALSE(qc)) {
     best <- qc_screens(best, traces = fit_data, screens = qc, group = group, gastype = gastype,
                        co2 = co2, tissue = tissue, verbose = FALSE)
@@ -108,7 +102,8 @@ process_fluxes <- function(manID_data, aux = NULL, gastype = "CH4dry_ppb",
     stemflux_version = as.character(utils::packageVersion("stemflux")),
     goFlux_version = as.character(utils::packageVersion("goFlux")),
     gastype = gastype, H2O_col = H2O_col,
-    precision = precision, mdf = mdf, conf = conf, primary = primary,
+    precision = precision, mdf = mdf, conf = conf,
+    extra = if (is.null(extra)) NULL else if (identical(extra, "all")) "all" else extra,
     sigma_global = attr(best, "sigma_global"),
     qc = if (isFALSE(qc)) NULL else attr(best, "qc_screens"),
     group = group, tissue = tissue,
@@ -125,7 +120,7 @@ process_fluxes <- function(manID_data, aux = NULL, gastype = "CH4dry_ppb",
 #' @export
 print.stemflux_result <- function(x, ...) {
   cat("stemflux result:", nrow(x$fluxes), "closures,", x$gastype, "\n")
-  cat("  MDF:", x$fluxes$MDF_method[1], "| detected:", sum(x$fluxes$detected, na.rm = TRUE),
+  cat("  MDF_emp:", x$fluxes$MDF_emp_method[1], "| detected:", sum(x$fluxes$detected_emp, na.rm = TRUE),
       "| qc_any:", if ("qc_any" %in% names(x$fluxes)) sum(x$fluxes$qc_any, na.rm = TRUE) else "not run", "\n")
   if (x$settings$ebullition != "none")
     cat("  ebullition add-on:", x$settings$ebullition, "(", x$settings$ebullition_method, ",",
@@ -147,8 +142,7 @@ print.stemflux_result <- function(x, ...) {
 #' @return the paths written, invisibly (named character vector).
 #' @examples
 #' d <- example_closure()
-#' res <- process_fluxes(d, gastype = "CH4dry_ppb", precision = "allan", mdf = "christiansen",
-#'                       conf = 0.95, qc = list(c0 = TRUE))
+#' res <- process_fluxes(d, gastype = "CH4dry_ppb", qc = list(c0 = TRUE))
 #' out <- write_outputs(res, tempfile("stemflux_"), plots = FALSE)
 #' basename(out)
 #' @export

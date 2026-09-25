@@ -8,10 +8,10 @@ process_fluxes(
   manID_data,
   aux = NULL,
   gastype = "CH4dry_ppb",
-  precision = c("allan", "mad", "rolling", "datasheet"),
-  mdf = c("goflux", "wassmann", "christiansen", "two_sigma"),
-  conf = c(0.9, 0.95, 0.99),
-  primary = list(precision = "allan", mdf = "christiansen", conf = 0.95),
+  precision = "allan",
+  mdf = "christiansen",
+  conf = 0.95,
+  extra = NULL,
   qc = list(c0 = TRUE, co2_tracer = TRUE, convex = TRUE, min_window = TRUE, ambient_start
     = TRUE),
   group = NULL,
@@ -37,7 +37,7 @@ screens, which are merged into the flux table by \code{UniqueID}.}
 
 \item{gastype}{gas column to process (one gas per call).}
 
-\item{precision, mdf, conf, primary}{passed to \code{\link[=flag_detection]{flag_detection()}}.}
+\item{precision, mdf, conf, extra}{passed to \code{\link[=flag_detection]{flag_detection()}}.}
 
 \item{qc}{list of screens passed to \code{\link[=qc_screens]{qc_screens()}} (\code{screens} argument), or
 \code{FALSE} to skip QC.}
@@ -45,9 +45,7 @@ screens, which are merged into the flux table by \code{UniqueID}.}
 \item{group, tissue}{column names (in \code{aux} or the flux table) passed to
 \code{\link[=qc_screens]{qc_screens()}}.}
 
-\item{co2}{optional CO2 flux table for the \code{co2_tracer} screen; when
-\code{manID_data} also holds \code{CO2dry_ppm} the screen falls back to a linear fit
-of the trace.}
+\item{co2}{optional CO2 flux table for the \code{co2_tracer} screen.}
 
 \item{ebullition}{\code{"none"} (default, core path only), \code{"flag"} or \code{"split"}.}
 
@@ -75,25 +73,25 @@ fitted), \code{gastype} and \code{settings} (every option used).
 \description{
 The core path is \code{goFlux::goFlux()} -> \code{goFlux::best.flux()} ->
 \code{\link[=flag_detection]{flag_detection()}} -> \code{\link[=qc_screens]{qc_screens()}}, with every option recorded in a
-\code{settings} element for the methods section. That is all that runs by
+\code{settings} element for the methods section. goFlux's columns are returned
+exactly as \code{best.flux()} produced them; stemflux only appends columns
+(\code{sigma_emp}, \code{MDF_emp}, \code{below_MDF_emp}, \code{MDF_emp_method},
+\code{detected_emp}, \code{det_class_emp}, \verb{qc_*}). That is all that runs by
 default. The ebullition add-on (for flooded stems and aquatic chambers) is
 opt-in through the single \code{ebullition} switch: \code{"flag"} fits the whole
 trace but detects events and adds \code{n_ebullition_events} /
 \code{ebullition_flag}; \code{"split"} fits the diffusive term on the de-ebulliated
 trace and adds \code{flux_diffusive}, \code{flux_ebullitive}, \code{flux_total},
 \code{ebullition_method} (see \code{\link[=detect_ebullition]{detect_ebullition()}} and
-\code{vignette("ebullition", "stemflux")}). Closures can be treated differently
-in one call: \code{ebullition_ids} (or a logical \code{ebullition} column in \code{aux})
-selects the closures that get the add-on; the rest run the core path.
+\code{vignette("ebullition", "stemflux")}). \code{ebullition_ids} (or a logical
+\code{ebullition} column in \code{aux}) selects the closures that get the add-on; the
+rest run the core path.
 }
 \examples{
 d <- example_closure()
-res <- process_fluxes(d, gastype = "CH4dry_ppb", precision = c("allan", "datasheet"),
-                      mdf = c("goflux", "christiansen"), conf = 0.95,
-                      qc = list(c0 = TRUE, convex = TRUE, min_window = list(secs = 120)))
+res <- process_fluxes(d, gastype = "CH4dry_ppb", qc = list(c0 = TRUE, convex = TRUE))
 res
-res$fluxes[, c("UniqueID", "best.flux", "MDF", "MDF_method", "det_class", "qc_any")]
-is.null(res$events)
+res$fluxes[, c("UniqueID", "best.flux", "MDF", "MDF_emp", "MDF_emp_method", "det_class_emp", "qc_any")]
 }
 \seealso{
 \code{\link[=write_outputs]{write_outputs()}}

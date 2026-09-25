@@ -70,9 +70,7 @@ paper (Table 2.5): \eqn{\mathrm{MDF} = (2\sigma_i / t)(V/A)(P/RT)}.}
 All these single-sample criteria are conservative: they ignore the averaging
 benefit of fitting a slope to \code{t} points. The regression standard error of
 the slope (\code{LM.SE} in goFlux) is typically several times smaller.
-\code{\link[=flag_detection]{flag_detection()}} is the user-facing wrapper that computes chosen
-combinations of precision estimator and MDF method for a \code{best.flux()}
-table.
+\code{\link[=flag_detection]{flag_detection()}} is the user-facing wrapper for a \code{best.flux()} table.
 }
 \examples{
 ft <- flux_term(V_L = 7.08, P_kPa = 101.3, A_cm2 = 4254, T_C = 26)

@@ -114,17 +114,15 @@ manID <- rbind(manID[manID$UniqueID != "T26_Base_r1", ], manID_c)
 ```{r process}
 CH4 <- process_fluxes(
   manID, aux = aux, gastype = "CH4dry_ppb",
-  precision = c("allan", "mad", "datasheet"),               # sigma_* columns
-  mdf       = c("goflux", "wassmann", "christiansen", "two_sigma"),
-  conf      = c(0.90, 0.95, 0.99),
-  primary   = list(precision = "allan", mdf = "christiansen", conf = 0.95),  # -> MDF, below_MDF
+  precision = "allan", mdf = "christiansen", conf = 0.95,   # -> sigma_emp, MDF_emp, below_MDF_emp, MDF_emp_method
+  extra     = NULL,                                         # or list(precision=..., mdf=..., conf=...) / "all"
   qc        = list(c0 = list(k = 1.5), co2_tracer = list(min_slope = 0), convex = TRUE,
                    min_window = list(secs = 120), ambient_start = list(sigma = 3, secs = 10),
                    leak = list(rate = 2e-5)),               # bench leak rate, s-1; omit to skip
   group = "campaign", tissue = "tissue")
-CO2 <- process_fluxes(manID, aux = aux, gastype = "CO2dry_ppm", primary = list(precision = "allan", mdf = "two_sigma"))
+CO2 <- process_fluxes(manID, aux = aux, gastype = "CO2dry_ppm", mdf = "two_sigma")
 CH4
-table(CH4$fluxes$det_class); table(CH4$fluxes$qc_any)
+table(CH4$fluxes$det_class_emp); table(CH4$fluxes$qc_any)
 ```
 
 The same steps by hand, if you want them one at a time:
@@ -133,8 +131,7 @@ The same steps by hand, if you want them one at a time:
 CH4_flux <- goFlux(manID, "CH4dry_ppb")
 CH4_best <- best.flux(CH4_flux)
 CH4_best <- flag_detection(CH4_best, traces = manID, gastype = "CH4dry_ppb",
-                           precision = c("allan", "datasheet"), mdf = c("goflux", "christiansen"),
-                           conf = 0.95, primary = list(precision = "allan", mdf = "christiansen", conf = 0.95))
+                           precision = "allan", mdf = "christiansen", conf = 0.95)
 CH4_best <- qc_screens(CH4_best, traces = manID, gastype = "CH4dry_ppb", co2 = CO2$fluxes,
                        screens = list(c0 = TRUE, co2_tracer = TRUE, convex = TRUE))
 ```
@@ -160,33 +157,41 @@ write_outputs(CH4, "results/CH4")
 
 `process_fluxes()` returns a list: `fluxes`, `events` (`NULL` unless the
 ebullition add-on ran), `traces` (the concentration data actually fitted),
-`gastype`, `settings`. Every column of `fluxes` and where it comes from:
+`gastype`, `settings`.
 
-| column(s) | produced by | meaning |
-|---|---|---|
-| `UniqueID` | auxfile / `obs.win()` | closure identifier |
-| `LM.flux`, `LM.C0`, `LM.Ct`, `LM.slope`, `LM.MAE`, `LM.RMSE`, `LM.AICc`, `LM.SE`, `LM.se.rel`, `LM.r2`, `LM.p.val` | `goFlux::goFlux()` | linear model fit |
-| `HM.flux`, `HM.C0`, `HM.Ci`, `HM.slope`, `HM.MAE`, `HM.RMSE`, `HM.AICc`, `HM.SE`, `HM.se.rel`, `HM.r2`, `HM.k` | `goFlux::goFlux()` | Hutchinson-Mosier fit |
-| `C0`, `Ct`, `MDF`, `prec`, `flux.term`, `nb.obs`, `k.max`, `k.mult`, `g.fact` | `goFlux::goFlux()` | start/end concentration, goFlux's MDF (datasheet `prec`), (V/A)(P/RT), n, kappa bounds, g-factor |
-| `best.flux`, `model`, `quality.check`, `HM.diagnose`, `LM.diagnose`, `HM.score`, `LM.score`, `*.lim`, `warn.nb.obs` | `goFlux::best.flux()` | selected flux and why |
-| `sigma_<precision>` | `flag_detection()` | per-closure precision by estimator (`allan`, `mad`, `rolling`, `datasheet`, `custom`) |
-| `MDF_<mdf>_<precision>[_<conf>]`, `below_<mdf>_<precision>[_<conf>]` | `flag_detection()` | every requested MDF and its below-detection flag |
-| `MDF_goflux_orig` | `flag_detection()` | goFlux's original `MDF` column, preserved |
-| `MDF`, `below_MDF`, `MDF_method`, `detected`, `det_class` | `flag_detection()` (`primary`) | the one reported MDF and classification (`emission` / `uptake` / `below detection`) |
-| `qc_c0`, `qc_c0_ratio` | `qc_screens()` | C0 > k x group median |
-| `qc_co2_tracer`, `qc_co2_slope` | `qc_screens()` | CO2 slope <= min_slope (NA for exempt tissue) |
-| `qc_convex` | `qc_screens()` | accelerating trace |
-| `qc_min_window` | `qc_screens()` | window shorter than `secs` |
-| `qc_ambient_start`, `qc_ambient_dev_sigma` | `qc_screens()` | start already enriched vs pre-closure ambient |
-| `qc_leak`, `qc_leak_apparent_flux` | `qc_screens()` | leak-equivalent flux >= MDF |
-| `qc_any`, `qc_note` | `qc_screens()` | any screen fired; which |
-| `<group>`, `<tissue>` | auxfile via `process_fluxes()` | grouping / tissue columns merged for the screens |
-| `ebullition_handling`, `n_ebullition_events`, `ebullition_flag` | ebullition add-on (`"flag"` or `"split"`) | present only when the add-on ran |
-| `flux_diffusive`, `flux_ebullitive`, `flux_total`, `ebullition_method` | ebullition add-on (`"split"`) | diffusive term (= `best.flux` on the de-ebulliated trace), bubble term, sum |
+**goFlux columns are never modified; stemflux adds columns; nothing is
+removed.** `fluxes` starts as the exact `best.flux()` table (same names, same
+values) and stemflux appends columns with distinguishable names (`*_emp`,
+`qc_*`, `flux_ebullitive`, ...), so `goFlux::flux.plot()` and any other goFlux
+function run on it unchanged. `flux_pdf()` replaces `flux2pdf()` only because
+the latter fails with ggplot2 >= 3.5; it writes the same plots produced by
+`flux.plot()`. Every column of `fluxes`, with its origin:
+
+| column(s) | origin | produced by | meaning |
+|---|---|---|---|
+| `UniqueID` | goFlux (unchanged) | auxfile / `obs.win()` | closure identifier |
+| `LM.flux`, `LM.C0`, `LM.Ct`, `LM.slope`, `LM.MAE`, `LM.RMSE`, `LM.AICc`, `LM.SE`, `LM.se.rel`, `LM.r2`, `LM.p.val` | goFlux (unchanged) | `goFlux::goFlux()` | linear model fit |
+| `HM.flux`, `HM.C0`, `HM.Ci`, `HM.slope`, `HM.MAE`, `HM.RMSE`, `HM.AICc`, `HM.SE`, `HM.se.rel`, `HM.r2`, `HM.k` | goFlux (unchanged) | `goFlux::goFlux()` | Hutchinson-Mosier fit |
+| `C0`, `Ct`, `MDF`, `prec`, `flux.term`, `nb.obs`, `k.max`, `k.mult`, `g.fact` | goFlux (unchanged) | `goFlux::goFlux()` | start/end concentration, goFlux's MDF (datasheet `prec`), (V/A)(P/RT), n, kappa bounds, g-factor |
+| `best.flux`, `model`, `quality.check`, `HM.diagnose`, `LM.diagnose`, `HM.score`, `LM.score`, `*.lim`, `warn.nb.obs` | goFlux (unchanged) | `goFlux::best.flux()` | selected flux and why |
+| `<group>`, `<tissue>` | stemflux (added) | auxfile via `process_fluxes()` | grouping / tissue columns merged for the screens |
+| `sigma_emp` | stemflux (added) | `flag_detection()` | per-closure precision by the chosen estimator |
+| `MDF_emp`, `below_MDF_emp`, `MDF_emp_method` | stemflux (added) | `flag_detection()` | the reported MDF, its flag, and `"<mdf> | <precision> | <conf>"` |
+| `detected_emp`, `det_class_emp` | stemflux (added) | `flag_detection()` | `emission` / `uptake` / `below detection` by `MDF_emp` |
+| `sigma_<precision>`, `MDF_<mdf>_<precision>[_<conf>]` | stemflux (added, only with `extra`) | `flag_detection()` | comparison columns |
+| `qc_c0`, `qc_c0_ratio` | stemflux (added) | `qc_screens()` | C0 > k x group median |
+| `qc_co2_tracer`, `qc_co2_slope` | stemflux (added) | `qc_screens()` | CO2 slope <= min_slope (NA for exempt tissue) |
+| `qc_convex` | stemflux (added) | `qc_screens()` | accelerating trace |
+| `qc_min_window` | stemflux (added) | `qc_screens()` | window shorter than `secs` |
+| `qc_ambient_start`, `qc_ambient_dev_sigma` | stemflux (added) | `qc_screens()` | start already enriched vs pre-closure ambient |
+| `qc_leak`, `qc_leak_apparent_flux` | stemflux (added) | `qc_screens()` | leak-equivalent flux >= `MDF_emp` |
+| `qc_any`, `qc_note` | stemflux (added) | `qc_screens()` | any screen fired; which |
+| `ebullition_handling`, `n_ebullition_events`, `ebullition_flag` | stemflux add-on (added only with `ebullition = "flag"`/`"split"`) | `detect_ebullition()` | events per closure |
+| `flux_diffusive`, `flux_ebullitive`, `flux_total`, `ebullition_method` | stemflux add-on (added only with `"split"`) | `split_ebullition()` | diffusive term (= `best.flux` on the de-ebulliated trace), bubble term, sum |
 
 `events` (add-on only): `UniqueID`, `POSIX.time`, `Etime`, `dC` (event size,
 gas units), `threshold`. `settings`: `stemflux_version`, `goFlux_version`,
-`gastype`, `precision`, `mdf`, `conf`, `primary`, `sigma_global`, `qc`
+`gastype`, `precision`, `mdf`, `conf`, `extra`, `sigma_global`, `qc`
 (parameters of each screen), `group`, `tissue`, `ebullition*`, `goFlux_args`,
 `best.flux_args`, `n_closures`, `date`.
 

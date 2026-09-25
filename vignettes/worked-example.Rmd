@@ -180,28 +180,39 @@ All MDFs are in nmol m-2 s-1. The regression standard error of the slope
 (`LM.SE` = `r signif(best_ch4$LM.SE, 3)` nmol m-2 s-1) is far smaller than any of
 them, which is the expected behaviour of these single-sample criteria.
 
-## Step 8: precision, MDF and detection flags with `flag_detection()`
+## Step 8: precision, MDF and detection flag with `flag_detection()`
 
-`flag_detection()` does steps 6-7 for every row of a `best.flux()` table, for
-every combination of precision estimator and MDF method you ask for, and then
-picks *one* combination as the reported `MDF` (the `primary`). Nothing is
+`flag_detection()` does steps 6-7 for every row of a `best.flux()` table with
+*one* precision estimator and *one* MDF method (defaults: per-closure Allan
+precision, Christiansen criterion at 95 percent) and appends exactly six
+columns: `sigma_emp`, `MDF_emp`, `below_MDF_emp`, `MDF_emp_method`,
+`detected_emp`, `det_class_emp`. goFlux's own columns (`MDF`, `prec`,
+`best.flux`, ...) are left exactly as `best.flux()` produced them. Nothing is
 deleted; rows are flagged.
 
 ```{r flag}
 rep_ch4 <- flag_detection(best_ch4, traces = d, gastype = "CH4dry_ppb",
-                          precision = c("allan", "mad", "datasheet"),
-                          mdf = c("goflux", "wassmann", "christiansen", "two_sigma"),
-                          conf = c(0.90, 0.95, 0.99),
-                          primary = list(precision = "allan", mdf = "christiansen", conf = 0.95))
-t(as.data.frame(rep_ch4[, grep("^sigma_", names(rep_ch4))]))
-mdf_cols <- setdiff(grep("^MDF_", names(rep_ch4), value = TRUE), c("MDF_goflux_orig", "MDF_method"))
-t(round(as.data.frame(rep_ch4[, mdf_cols]), 6))   # every combination
-t(as.data.frame(rep_ch4[, c("MDF", "MDF_method", "below_MDF", "detected", "det_class")]))
+                          precision = "allan", mdf = "christiansen", conf = 0.95)
+setdiff(names(rep_ch4), names(best_ch4))
+t(as.data.frame(rep_ch4[, c("MDF", "sigma_emp", "MDF_emp", "MDF_emp_method", "below_MDF_emp",
+                            "detected_emp", "det_class_emp")]))
 ```
 
-Column names follow `MDF_<method>_<precision>[_<conf>]`, so
-`MDF_christiansen_allan_95` is the Christiansen criterion with this closure's
-Allan precision at 95 percent, and `MDF_goflux_datasheet` is goFlux's own MDF.
+The multi-method comparison of step 7 is available as *extra* columns
+(`sigma_<precision>`, `MDF_<method>_<precision>[_<conf>]`) for cross-study
+reporting; they never replace the `*_emp` columns:
+
+```{r extra}
+cmp <- flag_detection(best_ch4, traces = d, gastype = "CH4dry_ppb",
+                      extra = list(precision = c("allan", "mad", "datasheet"),
+                                   mdf = c("goflux", "wassmann", "christiansen", "two_sigma"),
+                                   conf = c(0.90, 0.95, 0.99)))
+mdf_cols <- grep("^MDF_[a-z]+_[a-z]", names(cmp), value = TRUE)
+t(round(as.data.frame(cmp[, mdf_cols]), 6))
+```
+
+`MDF_goflux_datasheet` reproduces goFlux's own `MDF` column (same formula,
+`t = nb.obs` instead of `max(Etime) + 1`).
 
 ## Choosing precision and MDF
 
@@ -232,9 +243,10 @@ depends on what the number is for.
 `goFlux::import.*()` (or the `*_prec` columns) only feeds goFlux's own `MDF`
 column and the `MDF` criterion inside `best.flux()`. stemflux's estimators are
 applied *after* `best.flux()` by `flag_detection()`, which reads the flagged
-traces, adds `sigma_*`, `MDF_*` and `below_*` columns, and sets the reported
-`MDF`/`below_MDF`/`MDF_method` from `primary`. Nothing is deleted at any step:
-`det_class` says `"below detection"`, and the row stays.
+traces and appends `sigma_emp`, `MDF_emp`, `below_MDF_emp`, `MDF_emp_method`
+(and the `extra` comparison columns if asked). goFlux's columns are never
+modified. Nothing is deleted at any step: `det_class_emp` says
+`"below detection"`, and the row stays.
 
 ## Step 9: quality screens
 
@@ -263,11 +275,12 @@ report <- data.frame(
   model      = rep_ch4$model,
   CH4_flux_nmol_m2_s = signif(rep_ch4$best.flux, 4),
   CH4_LM_SE  = signif(rep_ch4$LM.SE, 3),
-  sigma_ppb  = signif(rep_ch4$sigma_allan, 3),
-  MDF        = signif(rep_ch4$MDF, 3),
-  MDF_method = rep_ch4$MDF_method,
-  detected   = rep_ch4$detected,
-  class      = rep_ch4$det_class,
+  MDF_goFlux = signif(rep_ch4$MDF, 4),
+  sigma_emp_ppb = signif(rep_ch4$sigma_emp, 3),
+  MDF_emp    = signif(rep_ch4$MDF_emp, 3),
+  MDF_emp_method = rep_ch4$MDF_emp_method,
+  detected_emp = rep_ch4$detected_emp,
+  class      = rep_ch4$det_class_emp,
   CO2_flux_umol_m2_s = signif(best_co2$best.flux, 4),
   qc_any     = rep_ch4$qc_any)
 t(report)
@@ -278,14 +291,13 @@ The same row comes out of the one-call wrapper:
 ```{r wrapper}
 invisible(capture.output(       # goFlux's progress bar is captured
   res <- suppressWarnings(process_fluxes(d, gastype = "CH4dry_ppb",
-                       precision = c("allan", "mad", "datasheet"),
-                       mdf = c("goflux", "wassmann", "christiansen", "two_sigma"),
-                       conf = c(0.90, 0.95, 0.99),
-                       primary = list(precision = "allan", mdf = "christiansen", conf = 0.95),
+                       precision = "allan", mdf = "christiansen", conf = 0.95,
                        qc = list(c0 = TRUE, co2_tracer = TRUE, convex = TRUE, min_window = list(secs = 120)),
                        co2 = best_co2))))
 res
-c(best.flux = res$fluxes$best.flux, MDF = res$fluxes$MDF, method = res$fluxes$MDF_method)
+c(best.flux = res$fluxes$best.flux, MDF_goFlux = res$fluxes$MDF, MDF_emp = res$fluxes$MDF_emp,
+  method = res$fluxes$MDF_emp_method)
+all(names(best_ch4) %in% names(res$fluxes))   # goFlux columns all present, unchanged
 ```
 
 ## Summary of the numbers
@@ -295,15 +307,15 @@ knitr::kable(data.frame(
   quantity = c("observations used", "fit span (s)", "CH4 slope (ppb/s)", "CH4 LM r2",
                "V/A (m)", "P/RT (mol m-3)", "flux.term (mol m-2)",
                "CH4 flux LM (nmol m-2 s-1)", "CH4 flux HM (nmol m-2 s-1)", "CH4 flux reported",
-               "sigma CH4 (ppb, Allan)", "MDF goFlux (datasheet)", "MDF Wassmann 95% (allan)",
-               "MDF Christiansen 95% (allan)", "MDF 2-sigma (allan)", "reported MDF / method",
-               "detected", "CO2 flux (umol m-2 s-1)"),
+               "sigma CH4 (ppb, Allan)", "MDF goFlux (datasheet, goFlux's own column)",
+               "MDF Wassmann 95% (allan)", "MDF Christiansen 95% (allan)", "MDF 2-sigma (allan)",
+               "reported MDF_emp / method", "detected", "CO2 flux (umol m-2 s-1)"),
   value = c(n_used, t_span, signif(slope_ch4, 5), signif(summary(fit_ch4)$r.squared, 4),
             signif(VA, 5), signif(PRT, 5), signif(ft, 5),
             signif(best_ch4$LM.flux, 5), signif(best_ch4$HM.flux, 5), signif(best_ch4$best.flux, 5),
-            signif(sigma_ch4, 4), signif(rep_ch4$MDF_goflux_datasheet, 4),
-            signif(rep_ch4$MDF_wassmann_allan_95, 4), signif(rep_ch4$MDF_christiansen_allan_95, 4),
-            signif(rep_ch4$MDF_two_sigma_allan, 4),
-            paste(signif(rep_ch4$MDF, 4), rep_ch4$MDF_method), rep_ch4$det_class,
+            signif(sigma_ch4, 4), signif(best_ch4$MDF, 4),
+            signif(cmp$MDF_wassmann_allan_95, 4), signif(cmp$MDF_christiansen_allan_95, 4),
+            signif(cmp$MDF_two_sigma_allan, 4),
+            paste(signif(rep_ch4$MDF_emp, 4), rep_ch4$MDF_emp_method), rep_ch4$det_class_emp,
             signif(best_co2$best.flux, 5))))
 ```

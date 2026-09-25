@@ -23,9 +23,7 @@
 #' All these single-sample criteria are conservative: they ignore the averaging
 #' benefit of fitting a slope to `t` points. The regression standard error of
 #' the slope (`LM.SE` in goFlux) is typically several times smaller.
-#' [flag_detection()] is the user-facing wrapper that computes chosen
-#' combinations of precision estimator and MDF method for a `best.flux()`
-#' table.
+#' [flag_detection()] is the user-facing wrapper for a `best.flux()` table.
 #'
 #' @param flux.term numeric vector; goFlux `flux.term` column (mol m-2 per
 #'   unit mole fraction).
@@ -83,84 +81,85 @@ mdf_multi <- function(flux.term, t, prec = NULL, sigma = NULL, sigma.global = NU
   out
 }
 
-#' Append precision estimates, MDFs and detection flags to a best.flux table
+#' Append an empirical precision, MDF and detection flag to a best.flux table
 #'
-#' Computes every requested combination of a *precision estimator* and an
-#' *MDF method* (at every requested confidence level where the method has one)
-#' for each row of a [goFlux::best.flux()] or [goFlux::goFlux()] result,
-#' appends them as columns, and then sets the single reported `MDF`,
-#' `below_MDF` and `MDF_method` from `primary`. Nothing is deleted: rows are
-#' flagged only. This is applied *after* `best.flux()`; the `prec` argument
-#' given to goFlux's `import.*()` functions only feeds goFlux's own `MDF`
-#' column (equal to the `goflux` / `datasheet` combination here).
+#' Adds exactly four columns to a [goFlux::best.flux()] (or
+#' [goFlux::goFlux()]) table: `sigma_emp` (the per-closure precision by the
+#' chosen estimator), `MDF_emp` (the minimum detectable flux by the chosen
+#' method), `below_MDF_emp` (logical) and `MDF_emp_method` (a string such as
+#' `"christiansen | allan | 0.95"`), plus `detected_emp` and `det_class_emp`
+#' (`"emission"`, `"uptake"`, `"below detection"`). goFlux's own columns
+#' (`MDF`, `prec`, `best.flux`, `quality.check`, ...) are never modified or
+#' duplicated; stemflux only appends. Nothing is deleted: rows are flagged.
+#'
+#' This is applied *after* `best.flux()`. The `prec` argument given to goFlux's
+#' `import.*()` functions feeds only goFlux's own `MDF` column.
 #'
 #' @section Precision estimators (`precision`):
 #' \describe{
 #'   \item{`"allan"`}{per closure, \eqn{\sigma = SD(\Delta x)/\sqrt{2}} on the
-#'     flagged rows of `traces` ([precision_allan()]).}
+#'     flagged rows of `traces` ([precision_allan()]). Default.}
 #'   \item{`"mad"`}{per closure, \eqn{\sigma = MAD(\Delta x)/\sqrt{2}}
 #'     ([precision_mad()]); robust to isolated jumps.}
 #'   \item{`"rolling"`}{per closure, quietest-window scan of the flagged rows
 #'     ([precision_rolling()]).}
-#'   \item{`"datasheet"`}{the manufacturer precision goFlux already carries in
-#'     its `prec` column (set with the `prec` argument of `import.*()`).}
+#'   \item{`"datasheet"`}{the manufacturer precision goFlux carries in its
+#'     `prec` column.}
+#'   \item{`"custom"`}{a per-closure value supplied through `sigma` (e.g. a
+#'     bench sigma from a closed-loop test, Box 2 of the guidelines paper).}
 #' }
-#' A custom per-closure estimate (e.g. a bench sigma from a closed-loop test,
-#' Box 2 of the guidelines paper) can be supplied through `sigma` and is
-#' labelled `"custom"`.
 #'
 #' @section MDF methods (`mdf`):
 #' \describe{
-#'   \item{`"goflux"`}{\eqn{\sigma / t \cdot \mathrm{flux.term}}; with
-#'     `precision = "datasheet"` this is goFlux's own `MDF` column.}
-#'   \item{`"wassmann"`}{Wassmann et al. (2018):
-#'     \eqn{z_{conf} \, \sigma_{global} / t \cdot \mathrm{flux.term}} where
-#'     \eqn{\sigma_{global}} is `sigma.global` if given, else the median of the
-#'     per-closure estimate across the table (for `"datasheet"`, the `prec`
-#'     value itself).}
 #'   \item{`"christiansen"`}{Christiansen et al. (2015):
-#'     \eqn{3 \, \sigma_i \, t_{conf, n-2} / t \cdot \mathrm{flux.term}} with the
-#'     per-closure \eqn{\sigma_i}.}
+#'     \eqn{3 \, \sigma_i \, t_{conf, n-2} / t \cdot \mathrm{flux.term}}. Default.}
+#'   \item{`"wassmann"`}{Wassmann et al. (2018):
+#'     \eqn{z_{conf} \, \sigma_{global} / t \cdot \mathrm{flux.term}}, with
+#'     \eqn{\sigma_{global}} = `sigma.global` if given, else the median of the
+#'     per-closure estimate across the table.}
 #'   \item{`"two_sigma"`}{\eqn{2 \sigma_i / t \cdot \mathrm{flux.term}}
 #'     (guidelines paper, Table 2.5).}
+#'   \item{`"goflux"`}{\eqn{\sigma / t \cdot \mathrm{flux.term}}; with
+#'     `precision = "datasheet"` this equals goFlux's own `MDF` column.}
 #' }
+#' `conf` applies to `christiansen` and `wassmann` only.
 #'
-#' @section Column naming:
-#' `sigma_<precision>` for each estimator; `MDF_<mdf>_<precision>` for
-#' methods without a confidence level (`goflux`, `two_sigma`) and
-#' `MDF_<mdf>_<precision>_<conf>` with `conf` as a two-digit percentage for
-#' `wassmann` and `christiansen`, e.g. `MDF_christiansen_allan_95`. Each MDF
-#' column has a matching `below_...` logical. goFlux's original `MDF` column
-#' is kept as `MDF_goflux_orig`; the new `MDF`, `below_MDF`, `MDF_method`,
-#' `detected` and `det_class` (`"emission"`, `"uptake"`, `"below detection"`)
-#' come from `primary`.
+#' @section Extras:
+#' `extra = list(precision = ..., mdf = ..., conf = ...)` (or `extra = "all"`
+#' for every estimator, method and 0.90/0.95/0.99) additionally appends
+#' `sigma_<precision>` for each extra estimator and
+#' `MDF_<mdf>_<precision>[_<conf>]` (two-digit percentage) for each
+#' combination, e.g. `MDF_wassmann_mad_95`, for cross-study comparison. These
+#' are comparison columns only; the reported values stay in the `*_emp`
+#' columns.
 #'
 #' @param flux.result data.frame from [goFlux::best.flux()] or
 #'   [goFlux::goFlux()]; needs `UniqueID`, `flux.term`, `nb.obs` and the flux
 #'   column.
 #' @param traces the flagged concentration data the fluxes were computed from
 #'   (output of [goFlux::click.peak2()], [click_peak2_stacked()],
-#'   [auto_id_rise()] or [windows_from_table()]); required for the
-#'   `allan`, `mad` and `rolling` estimators.
+#'   [auto_id_rise()] or [windows_from_table()]); required for `allan`,
+#'   `mad` and `rolling`.
 #' @param gastype gas column of `traces`; inferred when `traces` holds exactly
 #'   one recognised gas column.
-#' @param precision character vector of estimators to compute (see Details).
-#'   The default computes all four; when `traces` is missing and `precision`
-#'   was not given explicitly, only `"datasheet"` is used.
-#' @param mdf character vector of MDF methods to compute (see Details).
-#' @param conf confidence levels for `wassmann` and `christiansen`.
-#' @param primary list with elements `precision`, `mdf` and (where relevant)
-#'   `conf` naming the one combination reported in `MDF` / `below_MDF`.
+#' @param precision one estimator (see Details).
+#' @param mdf one MDF method (see Details).
+#' @param conf confidence level for `christiansen` / `wassmann`.
+#' @param extra `NULL` (default), `"all"`, or a list with any of `precision`,
+#'   `mdf`, `conf` (character/numeric vectors) for comparison columns.
 #' @param sigma optional custom per-closure precision: a data.frame with
-#'   `UniqueID` and `sigma`, or a numeric vector aligned with `flux.result`.
-#' @param sigma.global optional global precision for the Wassmann method: a
-#'   single number, or a named list/vector keyed by estimator name.
+#'   `UniqueID` and `sigma`, or a numeric vector aligned with `flux.result`
+#'   (used by `precision = "custom"`).
+#' @param sigma.global optional global precision for `wassmann` (a number, or
+#'   a named vector/list keyed by estimator name).
 #' @param t closure length in seconds; default `nb.obs` (1 Hz).
 #' @param flux.col flux column to test.
 #' @param rolling.window window (samples) for `"rolling"`.
 #' @param chr.mult multiplier in the Christiansen method (3).
-#' @return `flux.result` with the added columns; the global precisions used
-#'   are stored in the attribute `"sigma_global"`.
+#' @return `flux.result` with `sigma_emp`, `MDF_emp`, `below_MDF_emp`,
+#'   `MDF_emp_method`, `detected_emp`, `det_class_emp` appended (and the
+#'   `extra` columns if requested). The global precisions used are stored in
+#'   the attribute `"sigma_global"`.
 #' @references
 #' Christiansen, J. R., Outhwaite, J., & Smukler, S. M. (2015). Agricultural and
 #' Forest Meteorology, 211-212, 48-57. \doi{10.1016/j.agrformet.2015.06.004}
@@ -169,37 +168,39 @@ mdf_multi <- function(flux.term, t, prec = NULL, sigma = NULL, sigma.global = NU
 #' \doi{10.1371/journal.pone.0191352}
 #' @examples
 #' d <- example_closure()
-#' res  <- goFlux::goFlux(d, "CH4dry_ppb")
-#' best <- goFlux::best.flux(res)
-#' out <- flag_detection(best, traces = d, gastype = "CH4dry_ppb",
-#'                       precision = c("allan", "datasheet"),
-#'                       mdf = c("goflux", "christiansen", "two_sigma"), conf = 0.95,
-#'                       primary = list(precision = "allan", mdf = "christiansen", conf = 0.95))
-#' out[, c("sigma_allan", "sigma_datasheet", "MDF_goflux_datasheet",
-#'         "MDF_christiansen_allan_95", "MDF_two_sigma_allan", "MDF", "MDF_method", "det_class")]
+#' best <- goFlux::best.flux(goFlux::goFlux(d, "CH4dry_ppb"))
+#' out <- flag_detection(best, traces = d, gastype = "CH4dry_ppb")
+#' out[, c("best.flux", "MDF", "sigma_emp", "MDF_emp", "below_MDF_emp", "MDF_emp_method", "det_class_emp")]
+#' # comparison columns
+#' cmp <- flag_detection(best, traces = d, gastype = "CH4dry_ppb",
+#'                       extra = list(precision = c("mad", "datasheet"), mdf = c("goflux", "two_sigma")))
+#' grep("^MDF_", names(cmp), value = TRUE)
 #' @export
 flag_detection <- function(flux.result, traces = NULL, gastype = NULL,
-                           precision = c("allan", "mad", "rolling", "datasheet"),
-                           mdf = c("goflux", "wassmann", "christiansen", "two_sigma"),
-                           conf = c(0.90, 0.95, 0.99),
-                           primary = list(precision = "allan", mdf = "christiansen", conf = 0.95),
-                           sigma = NULL, sigma.global = NULL, t = NULL,
+                           precision = "allan", mdf = "christiansen", conf = 0.95,
+                           extra = NULL, sigma = NULL, sigma.global = NULL, t = NULL,
                            flux.col = "best.flux", rolling.window = 30, chr.mult = 3) {
   fr <- as.data.frame(flux.result)
   for (col in c("UniqueID", "flux.term", "nb.obs", flux.col))
     if (!col %in% names(fr)) stop("'flux.result' has no column '", col, "'")
-  explicit <- !missing(precision)
-  precision <- match.arg(precision, several.ok = TRUE)
-  mdf <- match.arg(mdf, several.ok = TRUE)
-  n <- nrow(fr)
-  needs_traces <- intersect(precision, c("allan", "mad", "rolling"))
-  if (is.null(traces) && length(needs_traces)) {
-    if (explicit) stop("precision estimator(s) ", paste(needs_traces, collapse = ", "),
-                       " need 'traces'")
-    precision <- setdiff(precision, needs_traces)
-    if (!length(precision)) precision <- "datasheet"
-    message("no 'traces' given: using precision = \"", paste(precision, collapse = "\", \""), "\"")
-  }
+  prec_ok <- c("allan", "mad", "rolling", "datasheet", "custom")
+  mdf_ok <- c("christiansen", "wassmann", "two_sigma", "goflux")
+  precision <- match.arg(precision, prec_ok); mdf <- match.arg(mdf, mdf_ok)
+  if (length(conf) != 1) stop("'conf' must be a single number; use 'extra' for several")
+  # extras
+  ex <- NULL
+  if (identical(extra, "all")) ex <- list(precision = setdiff(prec_ok, if (is.null(sigma)) "custom" else character(0)),
+                                          mdf = mdf_ok, conf = c(0.90, 0.95, 0.99))
+  else if (is.list(extra)) {
+    ex <- list(precision = if (is.null(extra$precision)) precision else match.arg(extra$precision, prec_ok, several.ok = TRUE),
+               mdf = if (is.null(extra$mdf)) mdf else match.arg(extra$mdf, mdf_ok, several.ok = TRUE),
+               conf = if (is.null(extra$conf)) conf else extra$conf)
+  } else if (!is.null(extra)) stop("'extra' must be NULL, \"all\" or a list")
+  all_prec <- unique(c(precision, ex$precision))
+  needs_traces <- intersect(all_prec, c("allan", "mad", "rolling"))
+  if (is.null(traces) && length(needs_traces))
+    stop("precision estimator(s) ", paste(needs_traces, collapse = ", "), " need 'traces'")
+  if ("custom" %in% all_prec && is.null(sigma)) stop("precision = \"custom\" needs 'sigma'")
   if (!is.null(traces)) {
     if (is.null(gastype)) {
       g <- intersect(goflux_gas_columns(), names(traces))
@@ -209,10 +210,11 @@ flag_detection <- function(flux.result, traces = NULL, gastype = NULL,
     if (!gastype %in% names(traces)) stop("column '", gastype, "' not in 'traces'")
   }
   if (is.null(t)) t <- fr$nb.obs
+  n <- nrow(fr)
 
-  # ---- per-closure sigma for every estimator -------------------------------
+  # ---- per-closure sigma for every estimator used -------------------------
   sig <- list()
-  for (p in precision) {
+  for (p in all_prec) {
     sig[[p]] <- switch(p,
       datasheet = {
         if (!"prec" %in% names(fr)) stop("'datasheet' precision needs a 'prec' column")
@@ -227,15 +229,10 @@ flag_detection <- function(flux.result, traces = NULL, gastype = NULL,
         sp <- split(tr[[gastype]], tr$UniqueID)
         r <- vapply(sp, function(v) suppressWarnings(precision_rolling(v, rolling.window)$sd), numeric(1))
         r[match(fr$UniqueID, names(sp))]
-      })
+      },
+      custom = if (is.data.frame(sigma)) sigma$sigma[match(fr$UniqueID, sigma$UniqueID)]
+               else rep_len(as.numeric(sigma), n))
   }
-  if (!is.null(sigma)) {
-    sig$custom <- if (is.data.frame(sigma)) sigma$sigma[match(fr$UniqueID, sigma$UniqueID)]
-                  else rep_len(as.numeric(sigma), n)
-  }
-  for (p in names(sig)) fr[[paste0("sigma_", p)]] <- sig[[p]]
-
-  # ---- global sigma per estimator (Wassmann) --------------------------------
   glob <- list()
   for (p in names(sig)) {
     glob[[p]] <- if (is.null(sigma.global)) stats::median(sig[[p]], na.rm = TRUE)
@@ -243,43 +240,34 @@ flag_detection <- function(flux.result, traces = NULL, gastype = NULL,
                  else if (p %in% names(sigma.global)) as.numeric(sigma.global[[p]])
                  else stats::median(sig[[p]], na.rm = TRUE)
   }
-
-  # ---- MDF columns ----------------------------------------------------------
-  if ("MDF" %in% names(fr) && !"MDF_goflux_orig" %in% names(fr)) fr$MDF_goflux_orig <- fr$MDF
-  flux <- fr[[flux.col]]
-  lab <- function(c) sprintf("%02d", round(100 * c))
   df <- pmax(fr$nb.obs - 2, 1)
-  add <- function(name, value) {
-    fr[[name]] <<- abs(value)
-    fr[[sub("^MDF_", "below_", name)]] <<- ifelse(is.na(value), NA, abs(flux) < abs(value))
-  }
-  for (m in mdf) for (p in names(sig)) {
-    s <- sig[[p]]
-    if (m %in% c("goflux", "two_sigma")) {
-      add(paste("MDF", m, p, sep = "_"), if (m == "goflux") s / t * fr$flux.term else 2 * s / t * fr$flux.term)
-    } else for (c in conf) {
-      v <- if (m == "wassmann") stats::qnorm(c) * glob[[p]] / t * fr$flux.term
-           else chr.mult * s * stats::qt(c, df = df) / t * fr$flux.term
-      add(paste("MDF", m, p, lab(c), sep = "_"), v)
+  one_mdf <- function(m, p, c) abs(switch(m,
+    goflux = sig[[p]] / t * fr$flux.term,
+    two_sigma = 2 * sig[[p]] / t * fr$flux.term,
+    wassmann = stats::qnorm(c) * glob[[p]] / t * fr$flux.term,
+    christiansen = chr.mult * sig[[p]] * stats::qt(c, df = df) / t * fr$flux.term))
+  flux <- fr[[flux.col]]
+
+  # ---- the four reported columns --------------------------------------------
+  m <- one_mdf(mdf, precision, conf)
+  fr$sigma_emp <- sig[[precision]]
+  fr$MDF_emp <- m
+  fr$below_MDF_emp <- ifelse(is.na(m), NA, abs(flux) < m)
+  fr$MDF_emp_method <- if (mdf %in% c("christiansen", "wassmann")) paste(mdf, precision, conf, sep = " | ")
+                       else paste(mdf, precision, sep = " | ")
+  fr$detected_emp <- ifelse(is.na(m), NA, abs(flux) > m)
+  fr$det_class_emp <- ifelse(is.na(m), NA_character_,
+                             ifelse(flux > m, "emission", ifelse(flux < -m, "uptake", "below detection")))
+
+  # ---- comparison columns ----------------------------------------------------
+  if (!is.null(ex)) {
+    lab <- function(c) sprintf("%02d", round(100 * c))
+    for (p in ex$precision) fr[[paste0("sigma_", p)]] <- sig[[p]]
+    for (mm in ex$mdf) for (p in ex$precision) {
+      if (mm %in% c("goflux", "two_sigma")) fr[[paste("MDF", mm, p, sep = "_")]] <- one_mdf(mm, p, NA)
+      else for (c in ex$conf) fr[[paste("MDF", mm, p, lab(c), sep = "_")]] <- one_mdf(mm, p, c)
     }
   }
-
-  # ---- primary --------------------------------------------------------------
-  if (is.null(primary$precision) || is.null(primary$mdf)) stop("'primary' needs 'precision' and 'mdf'")
-  pcol <- if (primary$mdf %in% c("goflux", "two_sigma")) paste("MDF", primary$mdf, primary$precision, sep = "_")
-          else {
-            if (is.null(primary$conf)) stop("'primary$conf' is needed for ", primary$mdf)
-            paste("MDF", primary$mdf, primary$precision, lab(primary$conf), sep = "_")
-          }
-  if (!pcol %in% names(fr))
-    stop("primary combination '", pcol, "' was not computed; check 'precision', 'mdf' and 'conf'")
-  m <- fr[[pcol]]
-  fr$MDF <- m
-  fr$below_MDF <- ifelse(is.na(m), NA, abs(flux) < m)
-  fr$MDF_method <- sub("^MDF_", "", pcol)
-  fr$detected <- ifelse(is.na(m), NA, abs(flux) > m)
-  fr$det_class <- ifelse(is.na(m), NA_character_,
-                         ifelse(flux > m, "emission", ifelse(flux < -m, "uptake", "below detection")))
   attr(fr, "sigma_global") <- unlist(glob)
   fr
 }

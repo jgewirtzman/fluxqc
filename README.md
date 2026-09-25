@@ -31,19 +31,24 @@ library(stemflux)
 
 d <- example_closure(dead.band = 60)     # one real 600 s UGGA tree-stem closure
 
-res <- process_fluxes(d, gastype = "CH4dry_ppb",
-                      precision = c("allan", "mad", "datasheet"),
-                      mdf = c("goflux", "wassmann", "christiansen", "two_sigma"),
-                      conf = c(0.90, 0.95, 0.99),
-                      primary = list(precision = "allan", mdf = "christiansen", conf = 0.95),
+res <- process_fluxes(d, gastype = "CH4dry_ppb",                  # defaults: allan / christiansen / 0.95
                       qc = list(c0 = TRUE, convex = TRUE, min_window = list(secs = 120)))
 res
 #> stemflux result: 1 closures, CH4dry_ppb
-#>   MDF: christiansen_allan_95 | detected: 1 | qc_any: 0
-res$fluxes[, c("best.flux", "model", "sigma_allan", "MDF", "MDF_method", "det_class", "qc_any")]
-#>   best.flux model sigma_allan       MDF            MDF_method det_class qc_any
-#> 1  0.255676    HM      2.2253 0.0137646 christiansen_allan_95  emission  FALSE
+#>   MDF_emp: christiansen | allan | 0.95 | detected: 1 | qc_any: 0
+res$fluxes[, c("best.flux", "model", "MDF", "sigma_emp", "MDF_emp", "MDF_emp_method", "det_class_emp", "qc_any")]
+#>   best.flux model        MDF sigma_emp   MDF_emp              MDF_emp_method det_class_emp qc_any
+#> 1  0.255676    HM 0.00113087    2.2253 0.0137646 christiansen | allan | 0.95      emission  FALSE
 write_outputs(res, "results/CH4")        # fluxes.csv, settings.json, flux_plots.pdf
+```
+
+goFlux's columns (`best.flux`, `MDF`, `quality.check`, ...) come back exactly
+as `best.flux()` produced them; stemflux only appends (`sigma_emp`,
+`MDF_emp`, `below_MDF_emp`, `MDF_emp_method`, `detected_emp`,
+`det_class_emp`, `qc_*`). Multi-method comparison columns are available with
+`extra = list(precision = ..., mdf = ..., conf = ...)` or `extra = "all"`.
+
+```r
 ```
 
 A full campaign:
@@ -64,10 +69,12 @@ from), `vignette("ebullition", "stemflux")` (the opt-in add-on).
 
 ## Choosing precision and MDF
 
-`flag_detection()` (called by `process_fluxes()`) computes every requested
-combination of a precision estimator and an MDF method as columns
-(`sigma_<precision>`, `MDF_<mdf>_<precision>[_<conf>]`, `below_...`) and then
-reports one of them as `MDF` / `below_MDF` / `MDF_method` from `primary`.
+`flag_detection()` (called by `process_fluxes()`) takes one precision
+estimator, one MDF method and one confidence level (defaults `"allan"`,
+`"christiansen"`, `0.95`) and appends `sigma_emp`, `MDF_emp`,
+`below_MDF_emp`, `MDF_emp_method`. The multi-method comparison
+(`sigma_<precision>`, `MDF_<mdf>_<precision>[_<conf>]`) is appended only
+with `extra = list(...)` or `extra = "all"`.
 
 | precision | use when |
 |---|---|
@@ -87,6 +94,20 @@ The `prec` argument of `goFlux::import.*()` feeds only goFlux's own `MDF`
 column; stemflux's estimators are applied after `best.flux()`. Nothing is
 deleted at any step, only flagged.
 
+## Analyzer independence
+
+The core functions consume goFlux's standard columns (`UniqueID`,
+`POSIX.time`, `flag`, `Etime`, the gas columns `CO2dry_ppm`, `CH4dry_ppb`,
+`N2Odry_ppb`, `H2O_ppm`, ..., and the `best.flux()` output), so they work with
+any goFlux importer: UGGA/LGR, LI-7810/7820/8x00, Picarro G2xxx/G4301, GAIA,
+and the rest. Gas columns are always named through the `gastype` / `gases` /
+`detect.gas` arguments; the only goFlux column name used implicitly is
+`CO2dry_ppm` in the `co2_tracer` screen, because that screen *is* about CO2.
+The analyzer-specific pieces are `detect_clock_streams()` (raw LGR/UGGA text
+file layout), `import_li7810_subset()` (LI-7810 `.data` files) and the
+shipped example closure (UGGA). This was verified by grepping the core
+sources for gas-column and file-format literals.
+
 ## Function map
 
 | Capability | stemflux function | Nearest goFlux function |
@@ -98,7 +119,7 @@ deleted at any step, only flagged.
 | Per-measurement precision, first-differenced (Allan, tau = 1 s) | `precision_allan()`, `precision_by_id()` | `prec` argument of `goFlux()` |
 | Robust whole-record precision, MAD(dx)/sqrt(2) | `precision_mad()` | -- |
 | Quietest-window precision scan | `precision_rolling()` | -- |
-| Precision x MDF combinations, below-detection flags, one reported MDF | `flag_detection()`, `mdf_multi()` | `MDF()`, `best.flux()` (`MDF` criterion) |
+| Empirical precision + MDF appended as `sigma_emp`, `MDF_emp`, `below_MDF_emp`, `MDF_emp_method` (comparison columns via `extra`) | `flag_detection()`, `mdf_multi()` | `MDF()`, `best.flux()` (`MDF` criterion) |
 | (V/A)(P/RT) with goFlux unit conventions | `flux_term()` | `flux.term()` (unexported) |
 | Toggleable physical QC screens (C0, CO2 tracer, convex, min window, ambient start, leak), flags only | `qc_screens()` (`qc_c0_screen()` wrapper) | -- |
 | Multi-page PDF of `flux.plot()` output, ggplot2 >= 3.5 safe | `flux_pdf()` | `flux2pdf()` |

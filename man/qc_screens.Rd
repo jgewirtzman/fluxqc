@@ -93,9 +93,10 @@ column is absent, of rows with \code{flag == 0} and \code{Etime < 0}. Needs
 of the headspace exchanged per second, e.g. the decay constant of a
 spiked, sealed chamber) times the largest headspace-ambient difference
 during the closure gives the apparent slope a leak alone could produce;
-if that, times \code{flux.term}, is at least the row's \code{MDF}, the flux cannot
-be separated from leakage. Uses \code{traces} for the concentration range,
-else \code{abs(Ct - C0)}. Skipped when \code{rate} is \code{NULL}.}
+if that, times \code{flux.term}, is at least the row's \code{MDF_emp} (from
+\code{\link[=flag_detection]{flag_detection()}}; goFlux's \code{MDF} if \code{MDF_emp} is absent), the flux
+cannot be separated from leakage. Uses \code{traces} for the concentration
+range, else \code{abs(Ct - C0)}. Skipped when \code{rate} is \code{NULL}.}
 }
 }
 

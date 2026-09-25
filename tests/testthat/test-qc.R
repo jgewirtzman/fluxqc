@@ -52,7 +52,8 @@ test_that("convex, ambient_start and leak screens use traces", {
   conv <- mk("conv", c(rep(2000, 60), 2000 + 0.002 * (0:299)^2) + rnorm(360, 0, 1))
   late <- mk("late", c(rep(2000, 60), 2100 + 0.5 * (0:299)) + rnorm(360, 0, 1))   # already enriched at start
   tr <- rbind(lin, conv, late)
-  fx <- data.frame(UniqueID = c("lin", "conv", "late"), flux.term = 0.68, MDF = 0.02, C0 = 2000, Ct = 2150)
+  fx <- data.frame(UniqueID = c("lin", "conv", "late"), flux.term = 0.68, MDF = 999, MDF_emp = 0.02,
+                   C0 = 2000, Ct = 2150)   # leak compares with MDF_emp, not goFlux's MDF
   out <- qc_screens(fx, traces = tr, gastype = "CH4dry_ppb",
                     screens = list(convex = TRUE, ambient_start = list(sigma = 3, secs = 10), leak = list(rate = 1e-4)),
                     verbose = FALSE)
