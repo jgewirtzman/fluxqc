@@ -1,0 +1,179 @@
+---
+title: "The recommended stem-flux pipeline"
+author: "Jonathan Gewirtzman"
+date: "`r Sys.Date()`"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{The recommended stem-flux pipeline}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
+```
+
+This vignette lays out the end-to-end pipeline for stem (and soil / water)
+chamber fluxes as it is run in practice, and shows where each `stemflux`
+function plugs into the standard `goFlux` sequence. Chunks that require an
+interactive graphics device are marked and not evaluated when the vignette is
+built; the non-interactive alternatives are shown next to them. See the
+companion vignette "From raw trace to reported flux" for a fully evaluated
+single closure.
+
+```
+import -> auxfile -> obs.win -> window selection -> goFlux -> best.flux
+       -> precision -> flag_detection -> qc -> flux_pdf -> report
+```
+
+## 1. Import
+
+For an LI-7810, subset the campaign-long `.data` file to the field days before
+importing; for LGR/UGGA folders with subdirectories and occasional corrupt
+files, import file by file.
+
+```{r import}
+library(goFlux)
+library(stemflux)
+
+# LI-7810: a 160 MB file -> only the six field days
+licor <- import_li7810_subset(
+  "data/licor/TG10-01503-2026-05-01T000000.data",
+  dates = c("2026-05-22", "2026-05-23", "2026-05-24"),
+  outfile = "data/licor/subset.data",
+  date.format = "ymd", timezone = "UTC",
+  prec = c(3.5, 0.6, 45))                    # LI-7810 datasheet, 1 s
+
+# LGR / UGGA: recursive, one file at a time, nothing written to getwd()
+lgr <- import2RData_flat("data/LGR1", instrument = "UGGA",
+                         pattern = "_f\\d+\\.txt$",
+                         date.format = "mdy", timezone = "UTC",
+                         prec = c(0.35, 0.9, 200))
+```
+
+If an LGR file contains a clock reset (two interleaved time streams), split it
+first:
+
+```{r clock}
+cs <- detect_clock_streams("data/LGR2/2022-10-25/micro_2022-10-25_f0001.txt")
+if (cs$has_reset) {
+  files <- write_stream_files(cs, "micro_2022-10-25_f0001.txt", "data/LGR2_split")
+  # import each stream separately with import.UGGA() and tag it
+}
+```
+
+## 2. Auxfile
+
+One row per closure with goFlux's column names. `start.time` is instrument
+time; `obs.length` is the planned closure length.
+
+```{r aux}
+aux <- data.frame(
+  UniqueID   = c("T26_DBH_r1", "T26_Base_r1"),
+  start.time = as.POSIXct(c("2026-05-23 10:12:10", "2026-05-23 10:50:30"), tz = "UTC"),
+  obs.length = 600,
+  Area  = 4254,      # cm2
+  Vtot  = 7.08,      # L
+  Tcham = 24.5,      # C
+  Pcham = 101.3)     # kPa
+ow <- obs.win(inputfile = licor, auxfile = aux, obs.length = 600, shoulder = 120)
+```
+
+## 3. Window selection
+
+Three routes to the same object (a `manID` data frame with `flag`, `Etime`,
+`start.time_corr`, `end.time_corr`, `obs.length_corr`):
+
+```{r windows-interactive}
+# (a) interactive, both gases visible -- needs a graphics window (not RStudio's pane)
+manID <- click_peak2_stacked(ow, gastype = "CO2dry_ppm", gastype2 = "CH4dry_ppb",
+                             ref.secs = 600, save.plots = "plots/windows.pdf")
+```
+
+```{r windows-auto}
+# (b) non-interactive: sustained CO2 rise, notebook end times as a fallback/cap
+ends <- data.frame(UniqueID = aux$UniqueID,
+                   end.time = as.POSIXct(c("2026-05-23 10:22:30", "2026-05-23 11:02:00"), tz = "UTC"))
+manID <- auto_id_rise(ow, end.times = ends, trim.secs = 30, max.secs = 600,
+                      plot.dir = "plots/auto_id")
+attr(manID, "log")          # review; redo any window with (a) or (c)
+
+# (c) explicit windows from notebooks / screenshots
+win <- data.frame(UniqueID = "T26_Base_r1",
+                  start = "2026-05-23 10:51:00", end = "2026-05-23 11:01:30")
+manID_c <- windows_from_table(ow, win)
+manID <- rbind(manID[manID$UniqueID != "T26_Base_r1", ], manID_c)
+```
+
+For records with interleaved clock streams, replace `obs.win()` with
+`obs_win_deinterleave()` (keeps the smoother stream per window) or use
+`click_flux_2d()` to draw a time x concentration box around the good points
+and calculate the flux in one step.
+
+## 4. Flux calculation and model selection
+
+```{r goflux}
+CO2_flux <- goFlux(manID, "CO2dry_ppm")
+CH4_flux <- goFlux(manID, "CH4dry_ppb")
+CO2_best <- best.flux(CO2_flux)
+CH4_best <- best.flux(CH4_flux)
+```
+
+## 5. Empirical precision and detection limits
+
+```{r detection}
+sig_ch4 <- precision_by_id(manID, "CH4dry_ppb")          # sigma = SD(diff x)/sqrt(2), per closure
+sig_co2 <- precision_by_id(manID, "CO2dry_ppm")
+sigma_global_ch4 <- precision_mad(licor$CH4dry_ppb)      # robust, whole record
+
+CH4_best <- flag_detection(CH4_best, sigma = sig_ch4, sigma.global = sigma_global_ch4,
+                           primary = "2sigma")
+CO2_best <- flag_detection(CO2_best, sigma = sig_co2)
+table(CH4_best$det_class)
+```
+
+Optionally feed the empirical precision back into goFlux so its own `MDF`
+column and `flux.plot()` annotations use it:
+
+```{r prec-back}
+manID$CH4_prec <- sig_ch4$sigma[match(manID$UniqueID, sig_ch4$UniqueID)]
+CH4_flux <- goFlux(manID, "CH4dry_ppb")     # goFlux reads the *_prec columns
+```
+
+## 6. Quality control
+
+```{r qc}
+CH4_best <- qc_c0_screen(CH4_best, k = 1.5)            # chamber not at ambient at closure?
+co2_ok   <- CO2_best$best.flux > 0                      # sealed chamber: CO2 must accumulate
+CH4_best$qc_co2_positive <- co2_ok[match(CH4_best$UniqueID, CO2_best$UniqueID)]
+keep <- CH4_best$qc_c0_pass & CH4_best$qc_co2_positive  # rows are flagged, not deleted
+```
+
+## 7. Plots and report
+
+```{r plots}
+CO2_plots <- flux.plot(CO2_best, manID, "CO2dry_ppm", shoulder = 20,
+                       plot.display = c("MDF", "prec", "nb.obs", "flux.term"))
+CH4_plots <- flux.plot(CH4_best, manID, "CH4dry_ppb", shoulder = 20)
+flux_pdf(c(CO2_plots, CH4_plots), "plots/flux_results.pdf")   # ggplot2 >= 3.5 safe
+
+report <- merge(
+  CH4_best[, c("UniqueID", "best.flux", "model", "LM.SE", "sigma", "MDF_2sigma",
+               "detected", "det_class", "qc_c0_pass", "qc_co2_positive")],
+  CO2_best[, c("UniqueID", "best.flux")], by = "UniqueID", suffixes = c("_CH4", "_CO2"))
+write.csv(report, "results/stem_fluxes.csv", row.names = FALSE)
+```
+
+## 8. Ebullition (water / saturated soil only)
+
+```{r ebullition}
+one <- manID[manID$UniqueID == "BL60_water_03" & manID$flag == 1, ]
+eb  <- detect_ebullition(one, "CH4dry_ppb", jump.thresh = 100)   # 0.1 ppm steps
+part <- split_ebullition(eb, Vtot = 4.318, Area = 324.3, Tcham = 28, Pcham = 101.3)
+part[, c("diffusive_flux", "ebullitive_flux", "total_flux", "ebullitive_fraction", "n_jumps")]
+```
+
+Review `eb$jumps` against the trace before believing them: analyzer artefacts
+produce identical steps.

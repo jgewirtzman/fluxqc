@@ -1,0 +1,245 @@
+---
+title: "From raw trace to reported flux"
+author: "Jonathan Gewirtzman"
+date: "`r Sys.Date()`"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{From raw trace to reported flux}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 4.5)
+options(digits = 6, width = 90)
+```
+
+This vignette walks one real chamber closure through every step between the
+raw 1 Hz record and the number that would be reported in a table, printing every
+intermediate value. Nothing here is interactive, so the document can be rebuilt
+with `rmarkdown::render()`.
+
+## The closure
+
+`stemflux` ships one closure, `2021-05-18_5086_I_7.0`: a 600 s tree-stem
+measurement at Yale-Myers Forest (Connecticut) with a semi-rigid sleeve chamber
+and an ABB/LGR micro-portable UGGA logging at 1 Hz. The chamber geometry comes
+from the campaign auxfile and is stored by `example_closure()`:
+
+| auxfile column | value | meaning |
+|---|---|---|
+| `Area`  | 4254.121 cm2 | stem surface enclosed |
+| `Vtot`  | 7.082698 L | chamber + tubing + analyzer cell |
+| `Tcham` | 26.02 C | chamber air temperature |
+| `Pcham` | 101.325 kPa | pressure |
+
+The archived trace holds dry mole fractions only (no H2O column), so the flux
+term is computed with `H2O_ppm = 0`, i.e. no water-vapour correction. That is
+the one assumption in this example.
+
+```{r load}
+library(stemflux)
+d <- example_closure(dead.band = 60)
+str(d[, c("UniqueID", "POSIX.time", "t_s", "CO2dry_ppm", "CH4dry_ppb", "flag", "Etime")])
+```
+
+```{r raw-plot, fig.height = 5}
+op <- par(mfrow = c(2, 1), mar = c(3, 4.5, 1.5, 1))
+plot(d$t_s, d$CO2dry_ppm, pch = 16, cex = 0.4, col = ifelse(d$flag == 1, "grey20", "grey70"),
+     xlab = "", ylab = "CO2 (ppm)", main = "raw closure; grey = dead band")
+abline(v = 60, col = "red", lty = 2)
+plot(d$t_s, d$CH4dry_ppb, pch = 16, cex = 0.4, col = ifelse(d$flag == 1, "grey20", "grey70"),
+     xlab = "seconds since closure", ylab = "CH4 (ppb)")
+abline(v = 60, col = "red", lty = 2)
+par(op)
+```
+
+## Step 1: dead band
+
+The first 60 s after closure are discarded (chamber mixing, operator
+disturbance). `example_closure()` already applied this through `flag_window()`;
+the rows with `flag == 1` are what every fit below uses.
+
+```{r deadband}
+n_total <- nrow(d); n_used <- sum(d$flag == 1)
+t_span  <- max(d$Etime[d$flag == 1]) - min(d$Etime[d$flag == 1])
+c(n_total = n_total, n_used = n_used, t_span_s = t_span)
+```
+
+## Step 2: fitted dC/dt
+
+### 2a. Transparent linear fit
+
+```{r lm}
+w <- d[d$flag == 1, ]
+fit_ch4 <- lm(CH4dry_ppb ~ Etime, data = w)
+fit_co2 <- lm(CO2dry_ppm ~ Etime, data = w)
+slope_ch4 <- unname(coef(fit_ch4)[2]); slope_co2 <- unname(coef(fit_co2)[2])
+c(CH4_slope_ppb_per_s = slope_ch4, CH4_r2 = summary(fit_ch4)$r.squared,
+  CH4_slope_SE = summary(fit_ch4)$coefficients[2, 2])
+c(CO2_slope_ppm_per_s = slope_co2, CO2_r2 = summary(fit_co2)$r.squared)
+```
+
+### 2b. goFlux linear and Hutchinson-Mosier fits
+
+`goFlux::goFlux()` fits both the linear model (LM) and the non-linear
+Hutchinson-Mosier model (HM), and `goFlux::best.flux()` picks one using its
+default criteria. goFlux prints a progress bar; it is captured here.
+
+```{r goflux}
+invisible(capture.output({
+  res_ch4 <- suppressWarnings(goFlux::goFlux(d, "CH4dry_ppb"))
+  res_co2 <- suppressWarnings(goFlux::goFlux(d, "CO2dry_ppm"))
+}))
+best_ch4 <- suppressWarnings(goFlux::best.flux(res_ch4))
+best_co2 <- suppressWarnings(goFlux::best.flux(res_co2))
+as.data.frame(best_ch4[, c("LM.slope", "LM.r2", "LM.SE", "HM.slope", "HM.r2", "HM.k",
+                           "model", "quality.check")])
+```
+
+`LM.slope` is the same number as the hand-rolled `lm()` above (`r signif(slope_ch4, 5)` ppb/s).
+
+## Step 3: unit conversion
+
+The gas columns are mole fractions: ppm = umol mol-1, ppb = nmol mol-1. A slope
+in ppb s-1 is therefore already in nmol mol-1 s-1; converting to mol mol-1 s-1
+is a factor of 1e-9.
+
+```{r units}
+slope_ch4_molfrac <- slope_ch4 * 1e-9   # mol mol-1 s-1
+slope_co2_molfrac <- slope_co2 * 1e-6
+c(CH4 = slope_ch4_molfrac, CO2 = slope_co2_molfrac)
+```
+
+## Step 4: V/A and P/RT
+
+```{r geometry}
+Area_m2 <- 4254.121 / 1e4
+Vtot_m3 <- 7.082698 / 1e3
+T_K     <- 26.02 + 273.15
+P_Pa    <- 101.325 * 1e3
+R       <- 8.314
+VA      <- Vtot_m3 / Area_m2          # m
+PRT     <- P_Pa / (R * T_K)           # mol m-3 (molar density of air)
+c(V_over_A_m = VA, P_over_RT_mol_m3 = PRT, product_mol_m2 = VA * PRT)
+```
+
+`flux_term()` is the same product written with goFlux's unit conventions
+(litres, kPa, cm2, Celsius):
+
+```{r fluxterm}
+ft <- flux_term(V_L = 7.082698, P_kPa = 101.325, A_cm2 = 4254.121, T_C = 26.02)
+c(flux_term = ft, goFlux_flux.term = best_ch4$flux.term)
+```
+
+## Step 5: flux
+
+```{r flux}
+flux_ch4_mol   <- slope_ch4_molfrac * VA * PRT        # mol m-2 s-1
+flux_ch4_nmol  <- flux_ch4_mol * 1e9                  # nmol m-2 s-1
+flux_co2_umol  <- slope_co2_molfrac * VA * PRT * 1e6  # umol m-2 s-1
+c(CH4_flux_nmol_m2_s = flux_ch4_nmol, CO2_flux_umol_m2_s = flux_co2_umol)
+# the shortcut used by goFlux: slope in ppb/s times flux.term gives nmol m-2 s-1 directly
+c(shortcut = slope_ch4 * ft, goFlux_LM = best_ch4$LM.flux, goFlux_HM = best_ch4$HM.flux,
+  goFlux_best = best_ch4$best.flux)
+```
+
+## Step 6: per-measurement precision
+
+Instrument noise is estimated from the measurement itself, not the datasheet.
+First differences remove the (linear) flux signal; white noise survives with
+variance 2 sigma^2, so sigma = SD(diff(x)) / sqrt(2).
+
+```{r precision}
+sigma_ch4 <- precision_allan(w$CH4dry_ppb)
+sigma_co2 <- precision_allan(w$CO2dry_ppm)
+c(sigma_CH4_ppb = sigma_ch4, sigma_CO2_ppm = sigma_co2,
+  datasheet_CH4_ppb = 0.9, datasheet_CO2_ppm = 0.35,
+  robust_MAD_CH4_ppb = precision_mad(w$CH4dry_ppb))
+```
+
+This analyzer was about 2.5 times noisier in CH4 than its datasheet claims,
+which is why datasheet precision should not be used for detection limits.
+
+## Step 7: minimum detectable flux by each method
+
+```{r mdf}
+t_used <- max(w$Etime) + 1     # goFlux's t; = nb.obs at 1 Hz
+mdf <- mdf_multi(flux.term = ft, t = t_used,
+                 prec = 0.9,               # manufacturer, for the goFlux method
+                 sigma = sigma_ch4,        # this closure (Christiansen, 2-sigma)
+                 sigma.global = sigma_ch4) # a campaign median would go here (Wassmann)
+t(round(mdf, 6))
+# by hand, Table 2.5 criterion: (2 sigma / t) (V/A) (P/RT)
+c(MDF_2sigma_by_hand = (2 * sigma_ch4 * 1e-9 / t_used) * VA * PRT * 1e9)
+```
+
+All MDFs are in nmol m-2 s-1. The regression standard error of the slope
+(`LM.SE` = `r signif(best_ch4$LM.SE, 3)` nmol m-2 s-1) is far smaller than any of
+them, which is the expected behaviour of these single-sample criteria.
+
+## Step 8: detection flag
+
+`flag_detection()` does steps 6-7 for every row of a `best.flux()` output and
+appends the flags.
+
+```{r flag}
+sig <- precision_by_id(d, "CH4dry_ppb")
+sig
+rep_ch4 <- flag_detection(best_ch4, sigma = sig, prec = 0.9)
+t(as.data.frame(rep_ch4[, c("best.flux", "sigma", "MDF_goflux", "MDF_wass95", "MDF_chr95",
+                            "MDF_2sigma", "below_2sigma", "detected", "det_class", "det_method")]))
+```
+
+## Step 9: quality control
+
+Two physical checks. Is the CO2 tracer positive (the chamber was sealed and
+respiration accumulated)? Did the chamber start near ambient (no carry-over
+contamination)? With one measurement the C0 screen compares the closure to
+itself, so it passes trivially; in a campaign the median is taken over all
+closures.
+
+```{r qc}
+co2_positive <- best_co2$best.flux > 0
+c(CO2_flux_umol_m2_s = best_co2$best.flux, CO2_tracer_positive = co2_positive)
+rep_ch4 <- qc_c0_screen(rep_ch4, k = 1.5)
+rep_ch4[, c("C0", "qc_c0_ratio", "qc_c0_pass")]
+```
+
+## The reported row
+
+```{r report}
+report <- data.frame(
+  UniqueID   = rep_ch4$UniqueID,
+  n_obs      = rep_ch4$nb.obs,
+  model      = rep_ch4$model,
+  CH4_flux_nmol_m2_s = signif(rep_ch4$best.flux, 4),
+  CH4_LM_SE  = signif(rep_ch4$LM.SE, 3),
+  sigma_ppb  = signif(rep_ch4$sigma, 3),
+  MDF_2sigma = signif(rep_ch4$MDF_2sigma, 3),
+  detected   = rep_ch4$detected,
+  class      = rep_ch4$det_class,
+  CO2_flux_umol_m2_s = signif(best_co2$best.flux, 4),
+  CO2_positive = co2_positive,
+  qc_c0_pass = rep_ch4$qc_c0_pass)
+t(report)
+```
+
+## Summary of the numbers
+
+```{r summary, echo = FALSE}
+knitr::kable(data.frame(
+  quantity = c("observations used", "fit span (s)", "CH4 slope (ppb/s)", "CH4 LM r2",
+               "V/A (m)", "P/RT (mol m-3)", "flux.term (mol m-2)",
+               "CH4 flux LM (nmol m-2 s-1)", "CH4 flux HM (nmol m-2 s-1)", "CH4 flux reported",
+               "sigma CH4 (ppb, Allan)", "MDF goFlux (datasheet)", "MDF Wassmann 95%",
+               "MDF Christiansen 95%", "MDF 2-sigma", "detected", "CO2 flux (umol m-2 s-1)"),
+  value = c(n_used, t_span, signif(slope_ch4, 5), signif(summary(fit_ch4)$r.squared, 4),
+            signif(VA, 5), signif(PRT, 5), signif(ft, 5),
+            signif(best_ch4$LM.flux, 5), signif(best_ch4$HM.flux, 5), signif(best_ch4$best.flux, 5),
+            signif(sigma_ch4, 4), signif(mdf$MDF_goflux, 4), signif(mdf$MDF_wass95, 4),
+            signif(mdf$MDF_chr95, 4), signif(mdf$MDF_2sigma, 4), rep_ch4$det_class,
+            signif(best_co2$best.flux, 5))))
+```
