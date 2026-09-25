@@ -9,6 +9,30 @@ flags, toggleable physical QC screens, a one-call pipeline with explicit
 outputs, a `ggplot2 >= 3.5`-safe PDF exporter, import helpers for very large
 LI-7810 files, clock utilities, and an opt-in ebullition add-on.
 
+## Status: staging ground for goFlux
+
+fluxqc is not meant to live for ever as a separate package. Everything in it
+that is general is being folded into goFlux itself, developed as feature
+branches on a local clone of [Qepanna/goFlux](https://github.com/Qepanna/goFlux)
+(each with a `PR_<branch>.md` describing the change) and submitted upstream
+as pull requests. As each one is merged and released, the corresponding
+fluxqc function is retired in favour of the goFlux one:
+
+| goFlux branch | goFlux function(s) | replaces in fluxqc |
+|---|---|---|
+| `feat/empirical-precision-mdf` | `empirical.prec()`, `conf =` in `MDF()`, `goFlux()`, `best.flux()` | `precision_mad()`, `precision_allan()`, `precision_by_id()`, the `wassmann` MDF in `flag_detection()` |
+| `feat/qc-flags` | `qc.flags()`, `co2.tracer()` | `qc_screens()`, `qc_c0_screen()` |
+| `feat/click-peak2-stacked` | `click.peak2(gases = )` | `click_peak2_stacked()` |
+| `feat/import-li7810-dates` | `import.LI7810(dates = )` | `import_li7810_subset()` shim |
+| `fix/crop-meas-aux-obslength` | `crop.meas(max.obs.length = "aux")` | per-closure workaround in `windows_from_table()` |
+| `feat/aqua-diffusive-deebulliated` | `goAquaFlux(diffusion.window = "deebulliated")` | nothing (new capability; `detect_ebullition()` passes it through once released) |
+
+What stays here for now: `process_fluxes()`/`write_outputs()` (the one-call
+pipeline), `mdf_multi()` (method comparison), `flux_pdf()`, `find_clock_offset()`,
+`auto_id_rise()` (rise detection is a different approach from goFlux's
+`autoID()` window construction and does not fit it cleanly), the bundled
+example closures and the rescue tools in `inst/rescue/`.
+
 Everything keeps goFlux's column conventions (`UniqueID`, `start.time`,
 `obs.length`, `Vtot`, `Area`, `Pcham`, `Tcham`, `flag`, `Etime`,
 `start.time_corr`, `flux.term`, `nb.obs`, `MDF`, `prec`, `best.flux`, ...) so
@@ -32,7 +56,7 @@ library(fluxqc)
 
 d <- example_closure()                   # one real UGGA closure (a tree stem) with its clicked window
 
-res <- process_fluxes(d, gastype = "CH4dry_ppb",                  # defaults: mad / wassmann / 0.90
+res <- process_fluxes(d, gastype = "CH4dry_ppb",                  # defaults: mad / wassmann / 0.95
                       qc = list(c0 = TRUE, convex = TRUE, min_window = list(secs = 120)))
 res
 #> fluxqc result: 1 closures, CH4dry_ppb
