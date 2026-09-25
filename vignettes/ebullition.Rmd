@@ -1,0 +1,156 @@
+---
+title: "Ebullition add-on - for flooded stems and aquatic chambers"
+author: "Jonathan Gewirtzman"
+date: "`r Sys.Date()`"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{Ebullition add-on - for flooded stems and aquatic chambers}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 4.5)
+options(digits = 5, width = 95)
+```
+
+Most chamber users (upland soils, upland tree stems) never meet ebullition and
+never need this vignette: the core path of `stemflux`
+(`goFlux -> best.flux -> flag_detection -> qc_screens`, wrapped by
+`process_fluxes()`) does not call any of the code below. Over water, saturated
+peat or flooded stems, bubbles add abrupt step-ups to the smooth diffusive
+rise, and one linear or Hutchinson-Mosier fit through both components gives a
+number that is neither. This add-on is switched on with a single argument,
+`process_fluxes(ebullition = "flag" | "split")`, or used directly through
+`detect_ebullition()`, `split_ebullition()` and `merge_ebullition()`.
+
+## A synthetic closure with two bubbles
+
+We start from the real example closure and inject two step changes into the
+CH4 trace (a 60 ppb bubble at 200 s and a 120 ppb bubble at 420 s), keeping a
+copy without bubbles for comparison.
+
+```{r make}
+library(stemflux)
+clean <- example_closure(dead.band = 60)
+bub <- clean; bub$UniqueID <- "flooded_stem"
+bub$CH4dry_ppb[bub$t_s >= 200] <- bub$CH4dry_ppb[bub$t_s >= 200] + 60
+bub$CH4dry_ppb[bub$t_s >= 420] <- bub$CH4dry_ppb[bub$t_s >= 420] + 120
+both <- rbind(clean, bub)
+plot(bub$t_s, bub$CH4dry_ppb, pch = 16, cex = 0.4, col = ifelse(bub$flag == 1, "grey20", "grey70"),
+     xlab = "seconds since closure", ylab = "CH4 (ppb)", main = "diffusive rise with two injected bubbles")
+```
+
+## Step 1: detect events
+
+`detect_ebullition()` works on the flagged rows of each `UniqueID`. The
+default method follows Hoffmann et al. (2017): the point-to-point changes are
+compared with quartile fences `Q3 + k * IQR`; stemflux's default `k = 3` keeps
+Gaussian noise below the fence on 600-point closures (`k = 0.25` reproduces
+Hoffmann's own fences, which were used to select fitting windows rather than
+to sum bubbles).
+
+```{r detect}
+eb <- detect_ebullition(both, "CH4dry_ppb", method = "iqr")
+eb$summary[, c("UniqueID", "n_points", "n_events", "total_ebullitive", "total_rise",
+               "ebullitive_fraction", "threshold_used")]
+eb$events
+```
+
+Two alternatives are available: `method = "threshold"` (a fixed jump size in
+gas units, the criterion used in the BlueFlux processing) and
+`method = "runvar"` (running variance of the changes above a cutoff, after the
+description of So et al. 2024).
+
+```{r alt}
+detect_ebullition(both, "CH4dry_ppb", method = "threshold", jump.thresh = 40)$summary$n_events
+detect_ebullition(both, "CH4dry_ppb", method = "runvar", runvar_window = 5, runvar_cutoff = 30)$summary$n_events
+```
+
+## Step 2: split into a de-ebulliated goFlux input and an ebullitive flux
+
+```{r split}
+sp <- split_ebullition(eb)
+sp$ebullitive
+plot(sp$diffusive$Etime, sp$diffusive$CH4dry_ppb_raw, pch = 16, cex = 0.4, col = "grey70",
+     xlab = "Etime (s)", ylab = "CH4 (ppb)", main = "raw (grey) and de-ebulliated (black; red = buffer, flag 0)")
+points(sp$diffusive$Etime, sp$diffusive$CH4dry_ppb, pch = 16, cex = 0.4,
+       col = ifelse(sp$diffusive$flag == 1, "black", "red"))
+```
+
+`sp$diffusive` has goFlux's shape: the gas column now holds the de-ebulliated
+trace, the raw values are kept in `CH4dry_ppb_raw`, and the equilibration
+buffer around each event has `flag = 0`, so goFlux ignores it.
+
+## Step 3: diffusive term with goFlux, then merge
+
+```{r goflux}
+invisible(capture.output({
+  diff_res <- suppressWarnings(goFlux::goFlux(sp$diffusive, "CH4dry_ppb"))
+}))
+diff_best <- suppressWarnings(goFlux::best.flux(diff_res))
+out <- merge_ebullition(diff_best, sp$ebullitive)
+out[, c("UniqueID", "best.flux", "model", "flux_ebullitive", "flux_total", "n_events", "ebullitive_fraction")]
+```
+
+The diffusive term of the bubbly closure recovers the clean closure's flux
+(same underlying trace), and the ebullitive term is the summed bubble mass
+(180 ppb) divided by the closure duration, converted with the same
+`flux.term`.
+
+## The same through `process_fluxes()`
+
+The add-on is an option of the pipeline, not a separate path. `"flag"` fits
+the whole trace but records the events; `"split"` fits the diffusive term on
+the de-ebulliated trace. Per-closure control comes from `ebullition_ids` or a
+logical `ebullition` column in the auxfile, so flooded stems can be split
+while upland stems in the same call run the core path.
+
+```{r process}
+aux <- data.frame(UniqueID = c("2021-05-18_5086_I_7.0", "flooded_stem"), ebullition = c(FALSE, TRUE))
+res <- suppressWarnings(process_fluxes(both, aux = aux, gastype = "CH4dry_ppb",
+                       precision = "allan", mdf = "christiansen", conf = 0.95,
+                       qc = list(c0 = TRUE, convex = TRUE),
+                       ebullition = "split", ebullition_method = "iqr"))
+res
+res$fluxes[, c("UniqueID", "ebullition_handling", "flux_diffusive", "flux_ebullitive", "flux_total",
+               "n_ebullition_events", "MDF", "det_class")]
+res$events
+```
+
+`write_outputs(res, dir)` then adds `ebullition_events.csv` next to
+`fluxes.csv` and `settings.json`, and `settings.json` records
+`ebullition`, `ebullition_method`, `ebullition_ids` and `ebullition_args`.
+
+## How other packages handle ebullition
+
+Checked in September 2026 from the sources or manuals named; "not verified"
+marks claims that could not be checked.
+
+| tool | ebullition / piecewise handling | verified from |
+|---|---|---|
+| goFlux 0.2.0 | none: one LM and one HM fit per closure, no mention of ebullition in the source tree | source snapshot |
+| Hoffmann et al. 2017 (AMT 10:109-118), R script on Zenodo record 53168 | quartile fences `Q1 - 0.25 IQR`, `Q3 + 0.25 IQR` on the point-to-point changes; a moving-window linear fit is accepted only when all its changes lie inside the fences; diffusion from accepted windows, ebullition from the rest | script lines 365-366, 457-458 |
+| `fluxCH4` (github.com/mthayne527/fluxCH4; standalone scripts) | GAM per id (diffusive if R2 > 0.99), otherwise GBMs via `dismo::gbm.step`; smoothed residuals, dynamic threshold (SD x multiplier) and a concentration-difference quantile test flag points; flagged points grouped into sequences (5-point buffer, minimum length) = events; floating chambers | README |
+| So et al. 2024 (JGR-B, doi:10.1029/2024JG008035) | running variance above a user cutoff (about 0.5) defines event periods | the published description as relayed by the package author; code not verified |
+| CRAN `flux` 0.3-0.1 (Jurasinski et al.; archived 2026-04-15) | `flux.odae()` fits all sub-models from n down to `min.allowed` points and keeps the best by nRMSE, i.e. it *excludes* rapid fluctuations/outliers to find stable linear conditions; nothing is quantified as ebullition | `flux.Rd` |
+| `gasfluxes` 0.7-2 | linear, robust linear (MASS), HMR, NDFE; no ebullition or piecewise handling mentioned | CRAN manual |
+| `HMR` 1.0.5 | prefiltering test classifies a series as 'Noise'; no ebullition handling | CRAN manual |
+| `fluxfinder` 1.2.2 (Wilson et al. 2024, doi:10.1029/2024JG008208) | `ffi_fit_models()`, `ffi_hm()`, `ffi_qaqc()`; no ebullition or piecewise handling mentioned | CRAN manual |
+| `RespChamberProc` (GitHub) | `changepoint`/`segmented` used to find the initial lag (breakpoint) of a closure, not ebullition | `R/fluxEstimates.R` |
+| `FluxCalR` | no ebullition mention in the README; full source not inspected (not verified further) | README |
+
+None of these packages is a dependency of stemflux; the survey is
+documentation only.
+
+## Limitations
+
+All three detectors are local tests. Slow bubble trains that raise the
+concentration over many samples are missed by `"iqr"` and `"threshold"`;
+analyzer artefacts (pressure transients, breaths on an inlet, valve switches)
+look exactly like bubbles; and the ebullitive rate assumes the bubbles caught
+in a 5-10 min closure represent the sampling period, which for episodic
+ebullition is rarely true. Review `events` against the traces before
+reporting, as was done by hand in the source campaign.
