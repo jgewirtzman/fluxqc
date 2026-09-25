@@ -38,7 +38,7 @@ the path of the subset file (fallback path only).}
 
 \item{chunk.size}{lines per chunk for the R fallback.}
 
-\item{...}{arguments passed to \code{\link[goFlux:LI7810_import]{goFlux::import.LI7810()}} (\code{date.format},
+\item{...}{arguments passed to \code{\link[goFlux:import.LI7810]{goFlux::import.LI7810()}} (\code{date.format},
 \code{timezone}, \code{prec}, \code{keep_all}, ...).}
 }
 \value{
@@ -48,7 +48,7 @@ fallback path), or the subset file path when \code{import = FALSE}.
 \description{
 LI-COR LI-7810 analyzers write one continuous tab-delimited \code{.data} file
 that can grow to hundreds of megabytes over a campaign; reading all of it
-into R with \code{\link[goFlux:LI7810_import]{goFlux::import.LI7810()}} is slow and memory-hungry when only a
+into R with \code{\link[goFlux:import.LI7810]{goFlux::import.LI7810()}} is slow and memory-hungry when only a
 few field days are needed.
 }
 \details{

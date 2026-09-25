@@ -20,7 +20,7 @@ goFlux is on GitHub, not CRAN, so install it first.
 
 ```r
 # install.packages("remotes")
-remotes::install_github("Qepanna/goFlux")
+remotes::install_github("Qepanna/goFlux")   # >= 0.4.0
 remotes::install_github("jongewirtzman/fluxqc", build_vignettes = TRUE)
 ```
 
@@ -123,7 +123,7 @@ core sources for gas-column and file-format literals.
 | **Core path** | `process_fluxes()`, `write_outputs()` | `goFlux()` + `best.flux()` |
 | Manual window selection, any gases stacked on one time axis | `click_peak2_stacked(gases = ...)` | `click.peak2()` |
 | Non-interactive window from the sustained CO2 rise, notebook fallback, diagnostic PNG per closure | `auto_id_rise()`, `find_rise()` | `autoID()` (LI-8200 only) / `click.peak2()` |
-| manID from a table of explicit start/end times | `windows_from_table()`, `flag_window()` | `click.peak2()` |
+| manID from a table of explicit start/end times (wrapper over `crop.meas()`) | `windows_from_table()`, `flag_window()` | `crop.meas()`, `auto.deadband()` (goFlux >= 0.4.0) |
 | Per-measurement precision, first-differenced (Allan, tau = 1 s) | `precision_allan()`, `precision_by_id()` | `prec` argument of `goFlux()` |
 | Robust whole-record precision, MAD(dx)/sqrt(2) | `precision_mad()` | -- |
 | Quietest-window precision scan | `precision_rolling()` | -- |
@@ -134,7 +134,7 @@ core sources for gas-column and file-format literals.
 | Date subset of huge LI-7810 `.data` files (shim: forwards to `import.LI7810(dates=)` once the upstream patch in `inst/upstream/patches/` is merged) | `import_li7810_subset()` | `import.LI7810()` |
 | Recursive per-file import without the `muffleError` wrapper or `getwd()/RData` writes | `import2RData_flat()` | `import2RData()` |
 | Utility: notebook-to-analyzer clock offset by cross-correlating notebook starts with rise onsets | `find_clock_offset()` | -- |
-| **Ebullition add-on (opt-in)**: IQR (Hoffmann 2017) / threshold / running-variance event detection, de-ebulliated goFlux input, ebullitive flux | `detect_ebullition()`, `split_ebullition()`, `merge_ebullition()`; `process_fluxes(ebullition = "flag"|"split")` | -- (goFlux has none) |
+| **Ebullition add-on (opt-in)**: thin adapter over goFlux's bubble detection and diffusion/ebullition partition, appended to the flux table | `detect_ebullition()`; `process_fluxes(ebullition = "flag"|"split")` | `goAquaFlux()` (goFlux >= 0.3.0, C. Minaudo) |
 | Six bundled closures with real geometry (see Data) | `fluxqc_examples()`, `example_closure()` | `manID.UGGA` (example data) |
 | One-off rescue scripts for LGR clock resets and interleaved streams (unexported: `detect_clock_streams()`, `write_stream_files()`, `separate_window_streams()`, `obs_win_deinterleave()`, `click_flux_2d()`) | `system.file("rescue", package = "fluxqc")` | -- |
 

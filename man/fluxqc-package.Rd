@@ -30,7 +30,8 @@ goFlux column: fluxqc only appends.
 
 \describe{
 \item{Window selection}{\code{\link[=click_peak2_stacked]{click_peak2_stacked()}}, \code{\link[=auto_id_rise]{auto_id_rise()}},
-\code{\link[=windows_from_table]{windows_from_table()}}, \code{\link[=flag_window]{flag_window()}}, \code{\link[=find_rise]{find_rise()}}}
+\code{\link[=windows_from_table]{windows_from_table()}} (over \code{\link[goFlux:crop.meas]{goFlux::crop.meas()}}), \code{\link[=flag_window]{flag_window()}},
+\code{\link[=find_rise]{find_rise()}}; see also \code{\link[goFlux:auto.deadband]{goFlux::auto.deadband()}}}
 \item{Empirical precision}{\code{\link[=precision_allan]{precision_allan()}}, \code{\link[=precision_mad]{precision_mad()}},
 \code{\link[=precision_rolling]{precision_rolling()}}, \code{\link[=precision_by_id]{precision_by_id()}}}
 \item{Detection limits}{\code{\link[=flag_detection]{flag_detection()}}, \code{\link[=mdf_multi]{mdf_multi()}}, \code{\link[=flux_term]{flux_term()}}}
@@ -38,8 +39,8 @@ goFlux column: fluxqc only appends.
 \item{Pipeline and outputs}{\code{\link[=process_fluxes]{process_fluxes()}}, \code{\link[=write_outputs]{write_outputs()}}, \code{\link[=flux_pdf]{flux_pdf()}}}
 \item{Import helpers}{\code{\link[=import_li7810_subset]{import_li7810_subset()}}, \code{\link[=import2RData_flat]{import2RData_flat()}}}
 \item{Utility (not on the default path)}{\code{\link[=find_clock_offset]{find_clock_offset()}}}
-\item{Ebullition add-on (opt-in)}{\code{\link[=detect_ebullition]{detect_ebullition()}},
-\code{\link[=split_ebullition]{split_ebullition()}}, \code{\link[=merge_ebullition]{merge_ebullition()}}; \code{vignette("ebullition")}}
+\item{Ebullition add-on (opt-in)}{\code{\link[=detect_ebullition]{detect_ebullition()}}, a thin adapter over
+\code{\link[goFlux:goAquaFlux]{goFlux::goAquaFlux()}} (goFlux >= 0.3.0); \code{vignette("ebullition")}}
 \item{Example data}{\code{\link[=fluxqc_examples]{fluxqc_examples()}}, \code{\link[=example_closure]{example_closure()}}}
 \item{Unexported one-off rescue scripts}{\code{system.file("rescue", package = "fluxqc")}
 (LGR clock-reset detection and interleaved-stream tools)}

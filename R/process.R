@@ -8,12 +8,13 @@
 #' `detected_emp`, `det_class_emp`, `qc_*`). That is all that runs by
 #' default. The ebullition add-on (for water surfaces, saturated soils and
 #' flooded vegetation) is
-#' opt-in through the single `ebullition` switch: `"flag"` fits the whole
-#' trace but detects events and adds `n_ebullition_events` /
-#' `ebullition_flag`; `"split"` fits the diffusive term on the de-ebulliated
-#' trace and adds `flux_diffusive`, `flux_ebullitive`, `flux_total`,
-#' `ebullition_method` (see [detect_ebullition()] and
-#' `vignette("ebullition", "fluxqc")`). `ebullition_ids` (or a logical
+#' opt-in through the single `ebullition` switch, which hands the closures to
+#' goFlux's own partition ([goFlux::goAquaFlux()], C. Minaudo, goFlux >= 0.3.0):
+#' `"flag"` keeps the whole-trace `best.flux` and adds `n_ebullition_events` /
+#' `ebullition_flag`; `"split"` additionally appends goFlux's `flux_diffusive`,
+#' `flux_ebullitive`, `flux_total` (with their SEs), `n_obs_diffusive`,
+#' `first_bubble_time` and `ebullition_method = "goAquaFlux"` (see
+#' [detect_ebullition()] and `vignette("ebullition", "fluxqc")`). `ebullition_ids` (or a logical
 #' `ebullition` column in `aux`) selects the closures that get the add-on; the
 #' rest run the core path.
 #'
@@ -38,18 +39,21 @@
 #'   [qc_screens()], where it decides whether the CO2-tracer screen applies.
 #' @param co2 optional CO2 flux table for the `co2_tracer` screen.
 #' @param ebullition `"none"` (default, core path only), `"flag"` or `"split"`.
-#' @param ebullition_method method passed to [detect_ebullition()] (add-on only).
+#' @param ebullition_method kept for the API; only `"goAquaFlux"` exists since
+#'   goFlux 0.3.0 provides the partition (the former in-package `iqr`,
+#'   `threshold` and `runvar` detectors were removed as duplicates).
 #' @param ebullition_ids optional `UniqueID`s that get the add-on; default all
 #'   (or the `aux$ebullition` column).
-#' @param ebullition_args further arguments to [detect_ebullition()].
+#' @param ebullition_args further arguments to [goFlux::goAquaFlux()] (e.g.
+#'   `bubble.window.size`, `bubble.args = list(k = 4)`).
 #' @param H2O_col water column passed to `goFlux()`; a zero column is added if
 #'   absent.
 #' @param best.flux_args list of arguments to [goFlux::best.flux()].
 #' @param ... further arguments to [goFlux::goFlux()] (e.g. `warn.length`,
 #'   `k.min`).
 #' @return list of class `fluxqc_result` with `fluxes` (one row per
-#'   `UniqueID`), `events` (`NULL` on the core path; one row per ebullition
-#'   event when the add-on ran), `traces` (the concentration data actually
+#'   `UniqueID`), `events` (`NULL` on the core path; goFlux's bubble table,
+#'   one row per event, when the add-on ran), `traces` (the concentration data
 #'   fitted), `gastype` and `settings` (every option used).
 #' @seealso [write_outputs()]
 #' @examples
@@ -65,10 +69,10 @@ process_fluxes <- function(manID_data, aux = NULL, gastype = "CH4dry_ppb",
                                      min_window = TRUE, ambient_start = TRUE, noisy = TRUE),
                            group = NULL, surface = NULL, co2 = NULL,
                            ebullition = c("none", "flag", "split"),
-                           ebullition_method = c("iqr", "threshold", "runvar"),
+                           ebullition_method = "goAquaFlux",
                            ebullition_ids = NULL, ebullition_args = list(),
                            H2O_col = "H2O_ppm", best.flux_args = list(), ...) {
-  ebullition <- match.arg(ebullition); ebullition_method <- match.arg(ebullition_method)
+  ebullition <- match.arg(ebullition); ebullition_method <- "goAquaFlux"
   d <- as.data.frame(manID_data)
   if (!gastype %in% names(d)) stop("column '", gastype, "' not in 'manID_data'")
   if (!"flag" %in% names(d)) stop("'manID_data' needs a 'flag' column (run window selection first)")
@@ -84,8 +88,7 @@ process_fluxes <- function(manID_data, aux = NULL, gastype = "CH4dry_ppb",
               else ids
     eb_ids <- intersect(eb_ids, ids)
     if (length(eb_ids)) {
-      ebres <- apply_ebullition(d, gastype, ebullition, ebullition_method, eb_ids, ebullition_args, H2O_col)
-      fit_data <- ebres$fit_data
+      ebres <- apply_ebullition(d, gastype, eb_ids, ebullition_args, H2O_col)
     }
   }
 

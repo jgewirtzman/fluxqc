@@ -374,9 +374,10 @@ closure.</p>
                                                   -&gt; write_outputs()</code></pre>
 <p>Ebullition (bubbles under floating chambers, from saturated soils or
 flooded vegetation) is an opt-in add-on switched on with
-<code>process_fluxes(ebullition = ...)</code>; see
-<code>vignette(&quot;ebullition&quot;, &quot;fluxqc&quot;)</code>. Users of unsaturated
-surfaces never need it.</p>
+<code>process_fluxes(ebullition = ...)</code>, which hands the closures
+to goFlux’s own <code>goAquaFlux()</code> partition (goFlux &gt;=
+0.3.0); see <code>vignette(&quot;ebullition&quot;, &quot;fluxqc&quot;)</code>. Users of
+unsaturated surfaces never need it.</p>
 <div id="import" class="section level2">
 <h2>1. Import</h2>
 <p>For an LI-7810, subset the campaign-long <code>.data</code> file to
@@ -438,11 +439,14 @@ first (a utility, not part of the default path):</p>
 <span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>                      <span class="at">trim.secs =</span> <span class="dv">30</span>, <span class="at">max.secs =</span> <span class="dv">600</span>, <span class="at">plot.dir =</span> <span class="st">&quot;plots/auto_id&quot;</span>)</span>
 <span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="fu">attr</span>(manID, <span class="st">&quot;log&quot;</span>)          <span class="co"># review; redo any window with (a) or (c)</span></span>
 <span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a></span>
-<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="co"># (c) explicit windows from notebooks / screenshots</span></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="co"># (c) explicit windows from notebooks / screenshots (a wrapper over goFlux::crop.meas())</span></span>
 <span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>win <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">UniqueID =</span> <span class="st">&quot;T26_Base_r1&quot;</span>,</span>
 <span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>                  <span class="at">start =</span> <span class="st">&quot;2026-05-23 10:51:00&quot;</span>, <span class="at">end =</span> <span class="st">&quot;2026-05-23 11:01:30&quot;</span>)</span>
 <span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a>manID_c <span class="ot">&lt;-</span> <span class="fu">windows_from_table</span>(ow, win)</span>
-<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a>manID <span class="ot">&lt;-</span> <span class="fu">rbind</span>(manID[manID<span class="sc">$</span>UniqueID <span class="sc">!=</span> <span class="st">&quot;T26_Base_r1&quot;</span>, ], manID_c)</span></code></pre></div>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a><span class="co"># (d) uniform crop / dead band, or an automatic one, straight from goFlux &gt;= 0.4.0</span></span>
+<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a><span class="co"># manID &lt;- crop.meas(manID, deadband = 30, max.obs.length = 600)</span></span>
+<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a><span class="co"># db &lt;- auto.deadband(manID, &quot;CO2dry_ppm&quot;)   # best dead band per closure by r2</span></span>
+<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a>manID <span class="ot">&lt;-</span> <span class="fu">rbind</span>(manID[manID<span class="sc">$</span>UniqueID <span class="sc">!=</span> <span class="st">&quot;T26_Base_r1&quot;</span>, ], manID_c)</span></code></pre></div>
 </div>
 <div id="flux-detection-limits-and-qc-in-one-call" class="section level2">
 <h2>4. Flux, detection limits and QC in one call</h2>
@@ -713,29 +717,37 @@ does not apply)</td>
 <code>ebullition_flag</code></td>
 <td>fluxqc add-on (added only with
 <code>ebullition = &quot;flag&quot;</code>/<code>&quot;split&quot;</code>)</td>
-<td><code>detect_ebullition()</code></td>
-<td>events per closure</td>
+<td><code>detect_ebullition()</code> over
+<code>goFlux::goAquaFlux()</code></td>
+<td>bubble events per closure</td>
 </tr>
 <tr class="even">
-<td><code>flux_diffusive</code>, <code>flux_ebullitive</code>,
-<code>flux_total</code>, <code>ebullition_method</code></td>
-<td>fluxqc add-on (added only with <code>&quot;split&quot;</code>)</td>
-<td><code>split_ebullition()</code></td>
-<td>diffusive term (= <code>best.flux</code> on the de-ebulliated
-trace), bubble term, sum</td>
+<td><code>flux_diffusive</code>, <code>SE_diffusive</code>,
+<code>n_obs_diffusive</code>, <code>flux_ebullitive</code>,
+<code>SE_ebullitive</code>, <code>flux_total</code>,
+<code>SE_total</code>, <code>first_bubble_time</code>,
+<code>ebullition_method</code></td>
+<td>goFlux <code>goAquaFlux()</code> via the add-on (added only with
+<code>&quot;split&quot;</code>)</td>
+<td><code>goFlux::goAquaFlux()</code></td>
+<td>goFlux’s partition: diffusive term on the pre-bubble window, summed
+bubble steps, total; <code>best.flux</code> itself stays the whole-trace
+fit</td>
 </tr>
 </tbody>
 </table>
-<p><code>events</code> (add-on only): <code>UniqueID</code>,
-<code>POSIX.time</code>, <code>Etime</code>, <code>dC</code> (event
-size, gas units), <code>threshold</code>. <code>settings</code>:
-<code>fluxqc_version</code>, <code>goFlux_version</code>,
-<code>gastype</code>, <code>precision</code>, <code>mdf</code>,
-<code>conf</code>, <code>extra</code>, <code>sigma_global</code>,
-<code>qc</code> (parameters of each screen), <code>group</code>,
-<code>surface</code>, <code>ebullition*</code>,
-<code>goFlux_args</code>, <code>best.flux_args</code>,
-<code>n_closures</code>, <code>date</code>.</p>
+<p><code>events</code> (add-on only): goFlux’s bubble table
+(<code>UniqueID</code>, <code>start</code>, <code>end</code>,
+<code>magnitude</code>, <code>SE</code>, <code>slope</code>,
+<code>n_used</code>, <code>overshoot</code>, <code>tau</code>, …).
+<code>settings</code>: <code>fluxqc_version</code>,
+<code>goFlux_version</code>, <code>gastype</code>,
+<code>precision</code>, <code>mdf</code>, <code>conf</code>,
+<code>extra</code>, <code>sigma_global</code>, <code>qc</code>
+(parameters of each screen), <code>group</code>, <code>surface</code>,
+<code>ebullition*</code>, <code>goFlux_args</code>,
+<code>best.flux_args</code>, <code>n_closures</code>,
+<code>date</code>.</p>
 </div>
 <div id="plots-by-hand" class="section level2">
 <h2>6. Plots by hand</h2>

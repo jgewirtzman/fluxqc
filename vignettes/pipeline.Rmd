@@ -30,8 +30,9 @@ import -> auxfile -> obs.win -> window selection -> process_fluxes()
 
 Ebullition (bubbles under floating chambers, from saturated soils or flooded
 vegetation) is an opt-in add-on switched on with `process_fluxes(ebullition =
-...)`; see `vignette("ebullition", "fluxqc")`. Users of unsaturated surfaces
-never need it.
+...)`, which hands the closures to goFlux's own `goAquaFlux()` partition
+(goFlux >= 0.3.0); see `vignette("ebullition", "fluxqc")`. Users of
+unsaturated surfaces never need it.
 
 ## 1. Import
 
@@ -103,10 +104,13 @@ manID <- auto_id_rise(ow, detect.gas = "CO2dry_ppm", gases = "auto", end.times =
                       trim.secs = 30, max.secs = 600, plot.dir = "plots/auto_id")
 attr(manID, "log")          # review; redo any window with (a) or (c)
 
-# (c) explicit windows from notebooks / screenshots
+# (c) explicit windows from notebooks / screenshots (a wrapper over goFlux::crop.meas())
 win <- data.frame(UniqueID = "T26_Base_r1",
                   start = "2026-05-23 10:51:00", end = "2026-05-23 11:01:30")
 manID_c <- windows_from_table(ow, win)
+# (d) uniform crop / dead band, or an automatic one, straight from goFlux >= 0.4.0
+# manID <- crop.meas(manID, deadband = 30, max.obs.length = 600)
+# db <- auto.deadband(manID, "CO2dry_ppm")   # best dead band per closure by r2
 manID <- rbind(manID[manID$UniqueID != "T26_Base_r1", ], manID_c)
 ```
 
@@ -227,11 +231,11 @@ the latter fails with ggplot2 >= 3.5; it writes the same plots produced by
 | `qc_noisy`, `qc_noisy_sigma`, `qc_noisy_ratio` | fluxqc (added) | `qc_screens()` | closure sigma > k x campaign sigma (disturbed closure?) |
 | `qc_leak`, `qc_leak_apparent_flux` | fluxqc (added) | `qc_screens()` | leak-equivalent flux >= `MDF_emp` |
 | `qc_any`, `qc_note` | fluxqc (added) | `qc_screens()` | any screen fired; which |
-| `ebullition_handling`, `n_ebullition_events`, `ebullition_flag` | fluxqc add-on (added only with `ebullition = "flag"`/`"split"`) | `detect_ebullition()` | events per closure |
-| `flux_diffusive`, `flux_ebullitive`, `flux_total`, `ebullition_method` | fluxqc add-on (added only with `"split"`) | `split_ebullition()` | diffusive term (= `best.flux` on the de-ebulliated trace), bubble term, sum |
+| `ebullition_handling`, `n_ebullition_events`, `ebullition_flag` | fluxqc add-on (added only with `ebullition = "flag"`/`"split"`) | `detect_ebullition()` over `goFlux::goAquaFlux()` | bubble events per closure |
+| `flux_diffusive`, `SE_diffusive`, `n_obs_diffusive`, `flux_ebullitive`, `SE_ebullitive`, `flux_total`, `SE_total`, `first_bubble_time`, `ebullition_method` | goFlux `goAquaFlux()` via the add-on (added only with `"split"`) | `goFlux::goAquaFlux()` | goFlux's partition: diffusive term on the pre-bubble window, summed bubble steps, total; `best.flux` itself stays the whole-trace fit |
 
-`events` (add-on only): `UniqueID`, `POSIX.time`, `Etime`, `dC` (event size,
-gas units), `threshold`. `settings`: `fluxqc_version`, `goFlux_version`,
+`events` (add-on only): goFlux's bubble table (`UniqueID`, `start`, `end`,
+`magnitude`, `SE`, `slope`, `n_used`, `overshoot`, `tau`, ...). `settings`: `fluxqc_version`, `goFlux_version`,
 `gastype`, `precision`, `mdf`, `conf`, `extra`, `sigma_global`, `qc`
 (parameters of each screen), `group`, `surface`, `ebullition*`, `goFlux_args`,
 `best.flux_args`, `n_closures`, `date`.

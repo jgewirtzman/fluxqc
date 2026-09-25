@@ -35,7 +35,18 @@ flag_window <- function(d, start, end) {
 #'
 #' When closure windows are known from notebooks, screenshots or a previous
 #' processing round, this builds the same object [goFlux::click.peak2()] would
-#' produce, without any clicking. Windows are in instrument time.
+#' produce, without any clicking. Windows are in instrument time. Since goFlux
+#' 0.4.0 the cropping itself is done by [goFlux::crop.meas()]: this function
+#' translates each window into a per-`UniqueID` `deadband` (window start minus
+#' the recorded `start.time`) and `max.obs.length` (window end minus
+#' `start.time`), calls `crop.meas()` once per closure with those values
+#' (goFlux 0.4.0's `max.obs.length = "aux"` path errors; see UPSTREAM.md
+#' Issue 6), restores the recorded
+#' `start.time` (crop.meas moves it to the window start and keeps the original
+#' in `cham.close`) and adds the click.peak2 columns `start.time_corr`,
+#' `end.time_corr`, `obs.length_corr`. For a uniform dead band or crop use
+#' `crop.meas()` directly; for an automatic dead band see
+#' [goFlux::auto.deadband()].
 #'
 #' @param ow.list list of data.frames from [goFlux::obs.win()].
 #' @param windows data.frame with columns `UniqueID`, `start` and `end`.
@@ -44,13 +55,15 @@ flag_window <- function(d, start, end) {
 #' @param tz time zone used to parse character `start`/`end`.
 #' @param warn.length windows with fewer flagged observations trigger a warning.
 #' @return data.frame; all windows in `ow.list` whose `UniqueID` appears in
-#'   `windows`, bound together with the click.peak2 columns added. Windows
-#'   without a matching row in `windows` are dropped with a message.
-#' @seealso [flag_window()], [auto_id_rise()], [click_peak2_stacked()]
+#'   `windows`, bound together with the click.peak2 columns added (plus
+#'   crop.meas's `cham.close`, `cham.open`, `deadband`, `max.obs.length`).
+#'   Windows without a matching row in `windows` are dropped with a message.
+#' @seealso [goFlux::crop.meas()], [flag_window()], [auto_id_rise()],
+#'   [click_peak2_stacked()]
 #' @examples
 #' t0 <- as.POSIXct("2024-06-01 10:00:00", tz = "UTC")
-#' ow <- list(data.frame(UniqueID = "A", POSIX.time = t0 + 0:400,
-#'                       CO2dry_ppm = 400 + 0.3 * (0:400)))
+#' ow <- list(data.frame(UniqueID = "A", POSIX.time = t0 + 0:400, start.time = t0,
+#'                       obs.length = 300, CO2dry_ppm = 400 + 0.3 * (0:400)))
 #' win <- data.frame(UniqueID = "A", start = "2024-06-01 10:01:00",
 #'                   end = "2024-06-01 10:05:00")
 #' manID <- windows_from_table(ow, win)
@@ -65,26 +78,46 @@ windows_from_table <- function(ow.list, windows, tz = "UTC", warn.length = 60) {
   if (any(is.na(windows$start) | is.na(windows$end)))
     stop("could not parse some 'start'/'end' values")
   if (any(duplicated(windows$UniqueID))) stop("'windows$UniqueID' must be unique")
+  if (any(windows$end <= windows$start)) stop("'end' must be after 'start'")
   if (is.data.frame(ow.list)) ow.list <- split(ow.list, ow.list$UniqueID)
-
-  out <- vector("list", length(ow.list))
-  for (k in seq_along(ow.list)) {
-    d <- ow.list[[k]]
-    uid <- unique(d$UniqueID)
-    w <- windows[windows$UniqueID == uid, ]
-    if (nrow(w) == 0) { message("No window for ", uid, "; dropped"); next }
-    d2 <- flag_window(d, w$start[1], w$end[1])
-    n <- sum(d2$flag)
-    if (n < warn.length)
-      warning(uid, ": only ", n, " observations in window (< warn.length = ",
-              warn.length, ")", call. = FALSE)
-    out[[k]] <- d2
+  keep <- vapply(ow.list, function(d) unique(d$UniqueID)[1] %in% windows$UniqueID, logical(1))
+  for (uid in vapply(ow.list[!keep], function(d) unique(d$UniqueID)[1], character(1)))
+    message("No window for ", uid, "; dropped")
+  if (!any(keep)) return(data.frame())
+  d <- do.call(rbind, lapply(ow.list[keep], as.data.frame))
+  if (!"start.time" %in% names(d)) stop("'ow.list' elements need a 'start.time' column")
+  if (!"end.time" %in% names(d)) {
+    if (!"obs.length" %in% names(d)) stop("'ow.list' elements need 'end.time' or 'obs.length'")
+    d$end.time <- d$start.time + d$obs.length
   }
-  out <- out[!vapply(out, is.null, logical(1))]
-  if (length(out) == 0) return(data.frame())
-  res <- do.call(rbind, lapply(out, as.data.frame))
-  rownames(res) <- NULL
-  res
+  if (!"Etime" %in% names(d)) d$Etime <- as.numeric(d$POSIX.time - d$start.time, units = "secs")
+  # crop.meas() crops forward from start.time (deadband >= 0); a window that
+  # starts before the recorded start.time is handled by cropping from the
+  # window start instead and restoring the recorded times afterwards.
+  d$.rec_start <- d$start.time; d$.rec_end <- d$end.time
+  w <- windows[match(d$UniqueID, windows$UniqueID), ]
+  d$start.time <- pmin(d$start.time, w$start)
+  d$Etime <- as.numeric(d$POSIX.time - d$start.time, units = "secs")
+  # one crop.meas() call per closure with numeric arguments: in goFlux 0.4.0
+  # the per-UniqueID form max.obs.length = "aux" fails inside crop.meas()
+  # (see inst/upstream/UPSTREAM.md, Issue 6)
+  out <- do.call(rbind, lapply(split(d, d$UniqueID), function(x) {
+    w1 <- windows[windows$UniqueID == x$UniqueID[1], ]
+    s0 <- as.numeric(x$start.time[1])
+    as.data.frame(goFlux::crop.meas(x, deadband = as.numeric(w1$start) - s0,
+                                    max.obs.length = as.numeric(w1$end) - s0))
+  }))
+  out$start.time_corr <- out$start.time; out$end.time_corr <- out$end.time
+  out$obs.length_corr <- as.numeric(out$end.time_corr - out$start.time_corr, units = "secs")
+  out$start.time <- out$.rec_start; out$end.time <- out$.rec_end        # keep the recorded closure times
+  out$cham.close <- out$.rec_start; out$cham.open <- out$.rec_end
+  out$.rec_start <- NULL; out$.rec_end <- NULL
+  out$flag <- as.numeric(out$flag)
+  n <- tapply(out$flag, out$UniqueID, sum)
+  for (uid in names(n)[n < warn.length])
+    warning(uid, ": only ", n[[uid]], " observations in window (< warn.length = ", warn.length, ")", call. = FALSE)
+  rownames(out) <- NULL
+  out
 }
 
 #' Find the longest sustained CO2 rise in a trace

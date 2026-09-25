@@ -83,13 +83,11 @@ test_that("the two other analyzer formats run through goFlux", {
   expect_equal(fx["emission_li7810_stem", "best.flux"], 0.653, tolerance = 0.05)
 })
 
-test_that("ebullition_floating carries one real bubble burst", {
+test_that("ebullition_floating carries one real bubble burst (goAquaFlux)", {
   e <- fluxqc_examples("ebullition_floating")$data
-  eb <- detect_ebullition(e, "CH4dry_ppb")
-  expect_equal(eb$summary$n_events, 1)
-  expect_gt(eb$summary$total_ebullitive, 500)
-  expect_equal(eb$summary$n_points, 278)
-  camp <- detect_ebullition(e, "CH4dry_ppb", method = "threshold", jump.thresh = 100, merge.consecutive = FALSE)
-  expect_equal(camp$summary$n_events, 5)
-  expect_equal(camp$summary$total_ebullitive, 676, tolerance = 0.01)
+  invisible(capture.output(eb <- suppressWarnings(detect_ebullition(e, "CH4dry_ppb"))))
+  expect_equal(eb$summary$n_events, 1L)
+  expect_equal(eb$summary$total_ebullitive, 1089, tolerance = 0.02)   # goFlux's settled step, ppb
+  expect_gt(eb$summary$flux_ebullitive, 15)
+  expect_true(eb$events$start < 30)                                    # the burst begins ~42 s; window opens earlier
 })

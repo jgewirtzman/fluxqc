@@ -2,24 +2,9 @@
 % Please edit documentation in R/ebullition.R
 \name{detect_ebullition}
 \alias{detect_ebullition}
-\title{Detect ebullition (bubble) events within chamber closures}
+\title{Detect ebullition (bubble) events and partition fluxes with goFlux}
 \usage{
-detect_ebullition(
-  dataframe,
-  gastype = "CH4dry_ppb",
-  method = c("iqr", "threshold", "runvar"),
-  by = "UniqueID",
-  k = 3,
-  jump.thresh = 100,
-  runvar_window = 5,
-  runvar_cutoff = 0.5,
-  direction = c("up", "both"),
-  buffer.secs = 15,
-  merge.consecutive = TRUE,
-  flag.only = TRUE,
-  scale.by.dt = TRUE,
-  time.col = "POSIX.time"
-)
+detect_ebullition(dataframe, gastype = "CH4dry_ppb", H2O_col = "H2O_ppm", ...)
 }
 \arguments{
 \item{dataframe}{click.peak2-style data.frame (\code{UniqueID}, \code{POSIX.time},
@@ -27,154 +12,73 @@ detect_ebullition(
 
 \item{gastype}{gas column, e.g. \code{"CH4dry_ppb"}.}
 
-\item{method}{\code{"iqr"}, \code{"threshold"} or \code{"runvar"} (see Details).}
+\item{H2O_col}{water column passed to \code{goAquaFlux()}; a zero column is
+added if absent.}
 
-\item{by}{grouping column (default \code{"UniqueID"}).}
-
-\item{k}{fence multiplier for \code{"iqr"} (default 3; 1.5 is the conventional
-outlier fence; Hoffmann et al. used 0.25 for window selection).}
-
-\item{jump.thresh}{minimum upward change for \code{"threshold"}, gas units.}
-
-\item{runvar_window, runvar_cutoff}{window (samples) and variance cutoff
-(gas units squared) for \code{"runvar"}.}
-
-\item{direction}{\code{"up"} (default) flags upward changes only; \code{"both"} also
-removes downward outliers from the diffusive fit.}
-
-\item{buffer.secs}{half-width of the equilibration window marked
-\code{near_jump} around each event (excluded from the diffusive fit).}
-
-\item{merge.consecutive}{treat a run of consecutive flagged samples as one
-event (its mass is the summed change, its time the first sample); a
-bubble burst often spans 2-10 samples at 1 Hz. \code{FALSE} reports every
-sample separately, as the BlueFlux campaign script did.}
-
-\item{flag.only}{use only rows with \code{flag == 1} (default).}
-
-\item{scale.by.dt}{scale \code{jump.thresh} by the logging interval.}
-
-\item{time.col}{POSIXct time column.}
+\item{...}{further arguments to \code{\link[goFlux:goAquaFlux]{goFlux::goAquaFlux()}} (e.g.
+\code{bubble.window.size}, \code{bubble.method}, \code{bubble.args = list(k = 4)},
+\code{prec}).}
 }
 \value{
-list of class \code{fluxqc_ebullition} with \code{events} (one row per
-event: \code{UniqueID}, \code{POSIX.time}, \code{Etime}, \code{dC} (jump size, gas units),
-\code{threshold}), \code{trace} (rows used, with \code{dC}, \code{is_jump}, \code{is_outlier},
-\code{cum_jump}, \code{C_deebull}, \code{near_jump}) and \code{summary} (per closure:
-\code{n_points}, \code{duration_sec}, \code{total_rise}, \code{n_events}, \code{total_ebullitive},
-\code{max_jump}, \code{ebullitive_fraction}, \code{threshold_used}, \code{dt}, \code{method}).
+list of class \code{fluxqc_ebullition} with \code{events} (goFlux's bubble
+table: \code{UniqueID}, \code{start}, \code{end} (s since the first \code{Etime}),
+\code{magnitude} (gas units), \code{SE}, \code{slope}, \code{n_used}, \code{overshoot}, \code{tau},
+...; zero rows when nothing was detected), \code{summary} (per closure:
+\code{n_events}, \code{total_ebullitive} (summed magnitude), \code{first_bubble_time},
+\code{flux_diffusive}, \code{flux_ebullitive}, \code{flux_total}, their SEs and
+\code{n_obs_diffusive}, straight from \code{goAquaFlux()$flux_summary}) and
+\code{diffusive} (goFlux's selected diffusive-model row per closure).
 }
 \description{
-Ebullition add-on (opt-in). Over water, saturated soil or flooded
-vegetation, diffusive flux
-produces a smooth concentration rise while bubbles produce abrupt step-ups.
-This function works on a click.peak2-style data frame (several closures,
-one per \code{UniqueID}), uses the flagged rows of each closure, and returns the
-events, the annotated traces and a per-closure summary. Pass the result to
-\code{\link[=split_ebullition]{split_ebullition()}} for a de-ebulliated goFlux input (diffusive term) and
-the ebullitive flux, or let \code{\link[=process_fluxes]{process_fluxes()}} do that with
-\code{ebullition = "flag"} or \code{"split"}.
+Ebullition add-on (opt-in). A thin wrapper around
+\code{\link[goFlux:goAquaFlux]{goFlux::goAquaFlux()}}, which since goFlux 0.3.0 (Camille Minaudo)
+detects bubbling events per closure from the rolling dispersion of the
+concentration series (adaptive median + k x MAD threshold on the rolling
+variance of first differences), estimates each event's step magnitude with
+a local step regression that separates the step from the diffusive trend
+and, by default, from the transient peak and re-equilibration that follow
+a bubble, then fits the diffusive flux with goFlux's own model selection on
+the bubble-free part of the trace and reports the ebullitive flux from the
+summed step magnitudes. Despite its name, \code{goAquaFlux()} needs only
+\code{UniqueID}, \code{Etime}, \code{flag}, the gas column and \code{Vtot}/\code{Area}/\code{Pcham}/
+\code{Tcham} (\code{offset}/\code{Vcham} are used only when \code{Vtot} is absent), so it
+applies to any surface that bubbles: open water, saturated soil, flooded
+vegetation.
 }
 \details{
-\strong{Methods.}
-\describe{
-\item{\code{"iqr"} (default)}{the variable ebullition filter of Hoffmann et al.
-(2017). Their R script (Zenodo record 53168, \code{R-Script-CH4_version_1.0.R},
-lines 365-366 and 457-458, read for this implementation) computes the
-point-to-point changes \eqn{\Delta C} of a closure and the fences
-\eqn{Q_1 - J \cdot IQR} and \eqn{Q_3 + J \cdot IQR} with \code{Jumper} J =
-0.25, and accepts a moving-window linear fit only when every change in
-the window lies inside the fences; the flux is then taken from accepted
-windows. fluxqc applies the same fences per closure and calls a change
-above the upper fence an ebullition event (with \code{direction = "both"}
-changes below the lower fence are also excluded from the diffusive fit,
-but never counted as ebullition mass). Because fluxqc sums the events
-as bubble mass rather than merely selecting windows, it needs a fence
-that Gaussian noise alone does not cross: the conventional \code{k = 1.5}
-fence lies about 3 SD of the differences out and, on a 600-point 1 Hz
-closure, produces roughly one false event per closure from noise
-alone, so the default is the "far out" fence \code{k = 3} (about 4.7 SD,
-~1e-6 per point). Set \code{k = 0.25} to reproduce Hoffmann's fences
-exactly, \code{k = 1.5} for the conventional fence.}
-\item{\code{"threshold"}}{any upward change of at least \code{jump.thresh} (gas
-units; scaled by \code{max(1, dt/5)} when \code{scale.by.dt = TRUE} because
-longer logging intervals accumulate more diffusive change per step);
-the fixed criterion used in the BlueFlux processing.}
-\item{\code{"runvar"}}{running-variance method after Sø et al. (2024, JGR
-Biogeosciences, \doi{10.1029/2024JG008035}): the variance of the
-point-to-point changes in a moving window of \code{runvar_window} samples is
-compared with \code{runvar_cutoff} (gas units squared); contiguous stretches
-above the cutoff are events, and each event's mass is the concentration
-rise across the stretch. Implemented from the published description
-(event = period where running variance exceeds a user cutoff, about
-0.5); the authors' code was not available to verify the exact window
-definition, so treat the defaults as a starting point.}
-}
+\strong{What this function adds} is only the goFlux-style bookkeeping: it
+accepts a click.peak2-style data frame with several closures, forwards it
+to \code{goAquaFlux()}, and returns the pieces in the shape the rest of fluxqc
+uses. The former in-package detectors (a Hoffmann et al. 2017 style IQR
+filter, a fixed threshold and a running-variance method) were removed once
+goFlux provided the partition; they duplicated it with less careful step
+estimation. Hoffmann, M., et al. (2017, Atmos. Meas. Tech. 10, 109-118,
+\doi{10.5194/amt-10-109-2017}) remains the reference for the quartile-fence
+family of filters; \code{goAquaFlux()}'s detector is different (rolling
+dispersion with an adaptive MAD threshold) and should be cited through
+goFlux (Rheault et al. 2024) and its changelog (Minaudo, 2026).
 
-\strong{How other packages handle ebullition} (checked September 2026 from the
-sources or manuals named; "not verified" where a claim could not be
-checked):
-\itemize{
-\item goFlux 0.2.0: none. The source tree contains no ebullition or
-piecewise handling; one LM and one HM fit per closure (verified from the
-source snapshot).
-\item Hoffmann et al. (2017): the IQR filter described above (verified
-from the Zenodo script).
-\item \code{fluxCH4} (github.com/mthayne527/fluxCH4, standalone scripts, not
-a package): fits a GAM per \code{id} (diffusive if R2 > 0.99), otherwise
-trains gradient-boosted models with \code{dismo::gbm.step}, smooths the
-residuals, applies a dynamic threshold (SD x multiplier) and a
-concentration-difference quantile test to flag points, groups flagged
-points into sequences with a 5-point buffer and classifies sequences of
-at least \code{min_ebullition_sequence} as events (verified from its
-README).
-\item CRAN \code{flux} (Jurasinski et al.; archived from CRAN 2026-04-15):
-\code{flux.odae()} fits all sub-models from n down to \code{min.allowed} points
-and keeps the best by nRMSE, i.e. it detects and \emph{excludes} outlying
-concentration values to find stable linear conditions; it quantifies no
-ebullition (verified from the \code{flux.Rd} manual page).
-\item \code{gasfluxes} 0.7-2: manual offers linear, robust linear (MASS),
-HMR and NDFE fits; no ebullition or piecewise handling mentioned
-(verified from the CRAN manual).
-\item \code{HMR} 1.0.5: a prefiltering test classifies a series as 'Noise';
-no ebullition handling (verified from the CRAN manual).
-\item \code{fluxfinder} 1.2.2 (Wilson et al. 2024, \doi{10.1029/2024JG008208}):
-\code{ffi_fit_models()}, \code{ffi_hm()}, \code{ffi_qaqc()}; no ebullition or
-piecewise handling mentioned (verified from the CRAN manual).
-\item \code{RespChamberProc} (GitHub): uses \code{changepoint}/\code{segmented} to detect
-the initial lag (breakpoint) of a closure, not ebullition (verified from
-\code{fluxEstimates.R}).
-\item \code{FluxCalR}: no ebullition mention in its README (verified); the
-full source was not inspected (not verified further).
-}
-
-\strong{Limitations.} All three criteria are local tests: slow bubble trains
-that raise the concentration over many samples are missed by \code{"iqr"} and
-\code{"threshold"}, and analyzer artefacts (pressure transients, breaths on an
-inlet, valve switches) look exactly like bubbles. Review \code{events} against
-the traces before reporting.
+\strong{Limitations inherited from goAquaFlux.} The diffusive flux is fitted on
+the observations \emph{before} the first bubble (the window is restricted, not
+de-ebulliated), so a closure whose first event comes very early leaves too
+few points and \code{flux_diffusive}/\code{flux_total} are \code{NA} while
+\code{flux_ebullition} is still reported; and the ebullitive rate assumes the
+bubbles caught during a short closure represent the sampling period, which
+for episodic ebullition is rarely true.
 }
 \examples{
-d <- example_closure()
-d$CH4dry_ppb[d$t_s >= 300] <- d$CH4dry_ppb[d$t_s >= 300] + 60   # inject one bubble
-eb <- detect_ebullition(d, "CH4dry_ppb")
-eb$summary; eb$events
+ex <- fluxqc_examples(c("ebullition_floating", "emission_stem_semirigid"))
+eb <- detect_ebullition(ex$data, "CH4dry_ppb")
+eb$summary
+eb$events[, c("UniqueID", "start", "end", "magnitude", "SE")]
 }
 \references{
-Hoffmann, M., Schulz-Hanke, M., Garcia Alba, J., Jurisch, N., Hagemann, U.,
-Sachs, T., Sommer, M., & Augustin, J. (2017). A simple calculation algorithm
-to separate high-resolution CH4 flux measurements into ebullition- and
-diffusion-derived components. Atmospheric Measurement Techniques, 10,
-109-118. \doi{10.5194/amt-10-109-2017}. Script: Zenodo record 53168.
-
-So, J. S., et al. (2024). Journal of Geophysical Research: Biogeosciences.
-\doi{10.1029/2024JG008035}
+Rheault, K., Christiansen, J. R., & Larsen, K. S. (2024). goFlux. Journal
+of Open Source Software, 9(96), 6393. \doi{10.21105/joss.06393}
+goFlux 0.3.0-0.4.0 changelog (2026): aquatic flux partitioning (diffusion +
+ebullition) for floating chambers, by Camille Minaudo.
 }
 \seealso{
-\code{\link[=split_ebullition]{split_ebullition()}}, \code{\link[=merge_ebullition]{merge_ebullition()}}, \code{\link[=process_fluxes]{process_fluxes()}}
-
-Other ebullition (add-on): 
-\code{\link{merge_ebullition}()},
-\code{\link{split_ebullition}()}
+\code{\link[goFlux:goAquaFlux]{goFlux::goAquaFlux()}}, \code{\link[goFlux:flux.plot.aqua]{goFlux::flux.plot.aqua()}}, \code{\link[=process_fluxes]{process_fluxes()}}
 }
 \concept{ebullition (add-on)}

@@ -18,7 +18,7 @@ process_fluxes(
   surface = NULL,
   co2 = NULL,
   ebullition = c("none", "flag", "split"),
-  ebullition_method = c("iqr", "threshold", "runvar"),
+  ebullition_method = "goAquaFlux",
   ebullition_ids = NULL,
   ebullition_args = list(),
   H2O_col = "H2O_ppm",
@@ -57,12 +57,15 @@ or the flux table) or one string for the whole set; passed to
 
 \item{ebullition}{\code{"none"} (default, core path only), \code{"flag"} or \code{"split"}.}
 
-\item{ebullition_method}{method passed to \code{\link[=detect_ebullition]{detect_ebullition()}} (add-on only).}
+\item{ebullition_method}{kept for the API; only \code{"goAquaFlux"} exists since
+goFlux 0.3.0 provides the partition (the former in-package \code{iqr},
+\code{threshold} and \code{runvar} detectors were removed as duplicates).}
 
 \item{ebullition_ids}{optional \code{UniqueID}s that get the add-on; default all
 (or the \code{aux$ebullition} column).}
 
-\item{ebullition_args}{further arguments to \code{\link[=detect_ebullition]{detect_ebullition()}}.}
+\item{ebullition_args}{further arguments to \code{\link[goFlux:goAquaFlux]{goFlux::goAquaFlux()}} (e.g.
+\code{bubble.window.size}, \code{bubble.args = list(k = 4)}).}
 
 \item{H2O_col}{water column passed to \code{goFlux()}; a zero column is added if
 absent.}
@@ -74,8 +77,8 @@ absent.}
 }
 \value{
 list of class \code{fluxqc_result} with \code{fluxes} (one row per
-\code{UniqueID}), \code{events} (\code{NULL} on the core path; one row per ebullition
-event when the add-on ran), \code{traces} (the concentration data actually
+\code{UniqueID}), \code{events} (\code{NULL} on the core path; goFlux's bubble table,
+one row per event, when the add-on ran), \code{traces} (the concentration data
 fitted), \code{gastype} and \code{settings} (every option used).
 }
 \description{
@@ -87,12 +90,13 @@ exactly as \code{best.flux()} produced them; fluxqc only appends columns
 \code{detected_emp}, \code{det_class_emp}, \verb{qc_*}). That is all that runs by
 default. The ebullition add-on (for water surfaces, saturated soils and
 flooded vegetation) is
-opt-in through the single \code{ebullition} switch: \code{"flag"} fits the whole
-trace but detects events and adds \code{n_ebullition_events} /
-\code{ebullition_flag}; \code{"split"} fits the diffusive term on the de-ebulliated
-trace and adds \code{flux_diffusive}, \code{flux_ebullitive}, \code{flux_total},
-\code{ebullition_method} (see \code{\link[=detect_ebullition]{detect_ebullition()}} and
-\code{vignette("ebullition", "fluxqc")}). \code{ebullition_ids} (or a logical
+opt-in through the single \code{ebullition} switch, which hands the closures to
+goFlux's own partition (\code{\link[goFlux:goAquaFlux]{goFlux::goAquaFlux()}}, C. Minaudo, goFlux >= 0.3.0):
+\code{"flag"} keeps the whole-trace \code{best.flux} and adds \code{n_ebullition_events} /
+\code{ebullition_flag}; \code{"split"} additionally appends goFlux's \code{flux_diffusive},
+\code{flux_ebullitive}, \code{flux_total} (with their SEs), \code{n_obs_diffusive},
+\code{first_bubble_time} and \code{ebullition_method = "goAquaFlux"} (see
+\code{\link[=detect_ebullition]{detect_ebullition()}} and \code{vignette("ebullition", "fluxqc")}). \code{ebullition_ids} (or a logical
 \code{ebullition} column in \code{aux}) selects the closures that get the add-on; the
 rest run the core path.
 }

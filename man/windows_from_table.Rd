@@ -19,23 +19,36 @@ windows_from_table(ow.list, windows, tz = "UTC", warn.length = 60)
 }
 \value{
 data.frame; all windows in \code{ow.list} whose \code{UniqueID} appears in
-\code{windows}, bound together with the click.peak2 columns added. Windows
-without a matching row in \code{windows} are dropped with a message.
+\code{windows}, bound together with the click.peak2 columns added (plus
+crop.meas's \code{cham.close}, \code{cham.open}, \code{deadband}, \code{max.obs.length}).
+Windows without a matching row in \code{windows} are dropped with a message.
 }
 \description{
 When closure windows are known from notebooks, screenshots or a previous
 processing round, this builds the same object \code{\link[goFlux:click.peak2]{goFlux::click.peak2()}} would
-produce, without any clicking. Windows are in instrument time.
+produce, without any clicking. Windows are in instrument time. Since goFlux
+0.4.0 the cropping itself is done by \code{\link[goFlux:crop.meas]{goFlux::crop.meas()}}: this function
+translates each window into a per-\code{UniqueID} \code{deadband} (window start minus
+the recorded \code{start.time}) and \code{max.obs.length} (window end minus
+\code{start.time}), calls \code{crop.meas()} once per closure with those values
+(goFlux 0.4.0's \code{max.obs.length = "aux"} path errors; see UPSTREAM.md
+Issue 6), restores the recorded
+\code{start.time} (crop.meas moves it to the window start and keeps the original
+in \code{cham.close}) and adds the click.peak2 columns \code{start.time_corr},
+\code{end.time_corr}, \code{obs.length_corr}. For a uniform dead band or crop use
+\code{crop.meas()} directly; for an automatic dead band see
+\code{\link[goFlux:auto.deadband]{goFlux::auto.deadband()}}.
 }
 \examples{
 t0 <- as.POSIXct("2024-06-01 10:00:00", tz = "UTC")
-ow <- list(data.frame(UniqueID = "A", POSIX.time = t0 + 0:400,
-                      CO2dry_ppm = 400 + 0.3 * (0:400)))
+ow <- list(data.frame(UniqueID = "A", POSIX.time = t0 + 0:400, start.time = t0,
+                      obs.length = 300, CO2dry_ppm = 400 + 0.3 * (0:400)))
 win <- data.frame(UniqueID = "A", start = "2024-06-01 10:01:00",
                   end = "2024-06-01 10:05:00")
 manID <- windows_from_table(ow, win)
 sum(manID$flag); unique(manID$obs.length_corr)
 }
 \seealso{
-\code{\link[=flag_window]{flag_window()}}, \code{\link[=auto_id_rise]{auto_id_rise()}}, \code{\link[=click_peak2_stacked]{click_peak2_stacked()}}
+\code{\link[goFlux:crop.meas]{goFlux::crop.meas()}}, \code{\link[=flag_window]{flag_window()}}, \code{\link[=auto_id_rise]{auto_id_rise()}},
+\code{\link[=click_peak2_stacked]{click_peak2_stacked()}}
 }

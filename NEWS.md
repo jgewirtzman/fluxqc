@@ -1,5 +1,12 @@
 # fluxqc 0.2.0
 
+Now depends on goFlux >= 0.4.0. The ebullition add-on is a thin adapter over
+goFlux's own `goAquaFlux()` (bubble detection with adaptive MAD threshold,
+local step regression, diffusion/ebullition partition; Camille Minaudo, goFlux
+0.3.0-0.4.0): the in-package IQR / threshold / running-variance detectors,
+`split_ebullition()` and `merge_ebullition()` were deleted as duplicates.
+`windows_from_table()` now wraps `goFlux::crop.meas()`.
+
 Revision after author review. Renamed from stemflux: the package targets any
 chamber closure processed with goFlux (soil, water, stems, leaves; diffusive
 or ebullitive); tree stems are one application. `qc_screens(surface =,

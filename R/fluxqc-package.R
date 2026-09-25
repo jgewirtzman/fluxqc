@@ -20,7 +20,8 @@
 #' @section Function map:
 #' \describe{
 #'   \item{Window selection}{[click_peak2_stacked()], [auto_id_rise()],
-#'     [windows_from_table()], [flag_window()], [find_rise()]}
+#'     [windows_from_table()] (over [goFlux::crop.meas()]), [flag_window()],
+#'     [find_rise()]; see also [goFlux::auto.deadband()]}
 #'   \item{Empirical precision}{[precision_allan()], [precision_mad()],
 #'     [precision_rolling()], [precision_by_id()]}
 #'   \item{Detection limits}{[flag_detection()], [mdf_multi()], [flux_term()]}
@@ -28,8 +29,8 @@
 #'   \item{Pipeline and outputs}{[process_fluxes()], [write_outputs()], [flux_pdf()]}
 #'   \item{Import helpers}{[import_li7810_subset()], [import2RData_flat()]}
 #'   \item{Utility (not on the default path)}{[find_clock_offset()]}
-#'   \item{Ebullition add-on (opt-in)}{[detect_ebullition()],
-#'     [split_ebullition()], [merge_ebullition()]; `vignette("ebullition")`}
+#'   \item{Ebullition add-on (opt-in)}{[detect_ebullition()], a thin adapter over
+#'     [goFlux::goAquaFlux()] (goFlux >= 0.3.0); `vignette("ebullition")`}
 #'   \item{Example data}{[fluxqc_examples()], [example_closure()]}
 #'   \item{Unexported one-off rescue scripts}{`system.file("rescue", package = "fluxqc")`
 #'     (LGR clock-reset detection and interleaved-stream tools)}

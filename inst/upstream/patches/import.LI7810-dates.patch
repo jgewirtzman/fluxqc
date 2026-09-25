@@ -1,6 +1,6 @@
---- a/R/import.LI7810.R	2026-01-08 22:44:37
-+++ b/R/import.LI7810.R	2026-09-24 19:26:49
-@@ -15,6 +15,11 @@
+--- a/R/import.LI7810.R	2026-09-24 22:01:55
++++ b/R/import.LI7810.R	2026-09-24 22:04:40
+@@ -16,6 +16,11 @@
  #'                 POSIXct format. Default is "UTC". Note about time zone: it is
  #'                 recommended to use the time zone "UTC" to avoid any issue
  #'                 related to summer time and winter time changes.
@@ -12,7 +12,7 @@
  #' @param save logical; if \code{save = TRUE}, saves the file as an .RData file
  #'             in a RData folder in the current working directory. If
  #'             \code{save = FALSE}, returns the file in the Console, or load in
-@@ -97,7 +102,8 @@
+@@ -99,7 +104,8 @@
  #' @export
  
  import.LI7810 <- function(inputfile, date.format = "ymd", timezone = "UTC",
@@ -22,7 +22,7 @@
  
    # Check arguments
    if (missing(inputfile)) stop("'inputfile' is required")
-@@ -107,6 +113,7 @@
+@@ -109,6 +115,7 @@
    if (!any(grepl(date.format, c("ymd", "dmy", "mdy")))) {
      stop("'date.format' must be one of the following: 'ymd', 'dmy' or 'mdy'")}
    if (!is.character(timezone)) stop("'timezone' must be of class character")
@@ -30,15 +30,15 @@
    if (save != TRUE & save != FALSE) stop("'save' must be TRUE or FALSE")
    if (keep_all != TRUE & keep_all != FALSE) stop("'keep_all' must be TRUE or FALSE")
    if(is.null(prec)) stop("'prec' is required") else{
-@@ -134,8 +141,23 @@
+@@ -136,8 +143,23 @@
      # Find how many rows need to be skipped
      skip.rows <- as.numeric(which(try.import == "DATAH", arr.ind = TRUE)[1])
  
 -    # Import raw data file from LI7810 (.data or .txt)
 -    data.raw <- read.delim(inputfile, skip = skip.rows) %>%
 +    # Import raw data file from LI7810 (.data or .txt).
-+    # With 'dates', stream the file and keep the header plus only the DATA
-+    # rows whose DATE field matches, before any parsing (R only, no awk).
++    # With 'dates', keep the DATAH header row plus only the DATA rows whose
++    # DATE field matches, before any parsing (R only, no awk).
 +    if(!is.null(dates)){
 +      all.lines <- readLines(inputfile, warn = FALSE)
 +      head.line <- all.lines[skip.rows + 1]                 # the DATAH column-name row

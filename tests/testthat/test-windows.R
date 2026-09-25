@@ -26,6 +26,9 @@ test_that("windows_from_table builds a manID and warns on short windows", {
   expect_warning(m <- windows_from_table(ow, win), "only 31")
   expect_equal(sort(unique(m$UniqueID)), c("A", "B"))
   expect_equal(sum(m$flag[m$UniqueID == "A"]), 241)
+  expect_true(all(c("cham.close", "deadband", "max.obs.length") %in% names(m)))   # crop.meas bookkeeping
+  expect_equal(unique(m$start.time[m$UniqueID == "A"]), t0 + 180)                  # recorded start.time restored
+  expect_equal(unique(m$start.time_corr[m$UniqueID == "A"]), t0 + 60)
   expect_true(all(c("flag", "Etime", "start.time_corr", "end.time_corr", "obs.length_corr") %in% names(m)))
   # missing UniqueID is dropped with a message
   expect_message(m2 <- windows_from_table(ow, win[1, ]), "No window for B")

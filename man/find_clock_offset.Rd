@@ -17,7 +17,7 @@ find_clock_offset(
 }
 \arguments{
 \item{traces}{data.frame with \code{POSIX.time} and the \code{gas} column (a whole
-imported record, e.g. from \code{\link[goFlux:LGR_import]{goFlux::import.UGGA()}}).}
+imported record, e.g. from \code{\link[goFlux:import.UGGA]{goFlux::import.UGGA()}}).}
 
 \item{notebook_times}{POSIXct vector of notebook closure start times, or a
 data.frame with a \code{start.time} column (an auxfile).}

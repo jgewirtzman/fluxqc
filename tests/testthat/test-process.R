@@ -40,31 +40,34 @@ test_that("goFlux::flux.plot runs unchanged on process_fluxes()$fluxes", {
   expect_equal(fluxqc:::plot_uid(pl[[1]], 1), fluxqc:::plot_uid(ref[[1]], 1))
 })
 
-test_that("process_fluxes ebullition add-on: flag and split, per-closure control", {
-  d2 <- d; d2$UniqueID <- "bubbly"
-  d2$CH4dry_ppb[d2$t_s >= 300] <- d2$CH4dry_ppb[d2$t_s >= 300] + 60
-  both <- rbind(d, d2)
-  fl <- suppressWarnings(process_fluxes(both, gastype = "CH4dry_ppb", qc = FALSE, ebullition = "flag"))
+test_that("process_fluxes ebullition add-on dispatches to goAquaFlux (flag and split, per-closure control)", {
+  ex <- fluxqc_examples(c("emission_stem_semirigid", "ebullition_floating")); both <- ex$data
+  invisible(capture.output(fl <- suppressWarnings(process_fluxes(both, gastype = "CH4dry_ppb", qc = FALSE, ebullition = "flag"))))
   expect_true(all(c("n_ebullition_events", "ebullition_flag", "ebullition_handling") %in% names(fl$fluxes)))
   expect_false("flux_total" %in% names(fl$fluxes))
-  expect_equal(fl$fluxes$n_ebullition_events[fl$fluxes$UniqueID == "bubbly"], 1)
+  expect_equal(fl$fluxes$n_ebullition_events[fl$fluxes$UniqueID == "ebullition_floating"], 1L)
   expect_equal(nrow(fl$events), 1)
-  aux <- data.frame(UniqueID = c("emission_stem_semirigid", "bubbly"), ebullition = c(FALSE, TRUE))
-  sp <- suppressWarnings(process_fluxes(both, aux = aux, gastype = "CH4dry_ppb", qc = FALSE, ebullition = "split"))
+  expect_true(all(c("start", "end", "magnitude") %in% names(fl$events)))
+  # goFlux columns untouched: best.flux is still the whole-trace fit
+  ref <- suppressWarnings(goFlux::best.flux(suppressWarnings(goFlux::goFlux(both, "CH4dry_ppb"))))
+  expect_equal(fl$fluxes$best.flux[match(ref$UniqueID, fl$fluxes$UniqueID)], ref$best.flux)
+  aux <- data.frame(UniqueID = c("emission_stem_semirigid", "ebullition_floating"), ebullition = c(FALSE, TRUE))
+  invisible(capture.output(sp <- suppressWarnings(process_fluxes(both, aux = aux, gastype = "CH4dry_ppb", qc = FALSE, ebullition = "split"))))
   fx <- sp$fluxes
-  expect_equal(fx$ebullition_handling[match(c("emission_stem_semirigid", "bubbly"), fx$UniqueID)], c("none", "split"))
-  expect_true(all(c("flux_diffusive", "flux_ebullitive", "flux_total", "ebullition_method") %in% names(fx)))
-  b <- fx[fx$UniqueID == "bubbly", ]; o <- fx[fx$UniqueID != "bubbly", ]
-  expect_gt(b$flux_ebullitive, 0); expect_equal(o$flux_ebullitive, 0)
-  expect_equal(fx$flux_total, fx$flux_diffusive + fx$flux_ebullitive)
-  expect_equal(b$flux_diffusive, b$best.flux)              # best.flux itself untouched
-  expect_equal(b$ebullition_method, "iqr"); expect_true(is.na(o$ebullition_method))
-  expect_equal(b$flux_diffusive, o$flux_diffusive, tolerance = 0.1)
-  expect_equal(sp$settings$ebullition_ids, "bubbly")
-  sp2 <- suppressWarnings(process_fluxes(both, gastype = "CH4dry_ppb", qc = FALSE, ebullition = "split",
-                                         ebullition_ids = "bubbly", ebullition_method = "threshold",
-                                         ebullition_args = list(jump.thresh = 30)))
-  expect_equal(sp2$fluxes$ebullition_method[sp2$fluxes$UniqueID == "bubbly"], "threshold")
+  expect_equal(fx$ebullition_handling[match(c("emission_stem_semirigid", "ebullition_floating"), fx$UniqueID)], c("none", "split"))
+  expect_true(all(c("flux_diffusive", "flux_ebullitive", "flux_total", "SE_ebullitive", "n_obs_diffusive",
+                    "first_bubble_time", "ebullition_method") %in% names(fx)))
+  b <- fx[fx$UniqueID == "ebullition_floating", ]; o <- fx[fx$UniqueID != "ebullition_floating", ]
+  expect_gt(b$flux_ebullitive, 15); expect_equal(o$flux_ebullitive, 0)
+  expect_true(is.na(b$flux_diffusive))                    # early burst: goAquaFlux has too few pre-bubble points
+  expect_true(is.na(o$flux_diffusive))                    # not in ebullition_ids: no partition columns
+  expect_equal(b$ebullition_method, "goAquaFlux"); expect_true(is.na(o$ebullition_method))
+  expect_equal(sp$settings$ebullition_ids, "ebullition_floating")
+  invisible(capture.output(sp2 <- suppressWarnings(process_fluxes(both, gastype = "CH4dry_ppb", qc = FALSE, ebullition = "split",
+                                         ebullition_ids = "emission_stem_semirigid"))))
+  s2 <- sp2$fluxes[sp2$fluxes$UniqueID == "emission_stem_semirigid", ]
+  expect_equal(s2$n_ebullition_events, 0L); expect_equal(s2$flux_total, s2$flux_diffusive)
+  expect_equal(s2$flux_diffusive, s2$best.flux, tolerance = 0.01)
 })
 
 test_that("write_outputs writes the documented files", {
@@ -79,8 +82,8 @@ test_that("write_outputs writes the documented files", {
   expect_true(any(grepl("\"mdf\": \"wassmann\"", js)))
   if (requireNamespace("ggplot2", quietly = TRUE)) expect_true(file.exists(file.path(dir, "flux_plots.pdf")))
   expect_equal(nrow(read.csv(file.path(dir, "fluxes.csv"))), 1)
-  d2 <- d; d2$CH4dry_ppb[d2$t_s >= 300] <- d2$CH4dry_ppb[d2$t_s >= 300] + 60
-  r2 <- suppressWarnings(process_fluxes(d2, gastype = "CH4dry_ppb", qc = FALSE, ebullition = "split"))
+  d2 <- fluxqc_examples("ebullition_floating")$data
+  invisible(capture.output(r2 <- suppressWarnings(process_fluxes(d2, gastype = "CH4dry_ppb", qc = FALSE, ebullition = "split"))))
   p2 <- write_outputs(r2, tempfile("out2_"), plots = FALSE)
   expect_true(file.exists(p2["events"]))
   expect_equal(nrow(read.csv(p2["events"])), 1)
