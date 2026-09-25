@@ -10,7 +10,7 @@ flag_detection(
   gastype = NULL,
   precision = "mad",
   mdf = "wassmann",
-  conf = 0.9,
+  conf = 0.95,
   group = NULL,
   extra = NULL,
   sigma = NULL,
@@ -73,18 +73,20 @@ Adds exactly four columns to a \code{\link[goFlux:best.flux]{goFlux::best.flux()
 \code{\link[goFlux:goFlux]{goFlux::goFlux()}}) table: \code{sigma_emp} (the precision by the chosen
 estimator), \code{MDF_emp} (the minimum detectable flux by the chosen method),
 \code{below_MDF_emp} (logical) and \code{MDF_emp_method} (a string such as
-\code{"wassmann | mad | 0.9"}), plus \code{detected_emp} and \code{det_class_emp}
+\code{"wassmann | mad | 0.95"}), plus \code{detected_emp} and \code{det_class_emp}
 (\code{"emission"}, \code{"uptake"}, \code{"below detection"}). goFlux's own columns
 (\code{MDF}, \code{prec}, \code{best.flux}, \code{quality.check}, ...) are never modified or
 duplicated; stemflux only appends. Nothing is deleted: rows are flagged.
 }
 \details{
-The default is the method of the companion data-processing manuscript
-(\code{mdf_FINAL_precision_and_detection.R}): \eqn{\sigma} = MAD(\eqn{\Delta x})/\eqn{\sqrt 2}
-over the \emph{entire} 1 Hz record of each field period, and
-\eqn{\mathrm{MDF} = z \, \sigma / t \cdot \mathrm{flux.term}} with
-\code{z = qnorm(0.95)} = 1.645, which that script labels "90\% confidence"
-(two-sided). Hence \code{precision = "mad"}, \code{mdf = "wassmann"}, \code{conf = 0.90}.
+The default precision and MDF form are those of the companion
+data-processing manuscript (\code{mdf_FINAL_precision_and_detection.R}):
+\eqn{\sigma} = MAD(\eqn{\Delta x})/\eqn{\sqrt 2} over the \emph{entire} 1 Hz record
+of each field period, and \eqn{\mathrm{MDF} = z \, \sigma / t \cdot
+\mathrm{flux.term}}. The stated confidence is 95 percent two-sided,
+\code{z = qnorm(0.975)} = 1.96, i.e. the 2-sigma criterion (the companion
+manuscript used \code{qnorm(0.95)} = 1.645, its "90\% confidence"; that is
+\code{conf = 0.90}). Hence \code{precision = "mad"}, \code{mdf = "wassmann"}, \code{conf = 0.95}.
 This is applied \emph{after} \code{best.flux()}; the \code{prec} argument given to goFlux's
 \verb{import.*()} functions feeds only goFlux's own \code{MDF} column.
 }
@@ -132,7 +134,7 @@ illustration of Table 2.5 of the guidelines paper.}
 (\code{p / t * flux.term}, goFlux citing Christiansen et al. 2015).}
 }
 \code{conf} applies to \code{wassmann} and \code{christiansen} only and is two-sided
-(0.90 -> \code{qnorm(0.95)}).
+(0.95 -> \code{qnorm(0.975)} = 1.96, the 2-sigma criterion; 0.90 -> \code{qnorm(0.95)}).
 }
 
 \section{Extras}{

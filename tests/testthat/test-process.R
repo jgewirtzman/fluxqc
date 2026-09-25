@@ -17,7 +17,7 @@ test_that("process_fluxes core path: appends only, goFlux columns untouched, eve
   expect_true(all(c("sigma_emp", "MDF_emp", "below_MDF_emp", "MDF_emp_method", "detected_emp",
                     "det_class_emp", "qc_c0", "qc_convex", "qc_any") %in% names(fx)))
   expect_false(any(grepl("ebullition|flux_total|flux_ebullitive|MDF_goflux_orig", names(fx))))
-  expect_equal(fx$MDF_emp_method, "wassmann | mad | 0.9")
+  expect_equal(fx$MDF_emp_method, "wassmann | mad | 0.95")
   expect_equal(res$settings$ebullition, "none")
   expect_null(res$settings$extra)
   expect_output(print(res), "stemflux result")

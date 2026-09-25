@@ -25,7 +25,8 @@
 #' @param gastype gas column to process (one gas per call).
 #' @param precision,mdf,conf,extra passed to [flag_detection()]; the defaults are the
 #'   companion manuscript's method (record-wide MAD precision per `group`, Wassmann
-#'   z = qnorm(0.95), labelled 90 percent two-sided).
+#'   precision and the Wassmann form at 95 percent two-sided, z = qnorm(0.975) = 1.96,
+#'   i.e. the 2-sigma criterion).
 #' @param qc list of screens passed to [qc_screens()] (`screens` argument), or
 #'   `FALSE` to skip QC.
 #' @param group,tissue column names (in `aux` or the flux table); `group` defines the
@@ -55,7 +56,7 @@
 #'                "det_class_emp", "qc_any")]
 #' @export
 process_fluxes <- function(manID_data, aux = NULL, gastype = "CH4dry_ppb",
-                           precision = "mad", mdf = "wassmann", conf = 0.90, extra = NULL,
+                           precision = "mad", mdf = "wassmann", conf = 0.95, extra = NULL,
                            qc = list(c0 = TRUE, co2_tracer = TRUE, convex = TRUE,
                                      min_window = TRUE, ambient_start = TRUE),
                            group = NULL, tissue = NULL, co2 = NULL,

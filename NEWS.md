@@ -7,8 +7,9 @@ Revision after author review.
   gained `detect.gas` and `gases` for its diagnostic plots. Replaces the
   `gastype` / `gastype2` arguments.
 * `flag_detection(flux.result, traces, precision = "mad", mdf = "wassmann",
-  conf = 0.90, group = NULL, extra = NULL)` (defaults = the companion
-  manuscript's method: record-wide MAD sigma per group, z = qnorm(0.95);
+  conf = 0.95, group = NULL, extra = NULL)` (defaults = the companion
+  manuscript's precision and MDF form, record-wide MAD sigma per group, at
+  the stated 95 percent two-sided confidence, z = qnorm(0.975) = 1.96 (2 sigma);
   quantiles are two-sided) appends exactly `sigma_emp`,
   `MDF_emp`, `below_MDF_emp`, `MDF_emp_method` (plus `detected_emp`,
   `det_class_emp`). The multi-method comparison (`sigma_<precision>`,

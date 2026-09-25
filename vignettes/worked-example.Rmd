@@ -198,14 +198,15 @@ columns: `sigma_emp`, `MDF_emp`, `below_MDF_emp`, `MDF_emp_method`,
 `detected_emp`, `det_class_emp`. The default is the method of the companion
 data-processing manuscript: sigma = MAD(diff x)/sqrt(2) over the *entire*
 1 Hz record of the field period (here: this closure's whole trace, dead band
-included), and MDF = z sigma / t flux.term with z = qnorm(0.95) = 1.645, which
-that manuscript labels "90% confidence" (two-sided). goFlux's own columns
+included), and MDF = z sigma / t flux.term. The stated confidence is 95%
+two-sided, z = qnorm(0.975) = 1.96, i.e. the 2-sigma criterion (the companion
+manuscript itself used z = qnorm(0.95) = 1.645, its "90% confidence"). goFlux's own columns
 (`MDF`, `prec`, `best.flux`, ...) are left exactly as `best.flux()` produced
 them. Nothing is deleted; rows are flagged.
 
 ```{r flag}
 rep_ch4 <- flag_detection(best_ch4, traces = d, gastype = "CH4dry_ppb",
-                          precision = "mad", mdf = "wassmann", conf = 0.90)   # the defaults, spelled out
+                          precision = "mad", mdf = "wassmann", conf = 0.95)   # the defaults, spelled out
 setdiff(names(rep_ch4), names(best_ch4))
 t(as.data.frame(rep_ch4[, c("MDF", "sigma_emp", "MDF_emp", "MDF_emp_method", "below_MDF_emp",
                             "detected_emp", "det_class_emp")]))
@@ -225,7 +226,7 @@ t(round(as.data.frame(cmp[, mdf_cols]), 6))
 ```
 
 `MDF_goflux_datasheet` reproduces goFlux's own `MDF` column (same formula,
-`t = nb.obs` instead of `max(Etime) + 1`); `MDF_wassmann_mad_90` is the
+`t = nb.obs` instead of `max(Etime) + 1`); `MDF_wassmann_mad_95` is the
 default `MDF_emp`.
 
 ## Choosing precision and MDF
@@ -248,7 +249,7 @@ Each method by its actual formula and origin:
 
 | method | dC_min | origin |
 |---|---|---|
-| `wassmann` (default) | z x sigma_global, z = qnorm(1 - (1 - conf)/2); `conf = 0.90` gives z = qnorm(0.95) = 1.645 | Wassmann et al. (2018), PLoS ONE 13, e0191352; with the record-wide MAD sigma this is the companion manuscript's MDF ("90% confidence" in its wording) |
+| `wassmann` (default) | z x sigma_global, z = qnorm(1 - (1 - conf)/2); `conf = 0.95` gives z = qnorm(0.975) = 1.96, so the default is the 2-sigma criterion | Wassmann et al. (2018), PLoS ONE 13, e0191352; with the record-wide MAD sigma this is the companion manuscript's MDF form (that manuscript used `conf = 0.90`, z = 1.645) |
 | `goflux` | p, the `prec` given at import | goFlux's built-in `MDF()`; goFlux's documentation cites Christiansen et al. (2015) for it |
 | `christiansen` | sigma_i x 3 x t_crit(df = nb.obs - 2), two-sided | as implemented in the author's processing scripts under that name; the factor 3 is those scripts' safety factor and is not attributed here to Christiansen et al. (2015) or Nickerson (2016), whose text was not checked |
 | `two_sigma` | 2 sigma_i | the illustration of Table 2.5 of the guidelines paper |
@@ -328,13 +329,13 @@ knitr::kable(data.frame(
                "CH4 flux LM (nmol m-2 s-1)", "CH4 flux HM (nmol m-2 s-1)", "CH4 flux reported",
                "sigma CH4 (ppb, Allan, flagged rows)", "sigma CH4 (ppb, MAD, whole record) = sigma_emp",
                "MDF goFlux (datasheet, goFlux's own column)",
-               "MDF Wassmann 90% (mad) = MDF_emp", "MDF Christiansen-style 95% (allan)", "MDF 2-sigma (allan)",
+               "MDF Wassmann 95% (mad) = MDF_emp", "MDF Christiansen-style 95% (allan)", "MDF 2-sigma (allan)",
                "reported MDF_emp / method", "detected", "CO2 flux (umol m-2 s-1)"),
   value = c(n_used, t_span, signif(slope_ch4, 5), signif(summary(fit_ch4)$r.squared, 4),
             signif(VA, 5), signif(PRT, 5), signif(ft, 5),
             signif(best_ch4$LM.flux, 5), signif(best_ch4$HM.flux, 5), signif(best_ch4$best.flux, 5),
             signif(sigma_ch4, 4), signif(rep_ch4$sigma_emp, 4), signif(best_ch4$MDF, 4),
-            signif(cmp$MDF_wassmann_mad_90, 4), signif(cmp$MDF_christiansen_allan_95, 4),
+            signif(cmp$MDF_wassmann_mad_95, 4), signif(cmp$MDF_christiansen_allan_95, 4),
             signif(cmp$MDF_two_sigma_allan, 4),
             paste(signif(rep_ch4$MDF_emp, 4), rep_ch4$MDF_emp_method), rep_ch4$det_class_emp,
             signif(best_co2$best.flux, 5))))

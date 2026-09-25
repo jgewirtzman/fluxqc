@@ -96,17 +96,19 @@ mdf_multi <- function(flux.term, t, prec = NULL, sigma = NULL, sigma.global = NU
 #' [goFlux::goFlux()]) table: `sigma_emp` (the precision by the chosen
 #' estimator), `MDF_emp` (the minimum detectable flux by the chosen method),
 #' `below_MDF_emp` (logical) and `MDF_emp_method` (a string such as
-#' `"wassmann | mad | 0.9"`), plus `detected_emp` and `det_class_emp`
+#' `"wassmann | mad | 0.95"`), plus `detected_emp` and `det_class_emp`
 #' (`"emission"`, `"uptake"`, `"below detection"`). goFlux's own columns
 #' (`MDF`, `prec`, `best.flux`, `quality.check`, ...) are never modified or
 #' duplicated; stemflux only appends. Nothing is deleted: rows are flagged.
 #'
-#' The default is the method of the companion data-processing manuscript
-#' (`mdf_FINAL_precision_and_detection.R`): \eqn{\sigma} = MAD(\eqn{\Delta x})/\eqn{\sqrt 2}
-#' over the *entire* 1 Hz record of each field period, and
-#' \eqn{\mathrm{MDF} = z \, \sigma / t \cdot \mathrm{flux.term}} with
-#' `z = qnorm(0.95)` = 1.645, which that script labels "90% confidence"
-#' (two-sided). Hence `precision = "mad"`, `mdf = "wassmann"`, `conf = 0.90`.
+#' The default precision and MDF form are those of the companion
+#' data-processing manuscript (`mdf_FINAL_precision_and_detection.R`):
+#' \eqn{\sigma} = MAD(\eqn{\Delta x})/\eqn{\sqrt 2} over the *entire* 1 Hz record
+#' of each field period, and \eqn{\mathrm{MDF} = z \, \sigma / t \cdot
+#' \mathrm{flux.term}}. The stated confidence is 95 percent two-sided,
+#' `z = qnorm(0.975)` = 1.96, i.e. the 2-sigma criterion (the companion
+#' manuscript used `qnorm(0.95)` = 1.645, its "90% confidence"; that is
+#' `conf = 0.90`). Hence `precision = "mad"`, `mdf = "wassmann"`, `conf = 0.95`.
 #' This is applied *after* `best.flux()`; the `prec` argument given to goFlux's
 #' `import.*()` functions feeds only goFlux's own `MDF` column.
 #'
@@ -151,7 +153,7 @@ mdf_multi <- function(flux.term, t, prec = NULL, sigma = NULL, sigma.global = NU
 #'     (`p / t * flux.term`, goFlux citing Christiansen et al. 2015).}
 #' }
 #' `conf` applies to `wassmann` and `christiansen` only and is two-sided
-#' (0.90 -> `qnorm(0.95)`).
+#' (0.95 -> `qnorm(0.975)` = 1.96, the 2-sigma criterion; 0.90 -> `qnorm(0.95)`).
 #'
 #' @section Extras:
 #' `extra = list(precision = ..., mdf = ..., conf = ...)` (or `extra = "all"`
@@ -211,7 +213,7 @@ mdf_multi <- function(flux.term, t, prec = NULL, sigma = NULL, sigma.global = NU
 #' grep("^MDF_", names(cmp), value = TRUE)
 #' @export
 flag_detection <- function(flux.result, traces = NULL, gastype = NULL,
-                           precision = "mad", mdf = "wassmann", conf = 0.90, group = NULL,
+                           precision = "mad", mdf = "wassmann", conf = 0.95, group = NULL,
                            extra = NULL, sigma = NULL, sigma.global = NULL, t = NULL,
                            flux.col = "best.flux", rolling.window = 30, chr.mult = 3) {
   fr <- as.data.frame(flux.result)

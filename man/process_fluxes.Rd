@@ -10,7 +10,7 @@ process_fluxes(
   gastype = "CH4dry_ppb",
   precision = "mad",
   mdf = "wassmann",
-  conf = 0.9,
+  conf = 0.95,
   extra = NULL,
   qc = list(c0 = TRUE, co2_tracer = TRUE, convex = TRUE, min_window = TRUE, ambient_start
     = TRUE),
@@ -39,7 +39,8 @@ screens, which are merged into the flux table by \code{UniqueID}.}
 
 \item{precision, mdf, conf, extra}{passed to \code{\link[=flag_detection]{flag_detection()}}; the defaults are the
 companion manuscript's method (record-wide MAD precision per \code{group}, Wassmann
-z = qnorm(0.95), labelled 90 percent two-sided).}
+precision and the Wassmann form at 95 percent two-sided, z = qnorm(0.975) = 1.96,
+i.e. the 2-sigma criterion).}
 
 \item{qc}{list of screens passed to \code{\link[=qc_screens]{qc_screens()}} (\code{screens} argument), or
 \code{FALSE} to skip QC.}

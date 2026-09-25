@@ -35,10 +35,10 @@ res <- process_fluxes(d, gastype = "CH4dry_ppb",                  # defaults: ma
                       qc = list(c0 = TRUE, convex = TRUE, min_window = list(secs = 120)))
 res
 #> stemflux result: 1 closures, CH4dry_ppb
-#>   MDF_emp: wassmann | mad | 0.9 | detected: 1 | qc_any: 0
+#>   MDF_emp: wassmann | mad | 0.95 | detected: 1 | qc_any: 0
 res$fluxes[, c("best.flux", "model", "MDF", "sigma_emp", "MDF_emp", "MDF_emp_method", "det_class_emp", "qc_any")]
-#>   best.flux model        MDF sigma_emp    MDF_emp       MDF_emp_method det_class_emp qc_any
-#> 1  0.255676    HM 0.00113087    2.2094 0.00455604 wassmann | mad | 0.9      emission  FALSE
+#>   best.flux model         MDF sigma_emp    MDF_emp        MDF_emp_method det_class_emp qc_any
+#> 1  0.253722    HM 0.000826   2.2069 0.00378 wassmann | mad | 0.95      emission  FALSE
 write_outputs(res, "results/CH4")        # fluxes.csv, settings.json, flux_plots.pdf
 ```
 
@@ -74,8 +74,9 @@ estimator, one MDF method and one two-sided confidence level and appends
 `sigma_emp`, `MDF_emp`, `below_MDF_emp`, `MDF_emp_method`. The default is the
 companion data-processing manuscript's method: `precision = "mad"` (sigma =
 MAD(dx)/sqrt 2 over the entire 1 Hz record of each field period, `group`),
-`mdf = "wassmann"` (MDF = z sigma / t flux.term) and `conf = 0.90` (z =
-qnorm(0.95) = 1.645, "90% confidence" in that manuscript's wording).
+`mdf = "wassmann"` (MDF = z sigma / t flux.term) and `conf = 0.95` two-sided
+(z = qnorm(0.975) = 1.96, i.e. the 2-sigma criterion; the companion
+manuscript itself used `conf = 0.90`, z = 1.645).
 
 | precision | formula | over |
 |---|---|---|

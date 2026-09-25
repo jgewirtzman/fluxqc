@@ -12,15 +12,15 @@ test_that("mdf_multi reproduces each formula with two-sided quantiles", {
   expect_equal(m$MDF_2sigma, 2 * 2.2 / 540 * ft)
 })
 
-test_that("default = companion manuscript method: record-wide MAD, z = qnorm(0.95)", {
+test_that("default = record-wide MAD, Wassmann form at 95% two-sided (z = 1.96, 2 sigma)", {
   out <- flag_detection(best, traces = d, gastype = "CH4dry_ppb")
   added <- setdiff(names(out), names(best))
   expect_setequal(added, c("sigma_emp", "MDF_emp", "below_MDF_emp", "MDF_emp_method",
                            "detected_emp", "det_class_emp"))
   for (nm in names(best)) expect_identical(out[[nm]], best[[nm]], info = nm)
   expect_equal(out$sigma_emp, precision_mad(d$CH4dry_ppb))          # ALL rows, not just flagged
-  expect_equal(out$MDF_emp, qnorm(0.95) * out$sigma_emp / t * ft)
-  expect_equal(out$MDF_emp_method, "wassmann | mad | 0.9")
+  expect_equal(out$MDF_emp, qnorm(0.975) * out$sigma_emp / t * ft)
+  expect_equal(out$MDF_emp_method, "wassmann | mad | 0.95")
   expect_false(out$below_MDF_emp); expect_equal(out$det_class_emp, "emission")
 })
 
@@ -75,7 +75,7 @@ test_that("extra appends comparison columns with the documented names", {
   expect_true(all(c("MDF_goflux_datasheet", "MDF_wassmann_allan_90", "MDF_christiansen_mad_95",
                     "MDF_two_sigma_allan", "sigma_mad", "sigma_datasheet") %in% names(out)))
   expect_equal(out$MDF_goflux_datasheet, 0.9 / t * ft)
-  expect_equal(out$MDF_wassmann_mad_90, out$MDF_emp)
+  expect_equal(out$MDF_wassmann_mad_95, out$MDF_emp)
   expect_equal(out$MDF_wassmann_datasheet_90, qnorm(0.95) * 0.9 / t * ft)
   expect_equal(out$MDF_christiansen_allan_95, 3 * out$sigma_allan * qt(0.975, t - 2) / t * ft)
   all <- flag_detection(best, traces = d, gastype = "CH4dry_ppb", extra = "all")

@@ -601,25 +601,26 @@ criteria.</p>
 the method of the companion data-processing manuscript: sigma = MAD(diff
 x)/sqrt(2) over the <em>entire</em> 1 Hz record of the field period
 (here: this closure’s whole trace, dead band included), and MDF = z
-sigma / t flux.term with z = qnorm(0.95) = 1.645, which that manuscript
-labels “90% confidence” (two-sided). goFlux’s own columns
-(<code>MDF</code>, <code>prec</code>, <code>best.flux</code>, …) are
-left exactly as <code>best.flux()</code> produced them. Nothing is
-deleted; rows are flagged.</p>
+sigma / t flux.term. The stated confidence is 95% two-sided, z =
+qnorm(0.975) = 1.96, i.e. the 2-sigma criterion (the companion
+manuscript itself used z = qnorm(0.95) = 1.645, its “90% confidence”).
+goFlux’s own columns (<code>MDF</code>, <code>prec</code>,
+<code>best.flux</code>, …) are left exactly as <code>best.flux()</code>
+produced them. Nothing is deleted; rows are flagged.</p>
 <div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a>rep_ch4 <span class="ot">&lt;-</span> <span class="fu">flag_detection</span>(best_ch4, <span class="at">traces =</span> d, <span class="at">gastype =</span> <span class="st">&quot;CH4dry_ppb&quot;</span>,</span>
-<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>                          <span class="at">precision =</span> <span class="st">&quot;mad&quot;</span>, <span class="at">mdf =</span> <span class="st">&quot;wassmann&quot;</span>, <span class="at">conf =</span> <span class="fl">0.90</span>)   <span class="co"># the defaults, spelled out</span></span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>                          <span class="at">precision =</span> <span class="st">&quot;mad&quot;</span>, <span class="at">mdf =</span> <span class="st">&quot;wassmann&quot;</span>, <span class="at">conf =</span> <span class="fl">0.95</span>)   <span class="co"># the defaults, spelled out</span></span>
 <span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a><span class="fu">setdiff</span>(<span class="fu">names</span>(rep_ch4), <span class="fu">names</span>(best_ch4))</span>
 <span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a><span class="co">#&gt; [1] &quot;sigma_emp&quot;      &quot;MDF_emp&quot;        &quot;below_MDF_emp&quot;  &quot;MDF_emp_method&quot; &quot;detected_emp&quot;  </span></span>
 <span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a><span class="co">#&gt; [6] &quot;det_class_emp&quot;</span></span>
 <span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a><span class="fu">t</span>(<span class="fu">as.data.frame</span>(rep_ch4[, <span class="fu">c</span>(<span class="st">&quot;MDF&quot;</span>, <span class="st">&quot;sigma_emp&quot;</span>, <span class="st">&quot;MDF_emp&quot;</span>, <span class="st">&quot;MDF_emp_method&quot;</span>, <span class="st">&quot;below_MDF_emp&quot;</span>,</span>
 <span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a>                            <span class="st">&quot;detected_emp&quot;</span>, <span class="st">&quot;det_class_emp&quot;</span>)]))</span>
-<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a><span class="co">#&gt;                [,1]                  </span></span>
-<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a><span class="co">#&gt; MDF            &quot;0.0007894&quot;           </span></span>
-<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a><span class="co">#&gt; sigma_emp      &quot;2.20679&quot;             </span></span>
-<span id="cb13-11"><a href="#cb13-11" tabindex="-1"></a><span class="co">#&gt; MDF_emp        &quot;0.00316724&quot;          </span></span>
-<span id="cb13-12"><a href="#cb13-12" tabindex="-1"></a><span class="co">#&gt; MDF_emp_method &quot;wassmann | mad | 0.9&quot;</span></span>
-<span id="cb13-13"><a href="#cb13-13" tabindex="-1"></a><span class="co">#&gt; below_MDF_emp  &quot;FALSE&quot;               </span></span>
-<span id="cb13-14"><a href="#cb13-14" tabindex="-1"></a><span class="co">#&gt; detected_emp   &quot;TRUE&quot;                </span></span>
+<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a><span class="co">#&gt;                [,1]                   </span></span>
+<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a><span class="co">#&gt; MDF            &quot;0.0007894&quot;            </span></span>
+<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a><span class="co">#&gt; sigma_emp      &quot;2.20679&quot;              </span></span>
+<span id="cb13-11"><a href="#cb13-11" tabindex="-1"></a><span class="co">#&gt; MDF_emp        &quot;0.003774&quot;             </span></span>
+<span id="cb13-12"><a href="#cb13-12" tabindex="-1"></a><span class="co">#&gt; MDF_emp_method &quot;wassmann | mad | 0.95&quot;</span></span>
+<span id="cb13-13"><a href="#cb13-13" tabindex="-1"></a><span class="co">#&gt; below_MDF_emp  &quot;FALSE&quot;                </span></span>
+<span id="cb13-14"><a href="#cb13-14" tabindex="-1"></a><span class="co">#&gt; detected_emp   &quot;TRUE&quot;                 </span></span>
 <span id="cb13-15"><a href="#cb13-15" tabindex="-1"></a><span class="co">#&gt; det_class_emp  &quot;emission&quot;</span></span></code></pre></div>
 <p>The multi-method comparison of step 7 is available as <em>extra</em>
 columns (<code>sigma_&lt;precision&gt;</code>,
@@ -659,7 +660,7 @@ columns:</p>
 <span id="cb14-31"><a href="#cb14-31" tabindex="-1"></a><span class="co">#&gt; MDF_two_sigma_datasheet       0.001571</span></span></code></pre></div>
 <p><code>MDF_goflux_datasheet</code> reproduces goFlux’s own
 <code>MDF</code> column (same formula, <code>t = nb.obs</code> instead
-of <code>max(Etime) + 1</code>); <code>MDF_wassmann_mad_90</code> is the
+of <code>max(Etime) + 1</code>); <code>MDF_wassmann_mad_95</code> is the
 default <code>MDF_emp</code>.</p>
 </div>
 <div id="choosing-precision-and-mdf" class="section level2">
@@ -739,10 +740,11 @@ windows</td>
 <tr class="odd">
 <td><code>wassmann</code> (default)</td>
 <td>z x sigma_global, z = qnorm(1 - (1 - conf)/2);
-<code>conf = 0.90</code> gives z = qnorm(0.95) = 1.645</td>
+<code>conf = 0.95</code> gives z = qnorm(0.975) = 1.96, so the default
+is the 2-sigma criterion</td>
 <td>Wassmann et al. (2018), PLoS ONE 13, e0191352; with the record-wide
-MAD sigma this is the companion manuscript’s MDF (“90% confidence” in
-its wording)</td>
+MAD sigma this is the companion manuscript’s MDF form (that manuscript
+used <code>conf = 0.90</code>, z = 1.645)</td>
 </tr>
 <tr class="even">
 <td><code>goflux</code></td>
@@ -835,8 +837,8 @@ campaign the median is taken over all closures.</p>
 <span id="cb16-21"><a href="#cb16-21" tabindex="-1"></a><span class="co">#&gt; CH4_LM_SE          &quot;0.000409&quot;             </span></span>
 <span id="cb16-22"><a href="#cb16-22" tabindex="-1"></a><span class="co">#&gt; MDF_goFlux         &quot;0.0007894&quot;            </span></span>
 <span id="cb16-23"><a href="#cb16-23" tabindex="-1"></a><span class="co">#&gt; sigma_emp_ppb      &quot;2.21&quot;                 </span></span>
-<span id="cb16-24"><a href="#cb16-24" tabindex="-1"></a><span class="co">#&gt; MDF_emp            &quot;0.00317&quot;              </span></span>
-<span id="cb16-25"><a href="#cb16-25" tabindex="-1"></a><span class="co">#&gt; MDF_emp_method     &quot;wassmann | mad | 0.9&quot; </span></span>
+<span id="cb16-24"><a href="#cb16-24" tabindex="-1"></a><span class="co">#&gt; MDF_emp            &quot;0.00377&quot;              </span></span>
+<span id="cb16-25"><a href="#cb16-25" tabindex="-1"></a><span class="co">#&gt; MDF_emp_method     &quot;wassmann | mad | 0.95&quot;</span></span>
 <span id="cb16-26"><a href="#cb16-26" tabindex="-1"></a><span class="co">#&gt; detected_emp       &quot;TRUE&quot;                 </span></span>
 <span id="cb16-27"><a href="#cb16-27" tabindex="-1"></a><span class="co">#&gt; class              &quot;emission&quot;             </span></span>
 <span id="cb16-28"><a href="#cb16-28" tabindex="-1"></a><span class="co">#&gt; CO2_flux_umol_m2_s &quot;0.6671&quot;               </span></span>
@@ -848,20 +850,22 @@ campaign the median is taken over all closures.</p>
 <span id="cb17-4"><a href="#cb17-4" tabindex="-1"></a>                       <span class="at">co2 =</span> best_co2))))</span>
 <span id="cb17-5"><a href="#cb17-5" tabindex="-1"></a>res</span>
 <span id="cb17-6"><a href="#cb17-6" tabindex="-1"></a><span class="co">#&gt; stemflux result: 1 closures, CH4dry_ppb </span></span>
-<span id="cb17-7"><a href="#cb17-7" tabindex="-1"></a><span class="co">#&gt;   MDF_emp: wassmann | mad | 0.9 | detected: 1 | qc_any: 0</span></span>
+<span id="cb17-7"><a href="#cb17-7" tabindex="-1"></a><span class="co">#&gt;   MDF_emp: wassmann | mad | 0.95 | detected: 1 | qc_any: 0</span></span>
 <span id="cb17-8"><a href="#cb17-8" tabindex="-1"></a><span class="fu">c</span>(<span class="at">best.flux =</span> res<span class="sc">$</span>fluxes<span class="sc">$</span>best.flux, <span class="at">MDF_goFlux =</span> res<span class="sc">$</span>fluxes<span class="sc">$</span>MDF, <span class="at">MDF_emp =</span> res<span class="sc">$</span>fluxes<span class="sc">$</span>MDF_emp,</span>
 <span id="cb17-9"><a href="#cb17-9" tabindex="-1"></a>  <span class="at">method =</span> res<span class="sc">$</span>fluxes<span class="sc">$</span>MDF_emp_method)</span>
-<span id="cb17-10"><a href="#cb17-10" tabindex="-1"></a><span class="co">#&gt;              best.flux             MDF_goFlux                MDF_emp                 method </span></span>
-<span id="cb17-11"><a href="#cb17-11" tabindex="-1"></a><span class="co">#&gt;    &quot;0.253722429302093&quot; &quot;0.000789400050832901&quot;  &quot;0.00316724048391095&quot; &quot;wassmann | mad | 0.9&quot;</span></span>
-<span id="cb17-12"><a href="#cb17-12" tabindex="-1"></a><span class="fu">all</span>(<span class="fu">names</span>(best_ch4) <span class="sc">%in%</span> <span class="fu">names</span>(res<span class="sc">$</span>fluxes))   <span class="co"># goFlux columns all present, unchanged</span></span>
-<span id="cb17-13"><a href="#cb17-13" tabindex="-1"></a><span class="co">#&gt; [1] TRUE</span></span></code></pre></div>
+<span id="cb17-10"><a href="#cb17-10" tabindex="-1"></a><span class="co">#&gt;               best.flux              MDF_goFlux                 MDF_emp </span></span>
+<span id="cb17-11"><a href="#cb17-11" tabindex="-1"></a><span class="co">#&gt;     &quot;0.253722429302093&quot;  &quot;0.000789400050832901&quot;   &quot;0.00377399981197587&quot; </span></span>
+<span id="cb17-12"><a href="#cb17-12" tabindex="-1"></a><span class="co">#&gt;                  method </span></span>
+<span id="cb17-13"><a href="#cb17-13" tabindex="-1"></a><span class="co">#&gt; &quot;wassmann | mad | 0.95&quot;</span></span>
+<span id="cb17-14"><a href="#cb17-14" tabindex="-1"></a><span class="fu">all</span>(<span class="fu">names</span>(best_ch4) <span class="sc">%in%</span> <span class="fu">names</span>(res<span class="sc">$</span>fluxes))   <span class="co"># goFlux columns all present, unchanged</span></span>
+<span id="cb17-15"><a href="#cb17-15" tabindex="-1"></a><span class="co">#&gt; [1] TRUE</span></span></code></pre></div>
 </div>
 <div id="summary-of-the-numbers" class="section level2">
 <h2>Summary of the numbers</h2>
 <table>
 <colgroup>
-<col width="54%" />
-<col width="45%" />
+<col width="53%" />
+<col width="46%" />
 </colgroup>
 <thead>
 <tr class="header">
@@ -923,8 +927,8 @@ campaign the median is taken over all closures.</p>
 <td align="left">0.0007894</td>
 </tr>
 <tr class="even">
-<td align="left">MDF Wassmann 90% (mad) = MDF_emp</td>
-<td align="left">0.003167</td>
+<td align="left">MDF Wassmann 95% (mad) = MDF_emp</td>
+<td align="left">0.003774</td>
 </tr>
 <tr class="odd">
 <td align="left">MDF Christiansen-style 95% (allan)</td>
@@ -936,7 +940,7 @@ campaign the median is taken over all closures.</p>
 </tr>
 <tr class="odd">
 <td align="left">reported MDF_emp / method</td>
-<td align="left">0.003167 wassmann | mad | 0.9</td>
+<td align="left">0.003774 wassmann | mad | 0.95</td>
 </tr>
 <tr class="even">
 <td align="left">detected</td>
