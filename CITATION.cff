@@ -1,7 +1,7 @@
 cff-version: 1.2.0
-message: "If you use stemflux, please cite it as below, and cite goFlux (Rheault et al. 2024) for the underlying flux calculation."
+message: "If you use fluxqc, please cite it as below, and cite goFlux (Rheault et al. 2024) for the underlying flux calculation."
 type: software
-title: "stemflux: Window Selection, Empirical Precision and Detection Limits for Chamber Flux Data Processed with goFlux"
+title: "fluxqc: Detection limits, quality screens and ebullition for chamber flux measurements, on top of goFlux"
 version: 0.1.0
 date-released: "2026-09-24"
 authors:
@@ -9,12 +9,15 @@ authors:
     given-names: Jonathan
     email: jongewirtzman@gmail.com
 license: MIT
-repository-code: "https://github.com/jongewirtzman/stemflux"
+repository-code: "https://github.com/jongewirtzman/fluxqc"
 keywords:
   - greenhouse gas
   - chamber flux
   - methane
+  - soil
+  - water
   - tree stem
+  - quality control
   - goFlux
   - minimum detectable flux
   - Allan deviation

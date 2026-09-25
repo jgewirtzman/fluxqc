@@ -1,4 +1,4 @@
-# Contributing stemflux work back to goFlux
+# Contributing fluxqc work back to goFlux
 
 goFlux (Qepanna/goFlux, v0.2.0, GPL-2) is distributed from GitHub, not CRAN:
 its `DESCRIPTION` has no CRAN fields beyond the usual, the `README.md` tells
@@ -6,7 +6,7 @@ users to `remotes::install_github("Qepanna/goFlux")`, and `citation()` points
 to the JOSS paper (doi:10.21105/joss.06393). The mentions of CRAN in the README
 refer to *other* packages (HMR, flux, gasfluxes) that goFlux compares itself
 to. So contributions go through GitHub issues and pull requests, and
-`Remotes: Qepanna/goFlux` in stemflux's `DESCRIPTION` is the right dependency
+`Remotes: Qepanna/goFlux` in fluxqc's `DESCRIPTION` is the right dependency
 declaration.
 
 Maintainer: Karelle Rheault <karh@ign.ku.dk> (cre, aut); co-author Klaus
@@ -60,7 +60,7 @@ if (!all(vapply(plot.list, inherits, logical(1), what = "ggplot")))
   stop("all elements of 'plot.list' must be ggplot objects")
 ```
 
-stemflux's `flux_pdf()` implements this and also reads the `UniqueID` from
+fluxqc's `flux_pdf()` implements this and also reads the `UniqueID` from
 `plot_env` defensively, falling back to the plot index.
 
 ### Issue 2: `import2RData()` writes into `getwd()/RData` and (for some instruments) does not search subfolders
@@ -100,7 +100,7 @@ import2RData(path = system.file("extdata", "LI7810", package = "goFlux"),
 list.files(tmp)      # "RData" appears here, not next to the data
 ```
 
-stemflux's `import2RData_flat()` shows the alternative: recursive search with
+fluxqc's `import2RData_flat()` shows the alternative: recursive search with
 a pattern, zero-byte filtering, per-file import with `save = FALSE`, nothing
 written to disk.
 
@@ -183,10 +183,10 @@ system.time(import.LI7810(big, timezone = "UTC"))
 **Proposed fix:** an optional `dates = NULL` argument; when supplied, either
 (a) pre-filter with `awk`/`grep` when available, or (b) read with
 `data.table::fread(select = ...)` and drop non-matching `DATE` values before
-parsing times. stemflux's `import_li7810_subset()` implements (a) with an R
+parsing times. fluxqc's `import_li7810_subset()` implements (a) with an R
 fallback and then calls `import.LI7810()` on the subset.
 
-### Issue 5 (found while testing stemflux): `import.*()` fail when called with `goFlux::`
+### Issue 5 (found while testing fluxqc): `import.*()` fail when called with `goFlux::`
 
 **Title:** import.LI7810() and siblings error with "the condition has length
 > 1" when called as goFlux::import.LI7810()
@@ -204,7 +204,7 @@ the call `goFlux::import.LI7810`, whose `as.character()` has length 3
 (`"::"`, `"goFlux"`, `"import.LI7810"`), and R >= 4.2 turns the
 length-3 condition into an error. The same happens when the importer is
 passed as a function object to `do.call()`. Only a bare, attached call works.
-Packages that depend on goFlux (like stemflux) cannot use the recommended
+Packages that depend on goFlux (like fluxqc) cannot use the recommended
 `pkg::fun()` style.
 
 **Minimal reproducible example**
@@ -244,7 +244,7 @@ whole modified file. R only, no `awk`. Apply with
 > (verified: `all.equal()` on the bundled `LI7810.data` is `TRUE`). A
 > non-matching `dates` stops with a clear message. Roxygen `@param` added.
 > Tested on the bundled example (330 rows) and on a 163 MB campaign file
-> (six field days out of ~1.5 million rows) through the stemflux shim
+> (six field days out of ~1.5 million rows) through the fluxqc shim
 > `import_li7810_subset()`, which forwards to this argument when present.
 
 Issue 5 (namespace-qualified calls) is a one-line change per importer
@@ -256,24 +256,24 @@ not bundled here to keep the `dates` PR single-purpose. Issue 3
 keep `withCallingHandlers()` for warnings and messages), which is mechanical
 but not small; the sketch in Issue 3 is the intended shape.
 
-## (b) What belongs upstream and what stays in stemflux
+## (b) What belongs upstream and what stays in fluxqc
 
-| stemflux function | Upstream candidate? | Proposal |
+| fluxqc function | Upstream candidate? | Proposal |
 |---|---|---|
 | `click_peak2_stacked()` | **Yes** | `click.peak2(..., gases = NULL)`: when more than one gas is given, draw one `split.screen()` panel per gas sharing the time axis and identify on the top one. Output is unchanged. Small diff, no new dependency. |
 | `precision_allan()`, `precision_by_id()` | **Yes** | A `prec.empirical()` helper (or a `prec = "empirical"` option in `goFlux()`) that fills the `*_prec` columns from `SD(diff(x))/sqrt(2)` of the flagged window, so `MDF` and `flux.plot()` use measured noise. Document that datasheet precision underestimates noise on field-worn analyzers (2.5x on the example closure). |
 | `precision_mad()` | Maybe | Same helper with `method = "mad"`; document as the robust whole-record option. |
-| `flag_detection()`, `mdf_multi()` | **Yes**, partially | `best.flux()` already applies an `MDF` criterion; propose an `MDF.method` argument (`"prec"`, `"two_sigma"`, `"christiansen"`, `"wassmann"`) and a `det_class` column (`emission` / `uptake` / `below detection`). Keep the full precision x method table in stemflux. |
+| `flag_detection()`, `mdf_multi()` | **Yes**, partially | `best.flux()` already applies an `MDF` criterion; propose an `MDF.method` argument (`"prec"`, `"two_sigma"`, `"christiansen"`, `"wassmann"`) and a `det_class` column (`emission` / `uptake` / `below detection`). Keep the full precision x method table in fluxqc. |
 | `flux_pdf()` | **Yes** | Just the `inherits()` fix and the defensive `plot_env` read (Issue 1). |
 | `import2RData_flat()` | **Yes** (as a fix) | Issues 2 and 3; the function itself need not go upstream if `import2RData()` is fixed. |
 | `import_li7810_subset()` | **Yes** (as an argument) | Issue 4. |
-| `auto_id_rise()`, `find_rise()`, `windows_from_table()`, `flag_window()` | Maybe later | goFlux has `autoID()` for LI-8200 only; a generic rise-based window finder could sit beside it. Propose after it has been used on more campaigns; keep in stemflux for now. |
+| `auto_id_rise()`, `find_rise()`, `windows_from_table()`, `flag_window()` | Maybe later | goFlux has `autoID()` for LI-8200 only; a generic rise-based window finder could sit beside it. Propose after it has been used on more campaigns; keep in fluxqc for now. |
 | `qc_screens()`, `qc_c0_screen()` | Stay | Campaign-level QC policy, not a flux-calculation step. |
 | `process_fluxes()`, `write_outputs()` | Stay | Opinionated wrapper around goFlux; goFlux keeps its modular design. |
 | `find_clock_offset()` | Stay | Analyzer-independent utility; could be linked from goFlux's documentation. |
-| Rescue scripts in `inst/rescue/` (`detect_clock_streams()`, `separate_window_streams()`, `obs_win_deinterleave()`, `click_flux_2d()`, `write_stream_files()`) | **No** | One-off tools for a specific data-damage problem; no longer exported from stemflux and not upstream candidates. |
+| Rescue scripts in `inst/rescue/` (`detect_clock_streams()`, `separate_window_streams()`, `obs_win_deinterleave()`, `click_flux_2d()`, `write_stream_files()`) | **No** | One-off tools for a specific data-damage problem; no longer exported from fluxqc and not upstream candidates. |
 | Ebullition add-on (`detect_ebullition()`, `split_ebullition()`, `merge_ebullition()`) | Stay | Out of goFlux's scope (it fits one smooth model per closure, and its source has no ebullition handling); the add-on produces a goFlux-shaped input so no goFlux change is needed. |
-| `stemflux_examples()`, `example_closure()` | Stay (data offer) | goFlux has its own example data; the four Yale-Myers teaching closures could be offered to goFlux as additional example data if wanted. |
+| `fluxqc_examples()`, `example_closure()` | Stay (data offer) | goFlux has its own example data; the four Yale-Myers teaching closures could be offered to goFlux as additional example data if wanted. |
 
 ## (c) Practical steps
 
@@ -298,16 +298,16 @@ but not small; the sketch in Issue 3 is the intended shape.
    test (goFlux has no `tests/` folder yet, so the first PR would add
    `tests/testthat` with a note in the description), and `R CMD check` clean.
    Keep goFlux's coding style (dplyr pipelines, `.` placeholders) even where
-   stemflux uses base R.
+   fluxqc uses base R.
 4. Email Karelle Rheault (karh@ign.ku.dk) once the issues are open:
-   introduce the stem-flux use case (Yale-Myers, Harvard Forest, BlueFlux,
+   introduce the chamber-flux use case (Yale-Myers, Harvard Forest, BlueFlux,
    Santa Fe, BCI campaigns, all processed with goFlux), point to
-   the stemflux repository and the issues, offer the PRs in the order above,
+   the fluxqc repository and the issues, offer the PRs in the order above,
    and propose co-authoring a short package-update note (e.g. a JOSS
    "software update" or a methods note) covering stacked window selection,
    empirical precision and multi-method detection limits, with her as
    corresponding author of the package. Ask which of the feature PRs she
    would want in goFlux versus linked from its documentation.
-5. After merges: bump stemflux to depend on the new goFlux version, remove the
+5. After merges: bump fluxqc to depend on the new goFlux version, remove the
    duplicated functions (`flux_pdf()`, `click_peak2_stacked()`) with
    deprecation wrappers, and update the function map in `README.md`.

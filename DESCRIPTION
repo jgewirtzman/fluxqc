@@ -1,25 +1,26 @@
-Package: stemflux
+Package: fluxqc
 Type: Package
-Title: Window Selection, Empirical Precision and Detection Limits for
-    Chamber Flux Data Processed with 'goFlux'
+Title: Detection Limits, Quality Screens and Ebullition for Chamber Flux
+    Measurements, on Top of 'goFlux'
 Version: 0.2.0
 Authors@R: person("Jonathan", "Gewirtzman", email = "jongewirtzman@gmail.com",
     role = c("aut", "cre"))
-Description: Extends the 'goFlux' package (Rheault et al. 2024,
-    <doi:10.21105/joss.06393>) with tools developed while processing tree-stem,
-    soil and water chamber measurements: stacked multi-gas manual window
-    selection, non-interactive window detection from the CO2 rise, windows
-    built from notebook times, empirical per-measurement precision (Allan
-    deviation of first differences, robust MAD variant, quietest-window scan),
-    minimum detectable flux by several published methods with below-detection
-    flags, toggleable physical quality screens, a one-call pipeline with
-    explicit outputs, a PDF exporter compatible with 'ggplot2' >= 3.5, import
-    helpers for very large LI-7810 files, analyzer clock utilities, and an
-    opt-in ebullition (bubble) add-on. All functions keep 'goFlux' column
-    conventions so they slot into an existing 'goFlux' pipeline.
+Description: Works on any closure processed with the 'goFlux' package
+    (Rheault et al. 2024, <doi:10.21105/joss.06393>), whatever the surface:
+    soil, water, tree stems, branches, leaves or any other chamber
+    enclosure, diffusive or ebullitive. Adds empirical precision and minimum
+    detectable flux by several published methods with detection flags,
+    toggleable physical quality screens that only append columns, an opt-in
+    ebullition (bubble) add-on, multi-gas window selection, non-interactive
+    window detection, a one-call pipeline with explicit outputs, a PDF
+    exporter compatible with 'ggplot2' >= 3.5, import helpers for very large
+    LI-7810 files and clock utilities. All functions keep 'goFlux' column
+    conventions and never modify a 'goFlux' column. The bundled examples come
+    from the author's tree-stem, soil and open-water campaigns; tree stems
+    are one application, not the scope.
 License: MIT + file LICENSE
-URL: https://github.com/jongewirtzman/stemflux
-BugReports: https://github.com/jongewirtzman/stemflux/issues
+URL: https://github.com/jongewirtzman/fluxqc
+BugReports: https://github.com/jongewirtzman/fluxqc/issues
 Encoding: UTF-8
 Depends:
     R (>= 4.1.0),

@@ -1,4 +1,4 @@
 library(testthat)
-library(stemflux)
+library(fluxqc)
 
-test_check("stemflux")
+test_check("fluxqc")

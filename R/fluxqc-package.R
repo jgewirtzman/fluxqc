@@ -1,15 +1,16 @@
-#' stemflux: extensions to goFlux for stem, soil and water chamber fluxes
+#' fluxqc: detection limits, quality screens and ebullition on top of goFlux
 #'
-#' `stemflux` collects tools written while processing chamber measurements of
-#' CO2 and CH4 with the \pkg{goFlux} package (see [goFlux::goFlux()]) and
-#' packages them so they slot into a standard goFlux pipeline
+#' `fluxqc` works on any closure processed with the \pkg{goFlux} package (see
+#' [goFlux::goFlux()]), whatever the surface enclosed (soil, water, tree
+#' stems, branches, leaves, ...), diffusive or ebullitive, and slots into a
+#' standard goFlux pipeline
 #' (`import -> obs.win -> click.peak2 -> goFlux -> best.flux -> flux.plot`).
 #'
 #' All functions keep goFlux's column conventions (`UniqueID`, `POSIX.time`,
 #' `start.time`, `obs.length`, `Vtot`, `Area`, `Pcham`, `Tcham`, `flag`,
 #' `Etime`, `start.time_corr`, `end.time_corr`, `obs.length_corr`,
 #' `flux.term`, `nb.obs`, `MDF`, `prec`, `best.flux`, ...) and never modify a
-#' goFlux column: stemflux only appends.
+#' goFlux column: fluxqc only appends.
 #'
 #' @section Core path:
 #' `goFlux::goFlux()` -> `goFlux::best.flux()` -> [flag_detection()] ->
@@ -29,8 +30,8 @@
 #'   \item{Utility (not on the default path)}{[find_clock_offset()]}
 #'   \item{Ebullition add-on (opt-in)}{[detect_ebullition()],
 #'     [split_ebullition()], [merge_ebullition()]; `vignette("ebullition")`}
-#'   \item{Example data}{[stemflux_examples()], [example_closure()]}
-#'   \item{Unexported one-off rescue scripts}{`system.file("rescue", package = "stemflux")`
+#'   \item{Example data}{[fluxqc_examples()], [example_closure()]}
+#'   \item{Unexported one-off rescue scripts}{`system.file("rescue", package = "fluxqc")`
 #'     (LGR clock-reset detection and interleaved-stream tools)}
 #' }
 #'

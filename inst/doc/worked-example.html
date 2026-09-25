@@ -384,11 +384,11 @@ so the document can be rebuilt with
 <h2>The closure</h2>
 <p><code>example_closure()</code> returns
 <code>emission_stem_semirigid</code> from the bundled set
-(<code>?stemflux_examples</code>): a tree-stem closure from the
-Yale-Myers Forest (Connecticut) monthly survey, spring 2021, semi-rigid
-sleeve chamber, ABB/LGR micro-portable UGGA logging at 1 Hz, shipped
-anonymized (synthetic calendar, no tree or plot identifiers) with the
-campaign’s clicked window and geometry:</p>
+(<code>?fluxqc_examples</code>): a tree-stem closure from the Yale-Myers
+Forest (Connecticut) monthly survey, spring 2021, semi-rigid sleeve
+chamber, ABB/LGR micro-portable UGGA logging at 1 Hz, shipped anonymized
+(synthetic calendar, no tree or plot identifiers) with the campaign’s
+clicked window and geometry:</p>
 <table>
 <thead>
 <tr class="header">
@@ -401,7 +401,7 @@ campaign’s clicked window and geometry:</p>
 <tr class="odd">
 <td><code>Area</code></td>
 <td>4254.121 cm2</td>
-<td>stem surface enclosed</td>
+<td>surface enclosed (here a tree stem)</td>
 </tr>
 <tr class="even">
 <td><code>Vtot</code></td>
@@ -423,7 +423,7 @@ campaign’s clicked window and geometry:</p>
 <p>The rows carry the campaign’s water column, so goFlux applies its
 water-vapour correction to the flux term exactly as in the campaign
 processing.</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(stemflux)</span>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(fluxqc)</span>
 <span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="co">#&gt; Loading required package: goFlux</span></span>
 <span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>d <span class="ot">&lt;-</span> <span class="fu">example_closure</span>()</span>
 <span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="fu">str</span>(d[, <span class="fu">c</span>(<span class="st">&quot;UniqueID&quot;</span>, <span class="st">&quot;POSIX.time&quot;</span>, <span class="st">&quot;t_s&quot;</span>, <span class="st">&quot;CO2dry_ppm&quot;</span>, <span class="st">&quot;CH4dry_ppb&quot;</span>, <span class="st">&quot;flag&quot;</span>, <span class="st">&quot;Etime&quot;</span>)])</span>
@@ -787,15 +787,14 @@ table.</p>
 <code>prec</code> argument given to <code>goFlux::import.*()</code> (or
 the <code>*_prec</code> columns) only feeds goFlux’s own
 <code>MDF</code> column and the <code>MDF</code> criterion inside
-<code>best.flux()</code>. stemflux’s estimators are applied
-<em>after</em> <code>best.flux()</code> by
-<code>flag_detection()</code>, which reads the flagged traces and
-appends <code>sigma_emp</code>, <code>MDF_emp</code>,
-<code>below_MDF_emp</code>, <code>MDF_emp_method</code> (and the
-<code>extra</code> comparison columns if asked). goFlux’s columns are
-never modified. Nothing is deleted at any step:
-<code>det_class_emp</code> says <code>&quot;below detection&quot;</code>, and the
-row stays.</p>
+<code>best.flux()</code>. fluxqc’s estimators are applied <em>after</em>
+<code>best.flux()</code> by <code>flag_detection()</code>, which reads
+the flagged traces and appends <code>sigma_emp</code>,
+<code>MDF_emp</code>, <code>below_MDF_emp</code>,
+<code>MDF_emp_method</code> (and the <code>extra</code> comparison
+columns if asked). goFlux’s columns are never modified. Nothing is
+deleted at any step: <code>det_class_emp</code> says
+<code>&quot;below detection&quot;</code>, and the row stays.</p>
 </div>
 <div id="step-9-quality-screens" class="section level2">
 <h2>Step 9: quality screens</h2>
@@ -860,7 +859,7 @@ campaign the median is taken over all closures.</p>
 <span id="cb17-3"><a href="#cb17-3" tabindex="-1"></a>                       <span class="at">qc =</span> <span class="fu">list</span>(<span class="at">c0 =</span> <span class="cn">TRUE</span>, <span class="at">co2_tracer =</span> <span class="cn">TRUE</span>, <span class="at">convex =</span> <span class="cn">TRUE</span>, <span class="at">min_window =</span> <span class="fu">list</span>(<span class="at">secs =</span> <span class="dv">120</span>)),</span>
 <span id="cb17-4"><a href="#cb17-4" tabindex="-1"></a>                       <span class="at">co2 =</span> best_co2))))</span>
 <span id="cb17-5"><a href="#cb17-5" tabindex="-1"></a>res</span>
-<span id="cb17-6"><a href="#cb17-6" tabindex="-1"></a><span class="co">#&gt; stemflux result: 1 closures, CH4dry_ppb </span></span>
+<span id="cb17-6"><a href="#cb17-6" tabindex="-1"></a><span class="co">#&gt; fluxqc result: 1 closures, CH4dry_ppb </span></span>
 <span id="cb17-7"><a href="#cb17-7" tabindex="-1"></a><span class="co">#&gt;   MDF_emp: wassmann | mad | 0.95 | detected: 1 | qc_any: 0</span></span>
 <span id="cb17-8"><a href="#cb17-8" tabindex="-1"></a><span class="fu">c</span>(<span class="at">best.flux =</span> res<span class="sc">$</span>fluxes<span class="sc">$</span>best.flux, <span class="at">MDF_goFlux =</span> res<span class="sc">$</span>fluxes<span class="sc">$</span>MDF, <span class="at">MDF_emp =</span> res<span class="sc">$</span>fluxes<span class="sc">$</span>MDF_emp,</span>
 <span id="cb17-9"><a href="#cb17-9" tabindex="-1"></a>  <span class="at">method =</span> res<span class="sc">$</span>fluxes<span class="sc">$</span>MDF_emp_method)</span>

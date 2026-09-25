@@ -1,12 +1,12 @@
 ---
-title: "Ebullition add-on - for flooded stems and aquatic chambers"
+title: "Ebullition add-on - for water, saturated soil and flooded vegetation"
 author: "Jonathan Gewirtzman"
 date: "`r Sys.Date()`"
 output:
   rmarkdown::html_vignette:
     toc: true
 vignette: >
-  %\VignetteIndexEntry{Ebullition add-on - for flooded stems and aquatic chambers}
+  %\VignetteIndexEntry{Ebullition add-on - for water, saturated soil and flooded vegetation}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -16,11 +16,11 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height
 options(digits = 5, width = 95)
 ```
 
-Most chamber users (upland soils, upland tree stems) never meet ebullition and
-never need this vignette: the core path of `stemflux`
+Most chamber users (unsaturated surfaces) never meet ebullition and
+never need this vignette: the core path of `fluxqc`
 (`goFlux -> best.flux -> flag_detection -> qc_screens`, wrapped by
 `process_fluxes()`) does not call any of the code below. Over water, saturated
-peat or flooded stems, bubbles add abrupt step-ups to the smooth diffusive
+peat or flooded vegetation, bubbles add abrupt step-ups to the smooth diffusive
 rise, and one linear or Hutchinson-Mosier fit through both components gives a
 number that is neither. This add-on is switched on with a single argument,
 `process_fluxes(ebullition = "flag" | "split")`, or used directly through
@@ -28,7 +28,7 @@ number that is neither. This add-on is switched on with a single argument,
 
 ## A real closure with bubbles
 
-`ebullition_floating` in `stemflux_examples()` is a real 276 s floating-chamber closure
+`ebullition_floating` in `fluxqc_examples()` is a real 276 s floating-chamber closure
 on open water at site CP40 (Christian Point, a ghost-forest mangrove site) of
 the NASA BlueFlux campaign (ABB/LGR GLA131, "LGR2"). Geometry: Area 324.3 cm2,
 Vtot 4.318 L, Tcham 28.7 C (site-day mean air temperature), Pcham 101.325
@@ -43,14 +43,14 @@ placement overlaps the campaign's processed flux `44857_CP40_Water_78`). At
 (112-160 ppb each), then resumes a steady rise to 4600 ppb. The campaign
 script, which tests single samples against a 100 ppb step, recorded those
 five samples as "5 jumps". They are one bubble burst, not five bubbles and
-not the closure onset; stemflux merges consecutive flagged samples into one
+not the closure onset; fluxqc merges consecutive flagged samples into one
 event by default (`merge.consecutive = TRUE`). No closure in the campaign's
 archive shows several isolated steps on a clean baseline (all its flagged
 traces are bursts of consecutive samples), which is why this one is shipped.
 
 ```{r make}
-library(stemflux)
-ex <- stemflux_examples(c("emission_stem_semirigid", "ebullition_floating"))
+library(fluxqc)
+ex <- fluxqc_examples(c("emission_stem_semirigid", "ebullition_floating"))
 both <- ex$data
 ex$aux[, c("UniqueID", "obs.length", "Area", "Vtot", "Tcham", "analyzer")]
 e <- both[both$UniqueID == "ebullition_floating", ]
@@ -60,7 +60,7 @@ e <- both[both$UniqueID == "ebullition_floating", ]
 
 `detect_ebullition()` works on the flagged rows of each `UniqueID`. The
 default method follows Hoffmann et al. (2017): the point-to-point changes are
-compared with quartile fences `Q3 + k * IQR`; stemflux's default `k = 3` keeps
+compared with quartile fences `Q3 + k * IQR`; fluxqc's default `k = 3` keeps
 Gaussian noise below the fence on 600-point closures (`k = 0.25` reproduces
 Hoffmann's own fences, which were used to select fitting windows rather than
 to sum bubbles). Detected events are overlaid on the trace. On this closure
@@ -139,8 +139,8 @@ FALSE` reproduces that count exactly.)
 The add-on is an option of the pipeline, not a separate path. `"flag"` fits
 the whole trace but records the events; `"split"` fits the diffusive term on
 the de-ebulliated trace. Per-closure control comes from `ebullition_ids` or a
-logical `ebullition` column in the auxfile, so flooded stems can be split
-while upland stems in the same call run the core path.
+logical `ebullition` column in the auxfile, so the closures known to bubble
+can be split while the rest of the same call run the core path.
 
 ```{r process}
 aux <- data.frame(UniqueID = c("emission_stem_semirigid", "ebullition_floating"), ebullition = c(FALSE, TRUE))
@@ -177,7 +177,7 @@ marks claims that could not be checked.
 | `RespChamberProc` (GitHub) | `changepoint`/`segmented` used to find the initial lag (breakpoint) of a closure, not ebullition | `R/fluxEstimates.R` |
 | `FluxCalR` | no ebullition mention in the README; full source not inspected (not verified further) | README |
 
-None of these packages is a dependency of stemflux; the survey is
+None of these packages is a dependency of fluxqc; the survey is
 documentation only.
 
 ## Provenance and citation etiquette
@@ -188,16 +188,16 @@ method was re-implemented from the paper's description and then *checked*
 against the script's fence definitions (lines 365-366 and 457-458 of that
 script define `Q1 - Jumper*IQR` and `Q3 + Jumper*IQR` on `diff(y)` with
 `Jumper = 0.25`); the per-closure application, the event-mass accounting and
-the equilibration buffer are stemflux's own. The `"runvar"` method was written
+the equilibration buffer are fluxqc's own. The `"runvar"` method was written
 from the published description of So et al. (2024) without access to their
-code. The `"threshold"` method is stemflux's own. For the record: the Zenodo
+code. The `"threshold"` method is fluxqc's own. For the record: the Zenodo
 record's license field reads "other-open" (open access, no standard license
 named), and the fluxCH4 repository carries an MIT `LICENSE` file whose
 copyright line is the unedited template ("First Last"); since nothing was
 copied from either, neither license is exercised.
 
 If you publish results obtained with the add-on, please cite the method
-alongside goFlux and stemflux:
+alongside goFlux and fluxqc:
 
 * `method = "iqr"`: Hoffmann, M., et al. (2017). Atmos. Meas. Tech. 10,
   109-118. doi:10.5194/amt-10-109-2017
@@ -205,7 +205,7 @@ alongside goFlux and stemflux:
   Biogeosciences. doi:10.1029/2024JG008035
 * goFlux: Rheault, K., Christiansen, J. R., & Larsen, K. S. (2024). JOSS
   9(96), 6393. doi:10.21105/joss.06393
-* stemflux: `citation("stemflux")`
+* fluxqc: `citation("fluxqc")`
 
 ## Limitations
 

@@ -2,12 +2,13 @@
 # Ebullition add-on. Nothing in this file is called by the core pipeline
 # (goFlux -> best.flux -> flag_detection -> qc_screens) unless the user opts in
 # with process_fluxes(ebullition = "flag" | "split") or calls these functions
-# directly. Upland soil and upland stem users never need it.
+# directly. Users of upland (unsaturated) surfaces never need it.
 # =============================================================================
 
 #' Detect ebullition (bubble) events within chamber closures
 #'
-#' Ebullition add-on (opt-in). Over water or flooded stems, diffusive flux
+#' Ebullition add-on (opt-in). Over water, saturated soil or flooded
+#' vegetation, diffusive flux
 #' produces a smooth concentration rise while bubbles produce abrupt step-ups.
 #' This function works on a click.peak2-style data frame (several closures,
 #' one per `UniqueID`), uses the flagged rows of each closure, and returns the
@@ -26,10 +27,10 @@
 #'     \eqn{Q_1 - J \cdot IQR} and \eqn{Q_3 + J \cdot IQR} with `Jumper` J =
 #'     0.25, and accepts a moving-window linear fit only when every change in
 #'     the window lies inside the fences; the flux is then taken from accepted
-#'     windows. stemflux applies the same fences per closure and calls a change
+#'     windows. fluxqc applies the same fences per closure and calls a change
 #'     above the upper fence an ebullition event (with `direction = "both"`
 #'     changes below the lower fence are also excluded from the diffusive fit,
-#'     but never counted as ebullition mass). Because stemflux sums the events
+#'     but never counted as ebullition mass). Because fluxqc sums the events
 #'     as bubble mass rather than merely selecting windows, it needs a fence
 #'     that Gaussian noise alone does not cross: the conventional `k = 1.5`
 #'     fence lies about 3 SD of the differences out and, on a 600-point 1 Hz
@@ -116,7 +117,7 @@
 #' @param flag.only use only rows with `flag == 1` (default).
 #' @param scale.by.dt scale `jump.thresh` by the logging interval.
 #' @param time.col POSIXct time column.
-#' @return list of class `stemflux_ebullition` with `events` (one row per
+#' @return list of class `fluxqc_ebullition` with `events` (one row per
 #'   event: `UniqueID`, `POSIX.time`, `Etime`, `dC` (jump size, gas units),
 #'   `threshold`), `trace` (rows used, with `dC`, `is_jump`, `is_outlier`,
 #'   `cum_jump`, `C_deebull`, `near_jump`) and `summary` (per closure:
@@ -229,7 +230,7 @@ detect_ebullition <- function(dataframe, gastype = "CH4dry_ppb",
   summary <- do.call(rbind, summ); rownames(summary) <- NULL
   structure(list(events = ev, trace = trace, summary = summary, gastype = gastype, by = by,
                  method = method),
-            class = "stemflux_ebullition")
+            class = "fluxqc_ebullition")
 }
 
 #' Split closures into a de-ebulliated goFlux input and an ebullitive flux
@@ -269,7 +270,7 @@ detect_ebullition <- function(dataframe, gastype = "CH4dry_ppb",
 #' out[, c("best.flux", "flux_ebullitive", "flux_total", "n_events")]
 #' @export
 split_ebullition <- function(eb, H2O_col = "H2O_ppm") {
-  if (!inherits(eb, "stemflux_ebullition")) stop("'eb' must come from detect_ebullition()")
+  if (!inherits(eb, "fluxqc_ebullition")) stop("'eb' must come from detect_ebullition()")
   tr <- eb$trace; g <- eb$gastype; by <- eb$by
   diffusive <- tr
   diffusive[[paste0(g, "_raw")]] <- tr[[g]]

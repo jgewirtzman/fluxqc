@@ -14,7 +14,7 @@
 
 <meta name="date" content="2026-09-24" />
 
-<title>Ebullition add-on - for flooded stems and aquatic chambers</title>
+<title>Ebullition add-on - for water, saturated soil and flooded vegetation</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -339,8 +339,8 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 
 
-<h1 class="title toc-ignore">Ebullition add-on - for flooded stems and
-aquatic chambers</h1>
+<h1 class="title toc-ignore">Ebullition add-on - for water, saturated
+soil and flooded vegetation</h1>
 <h4 class="author">Jonathan Gewirtzman</h4>
 <h4 class="date">2026-09-24</h4>
 
@@ -366,13 +366,12 @@ etiquette</a></li>
 </ul>
 </div>
 
-<p>Most chamber users (upland soils, upland tree stems) never meet
-ebullition and never need this vignette: the core path of
-<code>stemflux</code>
+<p>Most chamber users (unsaturated surfaces) never meet ebullition and
+never need this vignette: the core path of <code>fluxqc</code>
 (<code>goFlux -&gt; best.flux -&gt; flag_detection -&gt; qc_screens</code>,
 wrapped by <code>process_fluxes()</code>) does not call any of the code
-below. Over water, saturated peat or flooded stems, bubbles add abrupt
-step-ups to the smooth diffusive rise, and one linear or
+below. Over water, saturated peat or flooded vegetation, bubbles add
+abrupt step-ups to the smooth diffusive rise, and one linear or
 Hutchinson-Mosier fit through both components gives a number that is
 neither. This add-on is switched on with a single argument,
 <code>process_fluxes(ebullition = &quot;flag&quot; | &quot;split&quot;)</code>, or used
@@ -380,8 +379,8 @@ directly through <code>detect_ebullition()</code>,
 <code>split_ebullition()</code> and <code>merge_ebullition()</code>.</p>
 <div id="a-real-closure-with-bubbles" class="section level2">
 <h2>A real closure with bubbles</h2>
-<p><code>ebullition_floating</code> in <code>stemflux_examples()</code>
-is a real 276 s floating-chamber closure on open water at site CP40
+<p><code>ebullition_floating</code> in <code>fluxqc_examples()</code> is
+a real 276 s floating-chamber closure on open water at site CP40
 (Christian Point, a ghost-forest mangrove site) of the NASA BlueFlux
 campaign (ABB/LGR GLA131, “LGR2”). Geometry: Area 324.3 cm2, Vtot 4.318
 L, Tcham 28.7 C (site-day mean air temperature), Pcham 101.325 kPa. We
@@ -397,14 +396,14 @@ overlaps the campaign’s processed flux
 ppb in five consecutive 1 Hz samples (112-160 ppb each), then resumes a
 steady rise to 4600 ppb. The campaign script, which tests single samples
 against a 100 ppb step, recorded those five samples as “5 jumps”. They
-are one bubble burst, not five bubbles and not the closure onset;
-stemflux merges consecutive flagged samples into one event by default
+are one bubble burst, not five bubbles and not the closure onset; fluxqc
+merges consecutive flagged samples into one event by default
 (<code>merge.consecutive = TRUE</code>). No closure in the campaign’s
 archive shows several isolated steps on a clean baseline (all its
 flagged traces are bursts of consecutive samples), which is why this one
 is shipped.</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(stemflux)</span>
-<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>ex <span class="ot">&lt;-</span> <span class="fu">stemflux_examples</span>(<span class="fu">c</span>(<span class="st">&quot;emission_stem_semirigid&quot;</span>, <span class="st">&quot;ebullition_floating&quot;</span>))</span>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(fluxqc)</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>ex <span class="ot">&lt;-</span> <span class="fu">fluxqc_examples</span>(<span class="fu">c</span>(<span class="st">&quot;emission_stem_semirigid&quot;</span>, <span class="st">&quot;ebullition_floating&quot;</span>))</span>
 <span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>both <span class="ot">&lt;-</span> ex<span class="sc">$</span>data</span>
 <span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>ex<span class="sc">$</span>aux[, <span class="fu">c</span>(<span class="st">&quot;UniqueID&quot;</span>, <span class="st">&quot;obs.length&quot;</span>, <span class="st">&quot;Area&quot;</span>, <span class="st">&quot;Vtot&quot;</span>, <span class="st">&quot;Tcham&quot;</span>, <span class="st">&quot;analyzer&quot;</span>)]</span>
 <span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="co">#&gt;                  UniqueID obs.length   Area   Vtot Tcham              analyzer</span></span>
@@ -417,7 +416,7 @@ is shipped.</p>
 <p><code>detect_ebullition()</code> works on the flagged rows of each
 <code>UniqueID</code>. The default method follows Hoffmann et
 al. (2017): the point-to-point changes are compared with quartile fences
-<code>Q3 + k * IQR</code>; stemflux’s default <code>k = 3</code> keeps
+<code>Q3 + k * IQR</code>; fluxqc’s default <code>k = 3</code> keeps
 Gaussian noise below the fence on 600-point closures
 (<code>k = 0.25</code> reproduces Hoffmann’s own fences, which were used
 to select fitting windows rather than to sum bubbles). Detected events
@@ -515,15 +514,16 @@ reproduces that count exactly.)</p>
 <code>&quot;flag&quot;</code> fits the whole trace but records the events;
 <code>&quot;split&quot;</code> fits the diffusive term on the de-ebulliated trace.
 Per-closure control comes from <code>ebullition_ids</code> or a logical
-<code>ebullition</code> column in the auxfile, so flooded stems can be
-split while upland stems in the same call run the core path.</p>
+<code>ebullition</code> column in the auxfile, so the closures known to
+bubble can be split while the rest of the same call run the core
+path.</p>
 <div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>aux <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">UniqueID =</span> <span class="fu">c</span>(<span class="st">&quot;emission_stem_semirigid&quot;</span>, <span class="st">&quot;ebullition_floating&quot;</span>), <span class="at">ebullition =</span> <span class="fu">c</span>(<span class="cn">FALSE</span>, <span class="cn">TRUE</span>))</span>
 <span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="fu">invisible</span>(<span class="fu">capture.output</span>(       <span class="co"># goFlux&#39;s progress bar is captured</span></span>
 <span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>  res <span class="ot">&lt;-</span> <span class="fu">suppressWarnings</span>(<span class="fu">process_fluxes</span>(both, <span class="at">aux =</span> aux, <span class="at">gastype =</span> <span class="st">&quot;CH4dry_ppb&quot;</span>,</span>
 <span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>                       <span class="at">qc =</span> <span class="fu">list</span>(<span class="at">c0 =</span> <span class="cn">TRUE</span>, <span class="at">convex =</span> <span class="cn">TRUE</span>),</span>
 <span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>                       <span class="at">ebullition =</span> <span class="st">&quot;split&quot;</span>, <span class="at">ebullition_method =</span> <span class="st">&quot;iqr&quot;</span>))))</span>
 <span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>res</span>
-<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="co">#&gt; stemflux result: 2 closures, CH4dry_ppb </span></span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="co">#&gt; fluxqc result: 2 closures, CH4dry_ppb </span></span>
 <span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="co">#&gt;   MDF_emp: wassmann | mad | 0.95 | detected: 2 | qc_any: 0 </span></span>
 <span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="co">#&gt;   ebullition add-on: split ( iqr , 1 events )</span></span>
 <span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a>res<span class="sc">$</span>fluxes[, <span class="fu">c</span>(<span class="st">&quot;UniqueID&quot;</span>, <span class="st">&quot;qc_c0&quot;</span>, <span class="st">&quot;qc_convex&quot;</span>, <span class="st">&quot;qc_note&quot;</span>)]</span>
@@ -640,7 +640,7 @@ verified further)</td>
 </tr>
 </tbody>
 </table>
-<p>None of these packages is a dependency of stemflux; the survey is
+<p>None of these packages is a dependency of fluxqc; the survey is
 documentation only.</p>
 </div>
 <div id="provenance-and-citation-etiquette" class="section level2">
@@ -653,16 +653,16 @@ script’s fence definitions (lines 365-366 and 457-458 of that script
 define <code>Q1 - Jumper*IQR</code> and <code>Q3 + Jumper*IQR</code> on
 <code>diff(y)</code> with <code>Jumper = 0.25</code>); the per-closure
 application, the event-mass accounting and the equilibration buffer are
-stemflux’s own. The <code>&quot;runvar&quot;</code> method was written from the
+fluxqc’s own. The <code>&quot;runvar&quot;</code> method was written from the
 published description of So et al. (2024) without access to their code.
-The <code>&quot;threshold&quot;</code> method is stemflux’s own. For the record:
-the Zenodo record’s license field reads “other-open” (open access, no
+The <code>&quot;threshold&quot;</code> method is fluxqc’s own. For the record: the
+Zenodo record’s license field reads “other-open” (open access, no
 standard license named), and the fluxCH4 repository carries an MIT
 <code>LICENSE</code> file whose copyright line is the unedited template
 (“First Last”); since nothing was copied from either, neither license is
 exercised.</p>
 <p>If you publish results obtained with the add-on, please cite the
-method alongside goFlux and stemflux:</p>
+method alongside goFlux and fluxqc:</p>
 <ul>
 <li><code>method = &quot;iqr&quot;</code>: Hoffmann, M., et al. (2017). Atmos.
 Meas. Tech. 10, 109-118. <a href="doi:10.5194/amt-10-109-2017" class="uri">doi:10.5194/amt-10-109-2017</a></li>
@@ -670,7 +670,7 @@ Meas. Tech. 10, 109-118. <a href="doi:10.5194/amt-10-109-2017" class="uri">doi:1
 Geophys. Res. Biogeosciences. <a href="doi:10.1029/2024JG008035" class="uri">doi:10.1029/2024JG008035</a></li>
 <li>goFlux: Rheault, K., Christiansen, J. R., &amp; Larsen, K. S.
 (2024). JOSS 9(96), 6393. <a href="doi:10.21105/joss.06393" class="uri">doi:10.21105/joss.06393</a></li>
-<li>stemflux: <code>citation(&quot;stemflux&quot;)</code></li>
+<li>fluxqc: <code>citation(&quot;fluxqc&quot;)</code></li>
 </ul>
 </div>
 <div id="limitations" class="section level2">

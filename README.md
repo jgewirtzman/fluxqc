@@ -1,7 +1,8 @@
-# stemflux
+# fluxqc
 
 Extensions to [goFlux](https://github.com/Qepanna/goFlux) (Rheault et al.
-2024) for tree-stem, soil and water chamber fluxes: multi-gas stacked window
+2024) for chamber fluxes from any surface (soil, water, tree stems, leaves;
+diffusive or ebullitive): multi-gas stacked window
 selection, non-interactive window detection, empirical per-measurement
 precision, minimum detectable flux by several published methods with detection
 flags, toggleable physical QC screens, a one-call pipeline with explicit
@@ -20,21 +21,21 @@ goFlux is on GitHub, not CRAN, so install it first.
 ```r
 # install.packages("remotes")
 remotes::install_github("Qepanna/goFlux")
-remotes::install_github("jongewirtzman/stemflux", build_vignettes = TRUE)
+remotes::install_github("jongewirtzman/fluxqc", build_vignettes = TRUE)
 ```
 
 ## Quick start
 
 ```r
 library(goFlux)
-library(stemflux)
+library(fluxqc)
 
-d <- example_closure(dead.band = 60)     # one real 600 s UGGA tree-stem closure
+d <- example_closure()                   # one real UGGA closure (a tree stem) with its clicked window
 
 res <- process_fluxes(d, gastype = "CH4dry_ppb",                  # defaults: mad / wassmann / 0.90
                       qc = list(c0 = TRUE, convex = TRUE, min_window = list(secs = 120)))
 res
-#> stemflux result: 1 closures, CH4dry_ppb
+#> fluxqc result: 1 closures, CH4dry_ppb
 #>   MDF_emp: wassmann | mad | 0.95 | detected: 1 | qc_any: 0
 res$fluxes[, c("best.flux", "model", "MDF", "sigma_emp", "MDF_emp", "MDF_emp_method", "det_class_emp", "qc_any")]
 #>   best.flux model         MDF sigma_emp    MDF_emp        MDF_emp_method det_class_emp qc_any
@@ -43,7 +44,7 @@ write_outputs(res, "results/CH4")        # fluxes.csv, settings.json, flux_plots
 ```
 
 goFlux's columns (`best.flux`, `MDF`, `quality.check`, ...) come back exactly
-as `best.flux()` produced them; stemflux only appends (`sigma_emp`,
+as `best.flux()` produced them; fluxqc only appends (`sigma_emp`,
 `MDF_emp`, `below_MDF_emp`, `MDF_emp_method`, `detected_emp`,
 `det_class_emp`, `qc_*`). Multi-method comparison columns are available with
 `extra = list(precision = ..., mdf = ..., conf = ...)` or `extra = "all"`.
@@ -58,14 +59,14 @@ licor <- import_li7810_subset("TG10-01503-2026-05-01T000000.data",
                               dates = c("2026-05-22", "2026-05-23"), timezone = "UTC")
 ow    <- obs.win(licor, auxfile = aux, obs.length = 600, shoulder = 120)
 manID <- auto_id_rise(ow, plot.dir = "plots/auto_id")     # or click_peak2_stacked(ow, gases = "auto")
-CH4   <- process_fluxes(manID, aux = aux, gastype = "CH4dry_ppb", group = "campaign")
+CH4   <- process_fluxes(manID, aux = aux, gastype = "CH4dry_ppb", group = "campaign", surface = "soil")
 write_outputs(CH4, "results/CH4")
 ```
 
-Vignettes: `vignette("worked-example", "stemflux")` (every intermediate number
+Vignettes: `vignette("worked-example", "fluxqc")` (every intermediate number
 of one closure, and how to choose precision and MDF), `vignette("pipeline",
-"stemflux")` (the end-to-end pipeline and where every output column comes
-from), `vignette("ebullition", "stemflux")` (the opt-in add-on).
+"fluxqc")` (the end-to-end pipeline and where every output column comes
+from), `vignette("ebullition", "fluxqc")` (the opt-in add-on).
 
 ## Choosing precision and MDF
 
@@ -98,7 +99,7 @@ The per-closure sigma is a QC diagnostic, not an MDF basis: `qc_screens(noisy
 sigma. Comparison columns (`sigma_<precision>`, `MDF_<mdf>_<precision>[_<conf>]`)
 are appended only with `extra = list(...)` or `extra = "all"`. The `prec`
 argument of `goFlux::import.*()` feeds only goFlux's own `MDF` column;
-stemflux's estimators are applied after `best.flux()`. Nothing is deleted at
+fluxqc's estimators are applied after `best.flux()`. Nothing is deleted at
 any step, only flagged.
 
 ## Analyzer independence
@@ -117,7 +118,7 @@ core sources for gas-column and file-format literals.
 
 ## Function map
 
-| Capability | stemflux function | Nearest goFlux function |
+| Capability | fluxqc function | Nearest goFlux function |
 |---|---|---|
 | **Core path** | `process_fluxes()`, `write_outputs()` | `goFlux()` + `best.flux()` |
 | Manual window selection, any gases stacked on one time axis | `click_peak2_stacked(gases = ...)` | `click.peak2()` |
@@ -128,25 +129,25 @@ core sources for gas-column and file-format literals.
 | Quietest-window precision scan | `precision_rolling()` | -- |
 | Empirical precision + MDF appended as `sigma_emp`, `MDF_emp`, `below_MDF_emp`, `MDF_emp_method` (comparison columns via `extra`) | `flag_detection()`, `mdf_multi()` | `MDF()`, `best.flux()` (`MDF` criterion) |
 | (V/A)(P/RT) with goFlux unit conventions | `flux_term()` | `flux.term()` (unexported) |
-| Toggleable physical QC screens (C0, CO2 tracer, convex, min window, ambient start, noisy closure, leak), flags only | `qc_screens()` (`qc_c0_screen()` wrapper) | -- |
+| Toggleable physical QC screens (C0, CO2 tracer [conditional on `surface`], convex, min window, ambient start, noisy closure, leak), flags only | `qc_screens()` (`qc_c0_screen()` wrapper) | -- |
 | Multi-page PDF of `flux.plot()` output, ggplot2 >= 3.5 safe | `flux_pdf()` | `flux2pdf()` |
 | Date subset of huge LI-7810 `.data` files (shim: forwards to `import.LI7810(dates=)` once the upstream patch in `inst/upstream/patches/` is merged) | `import_li7810_subset()` | `import.LI7810()` |
 | Recursive per-file import without the `muffleError` wrapper or `getwd()/RData` writes | `import2RData_flat()` | `import2RData()` |
 | Utility: notebook-to-analyzer clock offset by cross-correlating notebook starts with rise onsets | `find_clock_offset()` | -- |
 | **Ebullition add-on (opt-in)**: IQR (Hoffmann 2017) / threshold / running-variance event detection, de-ebulliated goFlux input, ebullitive flux | `detect_ebullition()`, `split_ebullition()`, `merge_ebullition()`; `process_fluxes(ebullition = "flag"|"split")` | -- (goFlux has none) |
-| Six bundled closures with real geometry (see Data) | `stemflux_examples()`, `example_closure()` | `manID.UGGA` (example data) |
-| One-off rescue scripts for LGR clock resets and interleaved streams (unexported: `detect_clock_streams()`, `write_stream_files()`, `separate_window_streams()`, `obs_win_deinterleave()`, `click_flux_2d()`) | `system.file("rescue", package = "stemflux")` | -- |
+| Six bundled closures with real geometry (see Data) | `fluxqc_examples()`, `example_closure()` | `manID.UGGA` (example data) |
+| One-off rescue scripts for LGR clock resets and interleaved streams (unexported: `detect_clock_streams()`, `write_stream_files()`, `separate_window_streams()`, `obs_win_deinterleave()`, `click_flux_2d()`) | `system.file("rescue", package = "fluxqc")` | -- |
 
 ## Data
 
-`stemflux_examples()` returns a curated, anonymized, cross-campaign set of
+`fluxqc_examples()` returns a curated, anonymized, cross-campaign set of
 ten real closures in goFlux shape (the campaign's clicked window with its
 obs.win context) plus an auxfile with the real geometry; `example_closure()`
 is the alias for `emission_stem_semirigid`. Identifiers, dates, tree tags and
 plot codes are removed (the time axis is a synthetic calendar preserving every
 interval); analyzer, chamber family, geometry, season and year are kept.
 `inst/extdata/build_examples.R` documents exactly how each was pulled, and
-`stemflux_examples_diagnostics.csv` holds the audit numbers, including a
+`fluxqc_examples_diagnostics.csv` holds the audit numbers, including a
 continuity check of every clicked window (no timestamp gaps; single-sample
 CH4 steps within the noise; a Picarro G4301 closure was rejected on it, so
 that format is not represented).
@@ -168,7 +169,7 @@ The real closures are released with the package under its MIT license with
 the data owner's permission. Upland stem and soil closures: Yale-Myers Forest
 (CT, USA) record 2020-2021 (Gewirtzman et al.; cite as "Gewirtzman et al.,
 Yale-Myers Forest chamber-flux record 2020-2021, distributed with the
-stemflux R package"). Wetland closures: NASA Carbon Monitoring System BlueFlux
+fluxqc R package"). Wetland closures: NASA Carbon Monitoring System BlueFlux
 field campaign, ground component (Poulter et al. 2023, *Environmental Research
 Letters* 18, 075009, https://doi.org/10.1088/1748-9326/acdae6;
 blueflux-ground repository, MIT). LI-7810 closure: the author's Santa Fe 2026
@@ -182,7 +183,7 @@ propose as goFlux pull requests.
 
 ## Citation
 
-See `citation("stemflux")`, `CITATION.cff` and `.zenodo.json`. goFlux itself
+See `citation("fluxqc")`, `CITATION.cff` and `.zenodo.json`. goFlux itself
 should be cited as Rheault, K., Christiansen, J. R., & Larsen, K. S. (2024).
 goFlux: A user-friendly way to calculate GHG fluxes yourself, regardless of
 user experience. *Journal of Open Source Software*, 9(96), 6393.

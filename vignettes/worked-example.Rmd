@@ -24,14 +24,14 @@ with `rmarkdown::render()`.
 ## The closure
 
 `example_closure()` returns `emission_stem_semirigid` from the bundled set
-(`?stemflux_examples`): a tree-stem closure from the Yale-Myers Forest
+(`?fluxqc_examples`): a tree-stem closure from the Yale-Myers Forest
 (Connecticut) monthly survey, spring 2021, semi-rigid sleeve chamber, ABB/LGR
 micro-portable UGGA logging at 1 Hz, shipped anonymized (synthetic calendar,
 no tree or plot identifiers) with the campaign's clicked window and geometry:
 
 | auxfile column | value | meaning |
 |---|---|---|
-| `Area`  | 4254.121 cm2 | stem surface enclosed |
+| `Area`  | 4254.121 cm2 | surface enclosed (here a tree stem) |
 | `Vtot`  | 7.082698 L | chamber + tubing + analyzer cell |
 | `Tcham` | 26.02 C | chamber air temperature |
 | `Pcham` | 101.325 kPa | pressure |
@@ -40,7 +40,7 @@ The rows carry the campaign's water column, so goFlux applies its water-vapour
 correction to the flux term exactly as in the campaign processing.
 
 ```{r load}
-library(stemflux)
+library(fluxqc)
 d <- example_closure()
 str(d[, c("UniqueID", "POSIX.time", "t_s", "CO2dry_ppm", "CH4dry_ppb", "flag", "Etime")])
 ```
@@ -264,7 +264,7 @@ comparison: `extra = "all"` and report the table.
 
 **Where each is set in the pipeline.** The `prec` argument given to
 `goFlux::import.*()` (or the `*_prec` columns) only feeds goFlux's own `MDF`
-column and the `MDF` criterion inside `best.flux()`. stemflux's estimators are
+column and the `MDF` criterion inside `best.flux()`. fluxqc's estimators are
 applied *after* `best.flux()` by `flag_detection()`, which reads the flagged
 traces and appends `sigma_emp`, `MDF_emp`, `below_MDF_emp`, `MDF_emp_method`
 (and the `extra` comparison columns if asked). goFlux's columns are never

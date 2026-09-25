@@ -3,7 +3,7 @@ keys <- c("emission_stem_semirigid", "emission_upland_stem", "below_detection_st
           "emission_li7810_stem")
 
 test_that("bundled examples load, anonymized, with real geometry and goFlux columns", {
-  ex <- stemflux_examples()
+  ex <- fluxqc_examples()
   expect_named(ex, c("data", "aux"))
   expect_equal(ex$aux$UniqueID, keys)
   expect_true(all(ex$aux$kind == "real"))
@@ -20,7 +20,7 @@ test_that("bundled examples load, anonymized, with real geometry and goFlux colu
   expect_equal(ex$aux$Area[ex$aux$UniqueID == "ebullition_floating"], 324.3)
   expect_equal(ex$aux$Area[ex$aux$UniqueID == "high_flux_wetland_stem"], 107.68)
   # shipped (clicked) flags and segment sizes match the diagnostics table
-  dg <- read.csv(system.file("extdata", "stemflux_examples_diagnostics.csv", package = "stemflux"), stringsAsFactors = FALSE)
+  dg <- read.csv(system.file("extdata", "fluxqc_examples_diagnostics.csv", package = "fluxqc"), stringsAsFactors = FALSE)
   expect_equal(dg$key, keys)
   fl <- tapply(ex$data$flag, ex$data$UniqueID, sum)[keys]; nn <- table(ex$data$UniqueID)[keys]
   expect_equal(as.vector(fl), dg$n_flagged); expect_equal(as.vector(nn), dg$n_segment)
@@ -41,10 +41,10 @@ test_that("bundled examples load, anonymized, with real geometry and goFlux colu
   expect_gt(cont["ebullition_floating", "step"], 20)                    # the burst
   expect_equal(dg$max_gap_s, unname(cont[, "gap"] * dg$sampling_interval_s), tolerance = 0.05)
   # a numeric dead.band re-flags from start.time instead
-  re <- stemflux_examples("emission_stem_semirigid", dead.band = 60)$data
+  re <- fluxqc_examples("emission_stem_semirigid", dead.band = 60)$data
   expect_equal(sum(re$flag), sum(re$t_s >= 60))
-  expect_equal(nrow(stemflux_examples(c("uptake_soil", "uptake_stem"))$aux), 2)
-  expect_error(stemflux_examples("z"), "no example")
+  expect_equal(nrow(fluxqc_examples(c("uptake_soil", "uptake_stem"))$aux), 2)
+  expect_error(fluxqc_examples("z"), "no example")
 })
 
 test_that("example_closure() is the alias for emission_stem_semirigid", {
@@ -56,7 +56,7 @@ test_that("example_closure() is the alias for emission_stem_semirigid", {
 })
 
 test_that("the teaching cases separate through process_fluxes (Figure 4 logic)", {
-  ex <- stemflux_examples(c("emission_stem_semirigid", "below_detection_stem", "failed_closure_stem",
+  ex <- fluxqc_examples(c("emission_stem_semirigid", "below_detection_stem", "failed_closure_stem",
                             "ambiguous_stem", "uptake_stem", "uptake_soil", "emission_upland_stem"))
   res <- suppressWarnings(process_fluxes(ex$data, gastype = "CH4dry_ppb",
                                          qc = list(c0 = TRUE, co2_tracer = TRUE, convex = TRUE, min_window = list(secs = 120), noisy = TRUE)))
@@ -76,7 +76,7 @@ test_that("the teaching cases separate through process_fluxes (Figure 4 logic)",
 })
 
 test_that("the two other analyzer formats run through goFlux", {
-  ex <- stemflux_examples(c("high_flux_wetland_stem", "emission_li7810_stem"))
+  ex <- fluxqc_examples(c("high_flux_wetland_stem", "emission_li7810_stem"))
   res <- suppressWarnings(process_fluxes(ex$data, gastype = "CH4dry_ppb", qc = FALSE))
   fx <- res$fluxes; rownames(fx) <- fx$UniqueID
   expect_gt(fx["high_flux_wetland_stem", "best.flux"], 15)
@@ -84,7 +84,7 @@ test_that("the two other analyzer formats run through goFlux", {
 })
 
 test_that("ebullition_floating carries one real bubble burst", {
-  e <- stemflux_examples("ebullition_floating")$data
+  e <- fluxqc_examples("ebullition_floating")$data
   eb <- detect_ebullition(e, "CH4dry_ppb")
   expect_equal(eb$summary$n_events, 1)
   expect_gt(eb$summary$total_ebullitive, 500)

@@ -27,6 +27,6 @@ with one page per closure from \code{\link[goFlux:flux.plot]{goFlux::flux.plot()
 \examples{
 d <- example_closure()
 res <- process_fluxes(d, gastype = "CH4dry_ppb", qc = list(c0 = TRUE))
-out <- write_outputs(res, tempfile("stemflux_"), plots = FALSE)
+out <- write_outputs(res, tempfile("fluxqc_"), plots = FALSE)
 basename(out)
 }

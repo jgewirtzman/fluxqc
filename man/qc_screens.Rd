@@ -13,8 +13,8 @@ qc_screens(
   group = NULL,
   gastype = NULL,
   co2 = NULL,
-  tissue = NULL,
-  exempt = c("dead", "dormant"),
+  surface = NULL,
+  co2_tracer_surfaces = c("stem", "soil", "branch", "root", "live"),
   verbose = TRUE
 )
 }
@@ -37,11 +37,15 @@ median (campaign, day, instrument); \code{NULL} uses all rows.}
 \item{co2}{optional CO2 flux table (\code{best.flux()} output on \code{CO2dry_ppm})
 for the \code{co2_tracer} screen.}
 
-\item{tissue}{name of a column in \code{fluxes} (or a character vector aligned
-with it) giving tissue status; values in \code{exempt} are not screened by
-\code{co2_tracer}.}
+\item{surface}{the surface enclosed by each chamber: the name of a column
+in \code{fluxes}, or one string for the whole table (e.g. \code{"soil"},
+\code{"water"}, \code{"stem"}, \code{"leaf"}, \code{"dead"}). Only used by the conditional
+\code{co2_tracer} screen; \code{NULL} applies that screen to every row.}
 
-\item{exempt}{tissue values exempt from \code{co2_tracer}.}
+\item{co2_tracer_surfaces}{surfaces on which CO2 efflux is expected, so the
+\code{co2_tracer} screen applies; any other surface value (open water, leaves
+in the light, dead or dormant tissue, ...) gets \code{NA}. Matching is
+case-insensitive.}
 
 \item{verbose}{print a per-screen summary.}
 }
@@ -54,9 +58,22 @@ Applies a set of independent screens to a \code{\link[goFlux:best.flux]{goFlux::
 \code{\link[goFlux:goFlux]{goFlux::goFlux()}}) table and appends one logical column per screen
 (\verb{qc_<screen>}, \code{TRUE} = the screen fired), plus \code{qc_any} and a \code{qc_note}
 string listing the screens that fired. Rows are retained and flagged only.
-Screens that cannot be evaluated for a row (missing inputs, exempt tissue)
+Screens that cannot be evaluated for a row (missing inputs, a surface they do not apply to)
 give \code{NA}, which is \emph{not} a clean bill of health.
 }
+\section{Surface applicability}{
+\tabular{lll}{
+   screen \tab applies to \tab needs \cr
+   \code{c0} \tab any surface \tab \code{C0} (goFlux) \cr
+   \code{co2_tracer} \tab \strong{conditional}: surfaces where CO2 efflux is expected (\code{co2_tracer_surfaces}, default stem/soil/branch/root/live); \code{NA} on water, leaves in light, dead/dormant tissue \tab CO2 table or traces with \code{CO2dry_ppm} \cr
+   \code{convex} \tab any surface \tab traces (or \code{HM.k}) \cr
+   \code{min_window} \tab any surface \tab traces or \code{nb.obs} \cr
+   \code{ambient_start} \tab any surface \tab traces with pre-closure rows \cr
+   \code{noisy} \tab any surface \tab traces \cr
+   \code{leak} \tab any surface \tab bench leak rate, \code{MDF_emp} \cr
+}
+}
+
 \section{Screens}{
 
 \describe{
@@ -76,8 +93,10 @@ less than 2 sigma of the closure's Allan noise. Either way the chamber
 leaked, was not sealed, or was on dead/dormant tissue. The CO2 slope
 comes from, in order: the \code{co2} table (\code{LM.slope} by \code{UniqueID}),
 \code{traces} (linear fit of \code{CO2dry_ppm} on flagged rows), or
-\code{fluxes$LM.slope} when \code{fluxes} is itself the CO2 table. Rows whose
-\code{tissue} is in \code{exempt} get \code{NA}.}
+\code{fluxes$LM.slope} when \code{fluxes} is itself the CO2 table. \strong{Conditional
+on the surface:} applies only where \code{surface} is in
+\code{co2_tracer_surfaces}; other surfaces get \code{NA} and
+\code{qc_co2_tracer_applies = FALSE}.}
 \item{\code{convex} (\code{p = 0.05})}{accelerating (convex) concentration change,
 which no chamber mechanism produces and which points at a leak, a
 disturbance or a delayed seal. With \code{traces}: a quadratic fit on the

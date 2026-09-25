@@ -25,7 +25,7 @@ columns of \code{\link[=qc_screens]{qc_screens()}}.
 }
 \description{
 Back-compatible wrapper around \code{\link[=qc_screens]{qc_screens()}} running only the \code{c0}
-screen. Kept for scripts written against stemflux 0.1.0.
+screen. Kept for scripts written against fluxqc 0.1.0.
 }
 \examples{
 res <- data.frame(UniqueID = paste0("m", 1:6), C0 = c(2100, 2050, 1980, 2300, 11700, 2200))

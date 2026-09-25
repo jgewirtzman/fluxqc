@@ -16,8 +16,8 @@
 #' sampling interval; analyzer model, chamber family, geometry (`Area`,
 #' `Vtot`, `Tcham`, `Pcham`), season and year are kept. The extraction is
 #' documented, reproducibly from the author's drive, in
-#' `system.file("extdata", "build_examples.R", package = "stemflux")`, and the
-#' audit numbers below are in `stemflux_examples_diagnostics.csv` next to it.
+#' `system.file("extdata", "build_examples.R", package = "fluxqc")`, and the
+#' audit numbers below are in `fluxqc_examples_diagnostics.csv` next to it.
 #'
 #' | key | shows | campaign type, season | analyzer, sampling | window (s), n | CO2 slope ppm/s, p | CH4 flux, MDF95 (nmol m-2 s-1), class |
 #' |---|---|---|---|---|---|---|
@@ -52,7 +52,7 @@
 #' Yale-Myers Forest (CT, USA) chamber-flux record 2020-2021 (J. Gewirtzman
 #' and colleagues, Yale School of the Environment); cite as "Gewirtzman et
 #' al., Yale-Myers Forest chamber-flux record 2020-2021, distributed with the
-#' stemflux R package". Wetland closures (`high_flux_wetland_stem`,
+#' fluxqc R package". Wetland closures (`high_flux_wetland_stem`,
 #' `ebullition_floating`): the ground component of the NASA Carbon Monitoring
 #' System BlueFlux field campaign, south Florida; cite Poulter, B., et al.
 #' (2023), Multi-scale observations of mangrove blue carbon ecosystem fluxes:
@@ -72,18 +72,20 @@
 #'   `obs.length_corr`) and `aux` (data.frame: `UniqueID`, `start.time`,
 #'   `obs.length`, `Area`, `Vtot`, `Tcham`, `Pcham`, `start.time_corr`,
 #'   `end.time_corr`, `kind`, `campaign_type`, `season_year`, `analyzer`,
-#'   `chamber_family`).
+#'   `chamber_family`, `surface` (`"stem"`, `"soil"` or `"water"`, for the
+#'   surface-conditional CO2-tracer screen) and `campaign` (an anonymous
+#'   campaign key for `group`)).
 #' @examples
-#' ex <- stemflux_examples()
+#' ex <- fluxqc_examples()
 #' ex$aux[, c("UniqueID", "campaign_type", "analyzer")]
 #' table(ex$data$UniqueID, ex$data$flag)
-#' one <- stemflux_examples("failed_closure_stem")$data
+#' one <- fluxqc_examples("failed_closure_stem")$data
 #' plot(one$Etime, one$CO2dry_ppm, pch = 16, cex = 0.4, col = one$flag + 1)
 #' @seealso [example_closure()]
 #' @export
-stemflux_examples <- function(which = NULL, dead.band = NULL, prec = c(0.35, 0.9, 200)) {
-  f <- system.file("extdata", "stemflux_examples.csv", package = "stemflux")
-  fa <- system.file("extdata", "stemflux_examples_aux.csv", package = "stemflux")
+fluxqc_examples <- function(which = NULL, dead.band = NULL, prec = c(0.35, 0.9, 200)) {
+  f <- system.file("extdata", "fluxqc_examples.csv", package = "fluxqc")
+  fa <- system.file("extdata", "fluxqc_examples_aux.csv", package = "fluxqc")
   if (f == "" || fa == "") stop("example files not found in the installed package")
   d <- read.csv(f, stringsAsFactors = FALSE)
   ax <- read.csv(fa, stringsAsFactors = FALSE)
@@ -118,19 +120,19 @@ stemflux_examples <- function(which = NULL, dead.band = NULL, prec = c(0.35, 0.9
 
 #' One real chamber closure, ready for goFlux
 #'
-#' Alias for `stemflux_examples("emission_stem_semirigid")$data`: a clean
+#' Alias for `fluxqc_examples("emission_stem_semirigid")$data`: a clean
 #' high-signal tree-stem closure (Yale-Myers Forest monthly survey, spring
 #' 2021, ABB/LGR UGGA at 1 Hz) with the campaign's clicked window (765 s
 #' starting 91 s after the recorded `start.time`, 770 flagged rows) and its
-#' obs.win context. See [stemflux_examples()] for the geometry and the other
+#' obs.win context. See [fluxqc_examples()] for the geometry and the other
 #' bundled closures.
 #'
-#' @inheritParams stemflux_examples
+#' @inheritParams fluxqc_examples
 #' @return goFlux-shaped data.frame for the one closure.
 #' @examples
 #' d <- example_closure()
 #' nrow(d); sum(d$flag)
 #' @export
 example_closure <- function(dead.band = NULL, prec = c(0.35, 0.9, 200)) {
-  stemflux_examples("emission_stem_semirigid", dead.band = dead.band, prec = prec)$data
+  fluxqc_examples("emission_stem_semirigid", dead.band = dead.band, prec = prec)$data
 }

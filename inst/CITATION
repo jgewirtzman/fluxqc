@@ -1,12 +1,12 @@
-citHeader("To cite stemflux in publications use the package entry below, and cite goFlux for the underlying flux calculation. If you used the ebullition add-on, also cite the method: Hoffmann et al. (2017) for method = \"iqr\" and So et al. (2024) for method = \"runvar\". Provenance: no code was copied from Hoffmann et al.'s Zenodo script (record 53168) or from the fluxCH4 repository; the IQR filter was re-implemented from the paper and checked against the script's fence definitions.")
+citHeader("To cite fluxqc in publications use the package entry below, and cite goFlux for the underlying flux calculation. If you used the ebullition add-on, also cite the method: Hoffmann et al. (2017) for method = \"iqr\" and So et al. (2024) for method = \"runvar\". Provenance: no code was copied from Hoffmann et al.'s Zenodo script (record 53168) or from the fluxCH4 repository; the IQR filter was re-implemented from the paper and checked against the script's fence definitions.")
 
 bibentry(
   bibtype = "Manual",
-  title   = "stemflux: Window Selection, Empirical Precision and Detection Limits for Chamber Flux Data Processed with goFlux",
+  title   = "fluxqc: Detection limits, quality screens and ebullition for chamber flux measurements, on top of goFlux",
   author  = person("Jonathan", "Gewirtzman", email = "jongewirtzman@gmail.com"),
   year    = "2026",
   note    = "R package version 0.2.0",
-  url     = "https://github.com/jongewirtzman/stemflux"
+  url     = "https://github.com/jongewirtzman/fluxqc"
 )
 
 bibentry(

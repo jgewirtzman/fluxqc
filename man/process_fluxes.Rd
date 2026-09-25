@@ -2,7 +2,7 @@
 % Please edit documentation in R/process.R
 \name{process_fluxes}
 \alias{process_fluxes}
-\title{Run the core stem-flux pipeline for one gas in one call}
+\title{Run the core chamber-flux pipeline for one gas in one call}
 \usage{
 process_fluxes(
   manID_data,
@@ -15,7 +15,7 @@ process_fluxes(
   qc = list(c0 = TRUE, co2_tracer = TRUE, convex = TRUE, min_window = TRUE, ambient_start
     = TRUE, noisy = TRUE),
   group = NULL,
-  tissue = NULL,
+  surface = NULL,
   co2 = NULL,
   ebullition = c("none", "flag", "split"),
   ebullition_method = c("iqr", "threshold", "runvar"),
@@ -32,7 +32,7 @@ process_fluxes(
 \code{\link[=windows_from_table]{windows_from_table()}}).}
 
 \item{aux}{optional auxfile (one row per \code{UniqueID}); used for the
-\code{ebullition} logical column and for \code{group} / \code{tissue} columns of the QC
+\code{ebullition} logical column and for \code{group} / \code{surface} columns of the QC
 screens, which are merged into the flux table by \code{UniqueID}.}
 
 \item{gastype}{gas column to process (one gas per call).}
@@ -45,9 +45,13 @@ i.e. the 2-sigma criterion).}
 \item{qc}{list of screens passed to \code{\link[=qc_screens]{qc_screens()}} (\code{screens} argument), or
 \code{FALSE} to skip QC.}
 
-\item{group, tissue}{column names (in \code{aux} or the flux table); \code{group} defines the
-field periods for the record-wide \code{"mad"} precision in \code{\link[=flag_detection]{flag_detection()}} and the
-\code{c0} median in \code{\link[=qc_screens]{qc_screens()}}; \code{tissue} is passed to \code{\link[=qc_screens]{qc_screens()}}.}
+\item{group}{column name (in \code{aux} or the flux table) defining the field
+periods for the record-wide \code{"mad"} precision in \code{\link[=flag_detection]{flag_detection()}} and the
+\code{c0} median in \code{\link[=qc_screens]{qc_screens()}}.}
+
+\item{surface}{the surface enclosed by each chamber: a column name (in \code{aux}
+or the flux table) or one string for the whole set; passed to
+\code{\link[=qc_screens]{qc_screens()}}, where it decides whether the CO2-tracer screen applies.}
 
 \item{co2}{optional CO2 flux table for the \code{co2_tracer} screen.}
 
@@ -69,7 +73,7 @@ absent.}
 \code{k.min}).}
 }
 \value{
-list of class \code{stemflux_result} with \code{fluxes} (one row per
+list of class \code{fluxqc_result} with \code{fluxes} (one row per
 \code{UniqueID}), \code{events} (\code{NULL} on the core path; one row per ebullition
 event when the add-on ran), \code{traces} (the concentration data actually
 fitted), \code{gastype} and \code{settings} (every option used).
@@ -78,16 +82,17 @@ fitted), \code{gastype} and \code{settings} (every option used).
 The core path is \code{goFlux::goFlux()} -> \code{goFlux::best.flux()} ->
 \code{\link[=flag_detection]{flag_detection()}} -> \code{\link[=qc_screens]{qc_screens()}}, with every option recorded in a
 \code{settings} element for the methods section. goFlux's columns are returned
-exactly as \code{best.flux()} produced them; stemflux only appends columns
+exactly as \code{best.flux()} produced them; fluxqc only appends columns
 (\code{sigma_emp}, \code{MDF_emp}, \code{below_MDF_emp}, \code{MDF_emp_method},
 \code{detected_emp}, \code{det_class_emp}, \verb{qc_*}). That is all that runs by
-default. The ebullition add-on (for flooded stems and aquatic chambers) is
+default. The ebullition add-on (for water surfaces, saturated soils and
+flooded vegetation) is
 opt-in through the single \code{ebullition} switch: \code{"flag"} fits the whole
 trace but detects events and adds \code{n_ebullition_events} /
 \code{ebullition_flag}; \code{"split"} fits the diffusive term on the de-ebulliated
 trace and adds \code{flux_diffusive}, \code{flux_ebullitive}, \code{flux_total},
 \code{ebullition_method} (see \code{\link[=detect_ebullition]{detect_ebullition()}} and
-\code{vignette("ebullition", "stemflux")}). \code{ebullition_ids} (or a logical
+\code{vignette("ebullition", "fluxqc")}). \code{ebullition_ids} (or a logical
 \code{ebullition} column in \code{aux}) selects the closures that get the add-on; the
 rest run the core path.
 }

@@ -1,6 +1,10 @@
-# stemflux 0.2.0
+# fluxqc 0.2.0
 
-Revision after author review.
+Revision after author review. Renamed from stemflux: the package targets any
+chamber closure processed with goFlux (soil, water, stems, leaves; diffusive
+or ebullitive); tree stems are one application. `qc_screens(surface =,
+co2_tracer_surfaces =)` replace `tissue`/`exempt`: the CO2-tracer screen is
+conditional on the surface, every other screen is surface-independent.
 
 * `click_peak2_stacked(gases = ...)` stacks any number and order of gas
   columns (`"auto"` = every recognised goFlux gas present); `auto_id_rise()`
@@ -19,12 +23,12 @@ Revision after author review.
   unchanged on `process_fluxes()$fluxes`.
 * `detect_ebullition(merge.consecutive = TRUE)`: a run of consecutive flagged
   samples is one event (bubble bursts span several 1 Hz samples).
-* `stemflux_examples()`: ten anonymized real closures across campaigns and
+* `fluxqc_examples()`: ten anonymized real closures across campaigns and
   two analyzer families (ABB/LGR UGGA/GLA131, LI-COR LI-7810), each the
   campaign's clicked goFlux window with obs.win context and real geometry,
   chosen by audited criteria (`inst/extdata/build_examples.R`, one BlueFlux ebullition closure, one synthetic
   uptake), released with the package; `example_closure()` is the alias for
-  `a`. Data files `inst/extdata/stemflux_examples*.csv` replace
+  `a`. Data files `inst/extdata/fluxqc_examples*.csv` replace
   `example_closure.csv`.
 * `detect_clock_streams()` un-exported (moved to `inst/rescue/`): it depends
   on the raw LGR file layout and a one-campaign failure mode.
@@ -59,7 +63,7 @@ Revision after author review.
 * `UPSTREAM.md`: fifth goFlux issue (namespace-qualified `import.*()` calls
   fail); rescue tools removed from the PR candidates.
 
-# stemflux 0.1.0
+# fluxqc 0.1.0
 
 First release. Consolidates helper code written between 2023 and 2026 while
 processing chamber fluxes with goFlux across the Yale-Myers, Harvard Forest,
@@ -76,8 +80,8 @@ BlueFlux (Everglades), Santa Fe and Barro Colorado campaigns.
   `obs_win_deinterleave()`, `click_flux_2d()`.
 * Ebullition: `detect_ebullition()`, `split_ebullition()`.
 * Import: `import_li7810_subset()`, `import2RData_flat()`.
-* Data: `example_closure()` (one real UGGA tree-stem closure with auxfile
+* Data: `example_closure()` (one real UGGA closure with auxfile
   geometry).
 * Vignettes: "From raw trace to reported flux" (fully evaluated) and "The
-  recommended stem-flux pipeline".
+  recommended chamber-flux pipeline".
 * `inst/upstream/UPSTREAM.md`: goFlux bug reports and a contribution plan.

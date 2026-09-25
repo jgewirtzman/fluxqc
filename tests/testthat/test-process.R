@@ -4,7 +4,7 @@ best_ref <- suppressWarnings(goFlux::best.flux(suppressWarnings(goFlux::goFlux(d
 test_that("process_fluxes core path: appends only, goFlux columns untouched, events NULL", {
   res <- suppressWarnings(process_fluxes(d, gastype = "CH4dry_ppb",
                                          qc = list(c0 = TRUE, convex = TRUE, min_window = list(secs = 120))))
-  expect_s3_class(res, "stemflux_result")
+  expect_s3_class(res, "fluxqc_result")
   expect_named(res, c("fluxes", "events", "traces", "gastype", "settings"))
   expect_null(res$events)
   fx <- res$fluxes
@@ -20,7 +20,7 @@ test_that("process_fluxes core path: appends only, goFlux columns untouched, eve
   expect_equal(fx$MDF_emp_method, "wassmann | mad | 0.95")
   expect_equal(res$settings$ebullition, "none")
   expect_null(res$settings$extra)
-  expect_output(print(res), "stemflux result")
+  expect_output(print(res), "fluxqc result")
   expect_false(grepl("ebullition", paste(capture.output(print(res)), collapse = " ")))
   # extras through the wrapper
   r2 <- suppressWarnings(process_fluxes(d, gastype = "CH4dry_ppb", qc = FALSE,
@@ -37,7 +37,7 @@ test_that("goFlux::flux.plot runs unchanged on process_fluxes()$fluxes", {
   expect_length(pl, 1)
   expect_true(inherits(pl[[1]], "ggplot"))
   ref <- suppressWarnings(goFlux::flux.plot(best_ref, d, "CH4dry_ppb"))
-  expect_equal(stemflux:::plot_uid(pl[[1]], 1), stemflux:::plot_uid(ref[[1]], 1))
+  expect_equal(fluxqc:::plot_uid(pl[[1]], 1), fluxqc:::plot_uid(ref[[1]], 1))
 })
 
 test_that("process_fluxes ebullition add-on: flag and split, per-closure control", {

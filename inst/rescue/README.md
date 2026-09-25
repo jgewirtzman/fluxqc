@@ -5,14 +5,14 @@ These functions were one-off rescue tools written for the BlueFlux
 files with mid-file clock resets. After a reset, rows written later carry
 earlier time stamps, so a time-sorted import interleaves two streams and the
 observation windows contain two overlapping traces. They were moved out of
-the stemflux namespace in 0.2.0 because they solve a specific data-damage
+the fluxqc namespace in 0.2.0 because they solve a specific data-damage
 problem and are not part of a normal pipeline. They are kept here, tested by
 hand, for anyone who meets the same problem.
 
 Source them with
 
 ```r
-source(system.file("rescue", "rescue_tools.R", package = "stemflux"))
+source(system.file("rescue", "rescue_tools.R", package = "fluxqc"))
 ```
 
 | Function | Purpose |
@@ -23,7 +23,7 @@ source(system.file("rescue", "rescue_tools.R", package = "stemflux"))
 | `obs_win_deinterleave(raw_data, auxfile, ...)` | `obs.win()` replacement that keeps the smoother stream per window and adds `Etime` and chamber columns |
 | `click_flux_2d(raw_data, auxfile, ...)` | interactive: draw a time x concentration box around the good points and run `goFlux::goFlux()` on them at once |
 
-The exported `stemflux::find_clock_offset()` (notebook-to-analyzer clock
+The exported `fluxqc::find_clock_offset()` (notebook-to-analyzer clock
 offset, any analyzer) is the general-purpose part of this work;
 `detect_clock_streams()` was demoted here in 0.2.0 because it depends on the
 raw LGR text-file layout and a failure mode seen in one campaign.

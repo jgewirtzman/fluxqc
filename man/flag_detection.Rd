@@ -76,7 +76,7 @@ estimator), \code{MDF_emp} (the minimum detectable flux by the chosen method),
 \code{"wassmann | mad | 0.95"}), plus \code{detected_emp} and \code{det_class_emp}
 (\code{"emission"}, \code{"uptake"}, \code{"below detection"}). goFlux's own columns
 (\code{MDF}, \code{prec}, \code{best.flux}, \code{quality.check}, ...) are never modified or
-duplicated; stemflux only appends. Nothing is deleted: rows are flagged.
+duplicated; fluxqc only appends. Nothing is deleted: rows are flagged.
 }
 \details{
 The default precision and MDF form are those of the companion

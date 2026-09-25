@@ -1,12 +1,12 @@
 t0 <- as.POSIXct("2023-03-15 10:00:00", tz = "UTC")
 
 test_that("rescue scripts (including detect_clock_streams) source and work", {
-  src <- system.file("rescue", "rescue_tools.R", package = "stemflux")
+  src <- system.file("rescue", "rescue_tools.R", package = "fluxqc")
   skip_if(!nzchar(src), "rescue scripts not installed")
   e <- new.env(); sys.source(src, envir = e)
   expect_true(all(c("detect_clock_streams", "write_stream_files", "separate_window_streams",
                     "obs_win_deinterleave", "click_flux_2d") %in% ls(e)))
-  expect_false("detect_clock_streams" %in% getNamespaceExports("stemflux"))
+  expect_false("detect_clock_streams" %in% getNamespaceExports("fluxqc"))
   f <- tempfile(fileext = ".txt")
   hdr <- c("SN: 123", "SysTime, [CH4]d_ppm, [CO2]d_ppm")
   good <- sprintf("%s, 2.0, 400", format(t0 + 0:19, "%m/%d/%Y %H:%M:%S"))

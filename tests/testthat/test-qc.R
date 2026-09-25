@@ -33,12 +33,18 @@ test_that("individual screens fire as designed", {
   expect_match(out$qc_note[3], "convex")
   expect_true(is.na(out$qc_note[1]))
   # co2_tracer with tissue exemption, fluxes is the CO2 table itself
-  out2 <- qc_screens(fx, gastype = "CO2dry_ppm", tissue = c("live", "live", "live", "dead", "live", "live"),
+  out2 <- qc_screens(fx, gastype = "CO2dry_ppm", surface = c("stem", "soil", "live", "dead", "branch", "root"),
                      screens = list(co2_tracer = list(min_slope = 0)), verbose = FALSE)
   expect_equal(out2$qc_co2_tracer, c(FALSE, TRUE, FALSE, NA, FALSE, FALSE))   # row 4 is dead tissue
-  out3 <- qc_screens(fx, gastype = "CO2dry_ppm", tissue = c("live", "dead", "live", "live", "live", "live"),
+  out3 <- qc_screens(fx, gastype = "CO2dry_ppm", surface = c("stem", "water", "leaf", "stem", "stem", "stem"),
                      screens = list(co2_tracer = TRUE), verbose = FALSE)
-  expect_true(is.na(out3$qc_co2_tracer[2]))
+  expect_true(is.na(out3$qc_co2_tracer[2])); expect_true(is.na(out3$qc_co2_tracer[3]))
+  expect_equal(out3$qc_co2_tracer_applies, c(TRUE, FALSE, FALSE, TRUE, TRUE, TRUE))
+  fx$surf <- "water"
+  out4 <- qc_screens(fx, gastype = "CO2dry_ppm", surface = "surf", screens = list(co2_tracer = TRUE), verbose = FALSE)
+  expect_true(all(is.na(out4$qc_co2_tracer)))
+  out5 <- qc_screens(fx, gastype = "CO2dry_ppm", surface = "Soil", screens = list(co2_tracer = TRUE), verbose = FALSE)
+  expect_true(all(!is.na(out5$qc_co2_tracer)))
   expect_error(qc_screens(fx, screens = list(bogus = TRUE)), "unknown screen")
 })
 

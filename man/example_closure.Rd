@@ -17,11 +17,11 @@ to the \verb{*_prec} columns.}
 goFlux-shaped data.frame for the one closure.
 }
 \description{
-Alias for \code{stemflux_examples("emission_stem_semirigid")$data}: a clean
+Alias for \code{fluxqc_examples("emission_stem_semirigid")$data}: a clean
 high-signal tree-stem closure (Yale-Myers Forest monthly survey, spring
 2021, ABB/LGR UGGA at 1 Hz) with the campaign's clicked window (765 s
 starting 91 s after the recorded \code{start.time}, 770 flagged rows) and its
-obs.win context. See \code{\link[=stemflux_examples]{stemflux_examples()}} for the geometry and the other
+obs.win context. See \code{\link[=fluxqc_examples]{fluxqc_examples()}} for the geometry and the other
 bundled closures.
 }
 \examples{

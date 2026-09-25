@@ -2,8 +2,8 @@
 # build_examples.R -- how the bundled example closures were pulled and anonymized
 #
 # NOT run at install time. Documents, reproducibly from the author's drive, how
-# inst/extdata/stemflux_examples.csv, stemflux_examples_aux.csv and
-# stemflux_examples_diagnostics.csv were made. Each closure is the campaign's
+# inst/extdata/fluxqc_examples.csv, fluxqc_examples_aux.csv and
+# fluxqc_examples_diagnostics.csv were made. Each closure is the campaign's
 # own goFlux manID output: the full obs.win() segment (context rows flag = 0,
 # operator-clicked fitting window flag = 1) with the geometry from the same
 # rows. Anonymization: UniqueIDs become descriptive keys; tree tags, plot codes,
@@ -31,7 +31,7 @@ YMF <- path.expand("~/My Drive/Research/YMF Tree Microbiomes & Methane/tree-meth
 BF  <- path.expand("~/My Drive/Research/Blueflux/blueflux-ground")
 SF  <- path.expand("~/My Drive/Research/santafe-fluxes-2026")
 GP  <- path.expand("~/Downloads/Guidelines Paper/figure-build/fig03_traces/out")
-OUT <- path.expand("~/My Drive/Research/stemflux/inst/extdata")
+OUT <- path.expand("~/My Drive/Research/fluxqc/inst/extdata")
 
 # ---- selection ---------------------------------------------------------------
 # key, source, original UniqueID, campaign type, season/year, analyzer, chamber family, MDF/class source
@@ -108,7 +108,9 @@ for (i in seq_len(nrow(sel))) {
                          start.time_corr = format(x$start.time_corr[1] + shift, "%Y-%m-%d %H:%M:%S"),
                          end.time_corr = format(x$end.time_corr[1] + shift, "%Y-%m-%d %H:%M:%S"),
                          kind = "real", campaign_type = s$campaign_type, season_year = s$season_year, analyzer = s$analyzer,
-                         chamber_family = s$chamber_family)
+                         chamber_family = s$chamber_family,
+                         surface = if (grepl("soil", s$campaign_type)) "soil" else if (grepl("open water", s$campaign_type)) "water" else "stem",
+                         campaign = c(semirigid = "ymf_monthly", height = "ymf_height", soil = "ymf_soil", bf_picarro = "blueflux", bf_lgr3 = "blueflux", bf_ebull = "blueflux", santafe = "santafe")[[s$src]])
   # continuity of the flagged window: timestamp gaps and single-sample steps relative to the window's own noise
   dtw <- diff(as.numeric(fl$POSIX.time)); dch <- abs(diff(fl$CH4dry_ppb)); dco <- abs(diff(fl$CO2dry_ppm))
   diag[[i]] <- data.frame(key = s$key, campaign_type = s$campaign_type, season_year = s$season_year, analyzer = s$analyzer,
@@ -131,7 +133,7 @@ diag$verdict <- c("valid, detected: the worked-example closure (1 Hz, CH4 r2 0.9
                   "valid, detected: large diffusive mangrove-stem emission (continuous 1 s timestamps, CH4 steps 3.2 x MAD). No Picarro G4301 stem closure of the campaign passes the continuity test (irregular 3-7 s logging, single-sample steps >= 11 x MAD), so that format is not represented",
                   "ebullition: one bubble burst (5 consecutive samples at 42-46 s, ~675 ppb) inside a sealed floating-chamber closure; no clicked window (campaign-segmented trace)",
                   "valid, detected: clean LI-7810 stem emission, third analyzer format (continuous 1 s timestamps, CH4 steps 4.1 x MAD); Tcham is the campaign default (24 C) as no chamber temperature was logged")
-write.csv(do.call(rbind, data), file.path(OUT, "stemflux_examples.csv"), row.names = FALSE)
-write.csv(do.call(rbind, aux),  file.path(OUT, "stemflux_examples_aux.csv"), row.names = FALSE)
-write.csv(diag, file.path(OUT, "stemflux_examples_diagnostics.csv"), row.names = FALSE)
+write.csv(do.call(rbind, data), file.path(OUT, "fluxqc_examples.csv"), row.names = FALSE)
+write.csv(do.call(rbind, aux),  file.path(OUT, "fluxqc_examples_aux.csv"), row.names = FALSE)
+write.csv(diag, file.path(OUT, "fluxqc_examples_diagnostics.csv"), row.names = FALSE)
 options(width = 250); print(diag[, c("key", "season_year", "sampling_interval_s", "window_length_s", "n_flagged", "n_segment", "co2_slope_ppm_s", "co2_p", "ch4_flux_nmol_m2_s", "MDF95", "class")])

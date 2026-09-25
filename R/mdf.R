@@ -99,7 +99,7 @@ mdf_multi <- function(flux.term, t, prec = NULL, sigma = NULL, sigma.global = NU
 #' `"wassmann | mad | 0.95"`), plus `detected_emp` and `det_class_emp`
 #' (`"emission"`, `"uptake"`, `"below detection"`). goFlux's own columns
 #' (`MDF`, `prec`, `best.flux`, `quality.check`, ...) are never modified or
-#' duplicated; stemflux only appends. Nothing is deleted: rows are flagged.
+#' duplicated; fluxqc only appends. Nothing is deleted: rows are flagged.
 #'
 #' The default precision and MDF form are those of the companion
 #' data-processing manuscript (`mdf_FINAL_precision_and_detection.R`):

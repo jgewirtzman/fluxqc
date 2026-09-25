@@ -1,12 +1,12 @@
 ---
-title: "The recommended stem-flux pipeline"
+title: "The recommended chamber-flux pipeline"
 author: "Jonathan Gewirtzman"
 date: "`r Sys.Date()`"
 output:
   rmarkdown::html_vignette:
     toc: true
 vignette: >
-  %\VignetteIndexEntry{The recommended stem-flux pipeline}
+  %\VignetteIndexEntry{The recommended chamber-flux pipeline}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -15,8 +15,8 @@ vignette: >
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
 ```
 
-This vignette lays out the end-to-end pipeline for stem (and soil) chamber
-fluxes as it is run in practice, and shows where each `stemflux` function
+This vignette lays out the end-to-end pipeline for chamber fluxes from any
+surface (soil, water, stems, leaves, ...) as it is run in practice, and shows where each `fluxqc` function
 plugs into the standard `goFlux` sequence. Chunks that require an interactive
 graphics device are marked and not evaluated when the vignette is built; the
 non-interactive alternatives are shown next to them. See "From raw trace to
@@ -28,9 +28,10 @@ import -> auxfile -> obs.win -> window selection -> process_fluxes()
                                                   -> write_outputs()
 ```
 
-Ebullition (bubbles under floating chambers or from flooded stems) is an
-opt-in add-on switched on with `process_fluxes(ebullition = ...)`; see
-`vignette("ebullition", "stemflux")`. Upland soil and stem users never need it.
+Ebullition (bubbles under floating chambers, from saturated soils or flooded
+vegetation) is an opt-in add-on switched on with `process_fluxes(ebullition =
+...)`; see `vignette("ebullition", "fluxqc")`. Users of unsaturated surfaces
+never need it.
 
 ## 1. Import
 
@@ -40,7 +41,7 @@ files, import file by file.
 
 ```{r import}
 library(goFlux)
-library(stemflux)
+library(fluxqc)
 
 # LI-7810: a 160 MB file -> only the field days
 licor <- import_li7810_subset(
@@ -73,7 +74,7 @@ aux <- data.frame(
   Vtot  = 7.08,      # L
   Tcham = 24.5,      # C
   Pcham = 101.3,     # kPa
-  campaign = "May-2026", tissue = "live")
+  campaign = "May-2026", surface = "stem")
 
 fc  <- find_clock_offset(licor, aux, gas = "CO2dry_ppm", search = c(-1800, 1800), auxfile = aux)
 fc$offset                 # seconds to add to notebook times; inspect fc$scores before trusting it
@@ -120,7 +121,7 @@ CH4 <- process_fluxes(
                    min_window = list(secs = 120), ambient_start = list(sigma = 3, secs = 10),
                    noisy = list(k = 1.5),                   # per-closure sigma vs campaign sigma (diagnostic)
                    leak = list(rate = 2e-5)),               # bench leak rate, s-1; omit to skip
-  group = "campaign", tissue = "tissue")                 # group = field period for the MAD sigma and the C0 median
+  group = "campaign", surface = "surface")               # group = field period (MAD sigma, C0 median); surface decides the CO2-tracer screen
 CO2 <- process_fluxes(manID, aux = aux, gastype = "CO2dry_ppm", mdf = "two_sigma")
 CH4
 table(CH4$fluxes$det_class_emp); table(CH4$fluxes$qc_any)
@@ -146,25 +147,30 @@ manID$CH4_prec <- sig$sigma[match(manID$UniqueID, sig$UniqueID)]
 CH4_flux <- goFlux(manID, "CH4dry_ppb")     # goFlux reads the *_prec columns
 ```
 
-## 4b. The four teaching cases (evaluated)
+## 4b. The bundled closures through the pipeline (evaluated)
 
-This is the logic of Figure 4 of the guidelines paper: real closures that
-look alike in a flux table until the detection flag and the QC screens are
-applied. `stemflux_examples()` ships them, anonymized, with their real
-geometry and the operator-clicked windows (see `?stemflux_examples` for the
-full curated set and its diagnostics).
+The Figure 4 logic of the guidelines paper, illustrated there with the
+author's tree-stem examples as one labelled application: closures that look
+alike in a flux table until the detection flag and the QC screens are
+applied. `fluxqc_examples()` ships ten anonymized real closures across
+surfaces (upland tree stems, a forest soil collar, a mangrove stem, open
+water) with their real geometry, the operator-clicked windows and a `surface`
+column (see `?fluxqc_examples`). Running the whole set in one call, with
+`group` = campaign for the MAD sigma and `surface` deciding where the
+CO2-tracer screen applies:
 
 ```{r figure4, eval = TRUE}
-library(stemflux)
-ex <- stemflux_examples(c("emission_stem_semirigid", "below_detection_stem", "failed_closure_stem",
-                          "ambiguous_stem", "uptake_stem"))
-ex$aux[, c("UniqueID", "campaign_type", "season_year")]
+library(fluxqc)
+ex <- fluxqc_examples()
+ex$aux[, c("UniqueID", "surface", "campaign", "season_year")]
 invisible(capture.output(
-  res <- suppressWarnings(process_fluxes(ex$data, gastype = "CH4dry_ppb",
-                          qc = list(c0 = TRUE, co2_tracer = TRUE, convex = TRUE, min_window = list(secs = 120))))))
+  res <- suppressWarnings(process_fluxes(ex$data, aux = ex$aux, gastype = "CH4dry_ppb",
+                          group = "campaign", surface = "surface",
+                          qc = list(c0 = TRUE, co2_tracer = TRUE, convex = TRUE, min_window = list(secs = 120),
+                                    noisy = TRUE)))))
 out <- res$fluxes[match(ex$aux$UniqueID, res$fluxes$UniqueID), ]
-out[, c("UniqueID", "best.flux", "sigma_emp", "MDF_emp", "det_class_emp", "qc_co2_slope", "qc_co2_tracer",
-        "qc_convex", "qc_any")]
+out[, c("UniqueID", "best.flux", "sigma_emp", "MDF_emp", "det_class_emp", "qc_co2_tracer_applies",
+        "qc_co2_tracer", "qc_convex", "qc_noisy", "qc_any")]
 ```
 
 Reading the rows: `emission_stem_semirigid` is detected and passes;
@@ -173,8 +179,11 @@ detection limit (kept, flagged); `failed_closure_stem` fails the CO2 tracer
 screen because the chamber never sealed, so its CH4 number is meaningless
 whatever its size; `ambiguous_stem` has a marginally detected CH4 change but
 no CO2 rise, which the tracer screen flags for a look (a leak-free chamber on
-live tissue should accumulate CO2); `uptake_stem` is a real, detected uptake
-with a healthy CO2 tracer. No row was removed.
+live tissue should accumulate CO2); `uptake_stem` and `uptake_soil` are real,
+detected uptakes with healthy CO2 tracers; `high_flux_wetland_stem` and the
+LI-7810 closure are large clean emissions; `ebullition_floating` is open water,
+so the CO2-tracer screen is `NA` there by design (`qc_co2_tracer_applies =
+FALSE`) and its bubbles are the add-on's business. No row was removed.
 
 ## 5. Where the outputs go
 
@@ -190,9 +199,9 @@ write_outputs(CH4, "results/CH4")
 ebullition add-on ran), `traces` (the concentration data actually fitted),
 `gastype`, `settings`.
 
-**goFlux columns are never modified; stemflux adds columns; nothing is
+**goFlux columns are never modified; fluxqc adds columns; nothing is
 removed.** `fluxes` starts as the exact `best.flux()` table (same names, same
-values) and stemflux appends columns with distinguishable names (`*_emp`,
+values) and fluxqc appends columns with distinguishable names (`*_emp`,
 `qc_*`, `flux_ebullitive`, ...), so `goFlux::flux.plot()` and any other goFlux
 function run on it unchanged. `flux_pdf()` replaces `flux2pdf()` only because
 the latter fails with ggplot2 >= 3.5; it writes the same plots produced by
@@ -205,26 +214,26 @@ the latter fails with ggplot2 >= 3.5; it writes the same plots produced by
 | `HM.flux`, `HM.C0`, `HM.Ci`, `HM.slope`, `HM.MAE`, `HM.RMSE`, `HM.AICc`, `HM.SE`, `HM.se.rel`, `HM.r2`, `HM.k` | goFlux (unchanged) | `goFlux::goFlux()` | Hutchinson-Mosier fit |
 | `C0`, `Ct`, `MDF`, `prec`, `flux.term`, `nb.obs`, `k.max`, `k.mult`, `g.fact` | goFlux (unchanged) | `goFlux::goFlux()` | start/end concentration, goFlux's MDF (datasheet `prec`), (V/A)(P/RT), n, kappa bounds, g-factor |
 | `best.flux`, `model`, `quality.check`, `HM.diagnose`, `LM.diagnose`, `HM.score`, `LM.score`, `*.lim`, `warn.nb.obs` | goFlux (unchanged) | `goFlux::best.flux()` | selected flux and why |
-| `<group>`, `<tissue>` | stemflux (added) | auxfile via `process_fluxes()` | grouping / tissue columns merged for the screens |
-| `sigma_emp` | stemflux (added) | `flag_detection()` | per-closure precision by the chosen estimator |
-| `MDF_emp`, `below_MDF_emp`, `MDF_emp_method` | stemflux (added) | `flag_detection()` | the reported MDF, its flag, and `"<mdf> | <precision> | <conf>"` |
-| `detected_emp`, `det_class_emp` | stemflux (added) | `flag_detection()` | `emission` / `uptake` / `below detection` by `MDF_emp` |
-| `sigma_<precision>`, `MDF_<mdf>_<precision>[_<conf>]` | stemflux (added, only with `extra`) | `flag_detection()` | comparison columns |
-| `qc_c0`, `qc_c0_ratio` | stemflux (added) | `qc_screens()` | C0 > k x group median |
-| `qc_co2_tracer`, `qc_co2_slope` | stemflux (added) | `qc_screens()` | CO2 slope <= min_slope (NA for exempt tissue) |
-| `qc_convex` | stemflux (added) | `qc_screens()` | accelerating trace |
-| `qc_min_window` | stemflux (added) | `qc_screens()` | window shorter than `secs` |
-| `qc_ambient_start`, `qc_ambient_dev_sigma` | stemflux (added) | `qc_screens()` | start already enriched vs pre-closure ambient |
-| `qc_noisy`, `qc_noisy_sigma`, `qc_noisy_ratio` | stemflux (added) | `qc_screens()` | closure sigma > k x campaign sigma (disturbed closure?) |
-| `qc_leak`, `qc_leak_apparent_flux` | stemflux (added) | `qc_screens()` | leak-equivalent flux >= `MDF_emp` |
-| `qc_any`, `qc_note` | stemflux (added) | `qc_screens()` | any screen fired; which |
-| `ebullition_handling`, `n_ebullition_events`, `ebullition_flag` | stemflux add-on (added only with `ebullition = "flag"`/`"split"`) | `detect_ebullition()` | events per closure |
-| `flux_diffusive`, `flux_ebullitive`, `flux_total`, `ebullition_method` | stemflux add-on (added only with `"split"`) | `split_ebullition()` | diffusive term (= `best.flux` on the de-ebulliated trace), bubble term, sum |
+| `<group>`, `<surface>` | fluxqc (added) | auxfile via `process_fluxes()` | grouping / surface columns merged for the screens |
+| `sigma_emp` | fluxqc (added) | `flag_detection()` | per-closure precision by the chosen estimator |
+| `MDF_emp`, `below_MDF_emp`, `MDF_emp_method` | fluxqc (added) | `flag_detection()` | the reported MDF, its flag, and `"<mdf> | <precision> | <conf>"` |
+| `detected_emp`, `det_class_emp` | fluxqc (added) | `flag_detection()` | `emission` / `uptake` / `below detection` by `MDF_emp` |
+| `sigma_<precision>`, `MDF_<mdf>_<precision>[_<conf>]` | fluxqc (added, only with `extra`) | `flag_detection()` | comparison columns |
+| `qc_c0`, `qc_c0_ratio` | fluxqc (added) | `qc_screens()` | C0 > k x group median |
+| `qc_co2_tracer`, `qc_co2_slope`, `qc_co2_tracer_applies` | fluxqc (added) | `qc_screens()` | CO2 tracer screen (conditional on `surface`; NA where it does not apply) |
+| `qc_convex` | fluxqc (added) | `qc_screens()` | accelerating trace |
+| `qc_min_window` | fluxqc (added) | `qc_screens()` | window shorter than `secs` |
+| `qc_ambient_start`, `qc_ambient_dev_sigma` | fluxqc (added) | `qc_screens()` | start already enriched vs pre-closure ambient |
+| `qc_noisy`, `qc_noisy_sigma`, `qc_noisy_ratio` | fluxqc (added) | `qc_screens()` | closure sigma > k x campaign sigma (disturbed closure?) |
+| `qc_leak`, `qc_leak_apparent_flux` | fluxqc (added) | `qc_screens()` | leak-equivalent flux >= `MDF_emp` |
+| `qc_any`, `qc_note` | fluxqc (added) | `qc_screens()` | any screen fired; which |
+| `ebullition_handling`, `n_ebullition_events`, `ebullition_flag` | fluxqc add-on (added only with `ebullition = "flag"`/`"split"`) | `detect_ebullition()` | events per closure |
+| `flux_diffusive`, `flux_ebullitive`, `flux_total`, `ebullition_method` | fluxqc add-on (added only with `"split"`) | `split_ebullition()` | diffusive term (= `best.flux` on the de-ebulliated trace), bubble term, sum |
 
 `events` (add-on only): `UniqueID`, `POSIX.time`, `Etime`, `dC` (event size,
-gas units), `threshold`. `settings`: `stemflux_version`, `goFlux_version`,
+gas units), `threshold`. `settings`: `fluxqc_version`, `goFlux_version`,
 `gastype`, `precision`, `mdf`, `conf`, `extra`, `sigma_global`, `qc`
-(parameters of each screen), `group`, `tissue`, `ebullition*`, `goFlux_args`,
+(parameters of each screen), `group`, `surface`, `ebullition*`, `goFlux_args`,
 `best.flux_args`, `n_closures`, `date`.
 
 ## 6. Plots by hand

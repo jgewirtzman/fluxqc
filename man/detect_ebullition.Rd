@@ -57,7 +57,7 @@ sample separately, as the BlueFlux campaign script did.}
 \item{time.col}{POSIXct time column.}
 }
 \value{
-list of class \code{stemflux_ebullition} with \code{events} (one row per
+list of class \code{fluxqc_ebullition} with \code{events} (one row per
 event: \code{UniqueID}, \code{POSIX.time}, \code{Etime}, \code{dC} (jump size, gas units),
 \code{threshold}), \code{trace} (rows used, with \code{dC}, \code{is_jump}, \code{is_outlier},
 \code{cum_jump}, \code{C_deebull}, \code{near_jump}) and \code{summary} (per closure:
@@ -65,7 +65,8 @@ event: \code{UniqueID}, \code{POSIX.time}, \code{Etime}, \code{dC} (jump size, g
 \code{max_jump}, \code{ebullitive_fraction}, \code{threshold_used}, \code{dt}, \code{method}).
 }
 \description{
-Ebullition add-on (opt-in). Over water or flooded stems, diffusive flux
+Ebullition add-on (opt-in). Over water, saturated soil or flooded
+vegetation, diffusive flux
 produces a smooth concentration rise while bubbles produce abrupt step-ups.
 This function works on a click.peak2-style data frame (several closures,
 one per \code{UniqueID}), uses the flagged rows of each closure, and returns the
@@ -84,10 +85,10 @@ point-to-point changes \eqn{\Delta C} of a closure and the fences
 \eqn{Q_1 - J \cdot IQR} and \eqn{Q_3 + J \cdot IQR} with \code{Jumper} J =
 0.25, and accepts a moving-window linear fit only when every change in
 the window lies inside the fences; the flux is then taken from accepted
-windows. stemflux applies the same fences per closure and calls a change
+windows. fluxqc applies the same fences per closure and calls a change
 above the upper fence an ebullition event (with \code{direction = "both"}
 changes below the lower fence are also excluded from the diffusive fit,
-but never counted as ebullition mass). Because stemflux sums the events
+but never counted as ebullition mass). Because fluxqc sums the events
 as bubble mass rather than merely selecting windows, it needs a fence
 that Gaussian noise alone does not cross: the conventional \code{k = 1.5}
 fence lies about 3 SD of the differences out and, on a 600-point 1 Hz

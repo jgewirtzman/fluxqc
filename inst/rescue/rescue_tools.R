@@ -1,8 +1,8 @@
 # =============================================================================
 # rescue_tools.R -- one-off rescue tools for LGR clock resets and interleaved
-# streams (BlueFlux ground campaign, 2022-2023). NOT part of the stemflux
+# streams (BlueFlux ground campaign, 2022-2023). NOT part of the fluxqc
 # namespace; see README.md in this folder. Source with:
-#   source(system.file("rescue", "rescue_tools.R", package = "stemflux"))
+#   source(system.file("rescue", "rescue_tools.R", package = "fluxqc"))
 # Requires goFlux only.
 # =============================================================================
 

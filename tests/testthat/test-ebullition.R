@@ -14,7 +14,7 @@ test_that("iqr method (Hoffmann fences) finds one injected jump per closure", {
   expect_equal(eb$summary$method, rep("iqr", 3))
   # k = 1.5 (conventional fence) lets Gaussian noise through; k = 3 (default) does not
   expect_gt(sum(detect_ebullition(d, "CH4dry_ppb", method = "iqr", k = 1.5)$summary$n_events), 2)
-  expect_s3_class(eb, "stemflux_ebullition")
+  expect_s3_class(eb, "fluxqc_ebullition")
   expect_equal(eb$summary$n_events, c(1, 1, 0))
   expect_equal(eb$summary$total_ebullitive[1:2], c(400, 250), tolerance = 0.02)
   expect_equal(nrow(eb$events), 2)

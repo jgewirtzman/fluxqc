@@ -65,7 +65,7 @@ alignment. It works with any goFlux importer's output.
 \details{
 Tools for a rarer problem, analyzer clock \emph{resets} that interleave two
 time streams in one raw LGR file, are shipped as unexported scripts in
-\code{system.file("rescue", package = "stemflux")}.
+\code{system.file("rescue", package = "fluxqc")}.
 }
 \examples{
 set.seed(7)

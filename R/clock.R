@@ -21,7 +21,7 @@
 #'
 #' Tools for a rarer problem, analyzer clock *resets* that interleave two
 #' time streams in one raw LGR file, are shipped as unexported scripts in
-#' `system.file("rescue", package = "stemflux")`.
+#' `system.file("rescue", package = "fluxqc")`.
 #'
 #' @param traces data.frame with `POSIX.time` and the `gas` column (a whole
 #'   imported record, e.g. from [goFlux::import.UGGA()]).
