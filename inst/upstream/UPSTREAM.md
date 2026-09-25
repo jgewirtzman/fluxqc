@@ -186,6 +186,40 @@ system.time(import.LI7810(big, timezone = "UTC"))
 parsing times. stemflux's `import_li7810_subset()` implements (a) with an R
 fallback and then calls `import.LI7810()` on the subset.
 
+### Issue 5 (found while testing stemflux): `import.*()` fail when called with `goFlux::`
+
+**Title:** import.LI7810() and siblings error with "the condition has length
+> 1" when called as goFlux::import.LI7810()
+
+**Description**
+
+Each importer starts with a deprecation shim of the form
+
+```r
+if (as.character(match.call()[[1]]) == "LI7810_import") { warning(...) }
+```
+
+When the function is called with a namespace prefix, `match.call()[[1]]` is
+the call `goFlux::import.LI7810`, whose `as.character()` has length 3
+(`"::"`, `"goFlux"`, `"import.LI7810"`), and R >= 4.2 turns the
+length-3 condition into an error. The same happens when the importer is
+passed as a function object to `do.call()`. Only a bare, attached call works.
+Packages that depend on goFlux (like stemflux) cannot use the recommended
+`pkg::fun()` style.
+
+**Minimal reproducible example**
+
+```r
+f <- system.file("extdata", "LI7810", "LI7810.data", package = "goFlux")
+goFlux::import.LI7810(f, timezone = "UTC")
+#> Error in if (as.character(match.call()[[1]]) == "LI7810_import") { :
+#>   the condition has length > 1
+library(goFlux); import.LI7810(f, timezone = "UTC")   # works
+```
+
+**Proposed fix:** `if (identical(deparse(match.call()[[1]]), "LI7810_import"))`
+or, since the old names were removed a version ago, drop the shim.
+
 ## (b) What belongs upstream and what stays in stemflux
 
 | stemflux function | Upstream candidate? | Proposal |
