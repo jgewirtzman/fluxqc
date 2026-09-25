@@ -35,7 +35,8 @@ Revision after author review.
   Hoffmann et al. 2017 script or fluxCH4) in the vignette and `inst/CITATION`;
   "Analyzer independence" section in the README.
 * New `qc_screens()` with toggleable screens `c0`, `co2_tracer`, `convex`,
-  `min_window`, `ambient_start`, `leak`, each a `qc_<screen>` flag column plus
+  `min_window`, `ambient_start`, `noisy` (per-closure sigma vs campaign
+  sigma: a diagnostic, not an MDF basis), `leak`, each a `qc_<screen>` flag column plus
   `qc_any` and `qc_note`; rows are never deleted. `qc_c0_screen()` is a thin
   wrapper.
 * New `process_fluxes()` (goFlux -> best.flux -> flag_detection -> qc_screens

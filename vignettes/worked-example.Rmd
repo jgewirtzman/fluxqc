@@ -245,6 +245,7 @@ Each method by its actual formula and origin:
 | `rolling` | median residual SD of the quietest 5 percent of 30-sample windows | flagged rows of each closure | comparison only; biased low on white noise |
 | `datasheet` | the `prec` value given to `goFlux::import.*()` | -- | manufacturer 1-s specification (2.5x too optimistic here) |
 | `custom` | user-supplied `sigma` | bench test | Box 2 of the guidelines paper (sealed / standard-gas run) |
+| per-closure sigma (`qc_screens(noisy = ...)`) | MAD(diff x)/sqrt(2) on the closure's flagged rows | each closure | **diagnostic, not the MDF basis**: fires `qc_noisy` when a closure is > k x noisier than its campaign sigma (disturbed closure?) |
 
 **MDF methods** (all `= dC_min / t x flux.term`)
 
@@ -282,10 +283,10 @@ closures.
 ```{r qc}
 rep_ch4 <- qc_screens(rep_ch4, traces = d, gastype = "CH4dry_ppb", co2 = best_co2,
                       screens = list(c0 = list(k = 1.5), co2_tracer = list(min_slope = 0),
-                                     convex = TRUE, min_window = list(secs = 120)),
+                                     convex = TRUE, min_window = list(secs = 120), noisy = list(k = 1.5)),
                       verbose = FALSE)
 t(as.data.frame(rep_ch4[, c("qc_c0", "qc_c0_ratio", "qc_co2_tracer", "qc_co2_slope", "qc_convex",
-                            "qc_min_window", "qc_any", "qc_note")]))
+                            "qc_min_window", "qc_noisy", "qc_noisy_ratio", "qc_any", "qc_note")]))
 ```
 
 ## The reported row

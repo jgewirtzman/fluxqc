@@ -73,3 +73,23 @@ test_that("qc_c0_screen wrapper keeps the 0.1.0 columns", {
   expect_equal(out$qc_c0_ratio[5], 11700 / median(c(2100, 2050, 1980, 2300, 11700)))
   expect_error(qc_c0_screen(res, C0.col = "nope"), "not found")
 })
+
+test_that("noisy screen: per-closure sigma vs the campaign sigma behind MDF_emp", {
+  d2 <- d; d2$UniqueID <- "noisy_one"; set.seed(9); d2$CH4dry_ppb <- d2$CH4dry_ppb + rnorm(nrow(d2), 0, 6)
+  both <- rbind(d, d2)
+  b <- suppressWarnings(goFlux::best.flux(suppressWarnings(goFlux::goFlux(both, "CH4dry_ppb"))))
+  b <- flag_detection(b, traces = both, gastype = "CH4dry_ppb")           # sigma_emp = campaign MAD (one group)
+  out <- qc_screens(b, traces = both, gastype = "CH4dry_ppb", screens = list(noisy = list(k = 1.5)), verbose = FALSE)
+  expect_equal(out$qc_noisy_sigma, c(precision_mad(d$CH4dry_ppb[d$flag == 1]), precision_mad(d2$CH4dry_ppb[d2$flag == 1])))
+  expect_equal(out$qc_noisy_ratio, out$qc_noisy_sigma / out$sigma_emp)
+  expect_equal(out$qc_noisy, c(FALSE, TRUE))
+  expect_match(out$qc_note[2], "closure sigma = .* ppb = .*x campaign sigma \\(disturbed closure\\?\\)")
+  expect_true(is.na(out$qc_note[1]))
+  # without sigma_emp the campaign sigma is recomputed per group from the whole record
+  b2 <- b[, setdiff(names(b), "sigma_emp")]; b2$camp <- c("x", "y")
+  o2 <- qc_screens(b2, traces = both, gastype = "CH4dry_ppb", group = "camp", screens = list(noisy = TRUE), verbose = FALSE)
+  expect_equal(o2$qc_noisy_ratio[2], precision_mad(d2$CH4dry_ppb[d2$flag == 1]) / precision_mad(d2$CH4dry_ppb))
+  expect_false(o2$qc_noisy[2])                                             # its own group: not noisier than itself
+  # no traces -> NA
+  expect_true(is.na(qc_screens(b, screens = list(noisy = TRUE), verbose = FALSE)$qc_noisy[1]))
+})

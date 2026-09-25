@@ -720,6 +720,14 @@ windows</td>
 <td>bench test</td>
 <td>Box 2 of the guidelines paper (sealed / standard-gas run)</td>
 </tr>
+<tr class="even">
+<td>per-closure sigma (<code>qc_screens(noisy = ...)</code>)</td>
+<td>MAD(diff x)/sqrt(2) on the closure’s flagged rows</td>
+<td>each closure</td>
+<td><strong>diagnostic, not the MDF basis</strong>: fires
+<code>qc_noisy</code> when a closure is &gt; k x noisier than its
+campaign sigma (disturbed closure?)</td>
+</tr>
 </tbody>
 </table>
 <p><strong>MDF methods</strong> (all
@@ -799,19 +807,21 @@ C0 screen compares the closure to itself, so it passes trivially; in a
 campaign the median is taken over all closures.</p>
 <div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a>rep_ch4 <span class="ot">&lt;-</span> <span class="fu">qc_screens</span>(rep_ch4, <span class="at">traces =</span> d, <span class="at">gastype =</span> <span class="st">&quot;CH4dry_ppb&quot;</span>, <span class="at">co2 =</span> best_co2,</span>
 <span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a>                      <span class="at">screens =</span> <span class="fu">list</span>(<span class="at">c0 =</span> <span class="fu">list</span>(<span class="at">k =</span> <span class="fl">1.5</span>), <span class="at">co2_tracer =</span> <span class="fu">list</span>(<span class="at">min_slope =</span> <span class="dv">0</span>),</span>
-<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a>                                     <span class="at">convex =</span> <span class="cn">TRUE</span>, <span class="at">min_window =</span> <span class="fu">list</span>(<span class="at">secs =</span> <span class="dv">120</span>)),</span>
+<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a>                                     <span class="at">convex =</span> <span class="cn">TRUE</span>, <span class="at">min_window =</span> <span class="fu">list</span>(<span class="at">secs =</span> <span class="dv">120</span>), <span class="at">noisy =</span> <span class="fu">list</span>(<span class="at">k =</span> <span class="fl">1.5</span>)),</span>
 <span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a>                      <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
 <span id="cb15-5"><a href="#cb15-5" tabindex="-1"></a><span class="fu">t</span>(<span class="fu">as.data.frame</span>(rep_ch4[, <span class="fu">c</span>(<span class="st">&quot;qc_c0&quot;</span>, <span class="st">&quot;qc_c0_ratio&quot;</span>, <span class="st">&quot;qc_co2_tracer&quot;</span>, <span class="st">&quot;qc_co2_slope&quot;</span>, <span class="st">&quot;qc_convex&quot;</span>,</span>
-<span id="cb15-6"><a href="#cb15-6" tabindex="-1"></a>                            <span class="st">&quot;qc_min_window&quot;</span>, <span class="st">&quot;qc_any&quot;</span>, <span class="st">&quot;qc_note&quot;</span>)]))</span>
-<span id="cb15-7"><a href="#cb15-7" tabindex="-1"></a><span class="co">#&gt;               [,1]      </span></span>
-<span id="cb15-8"><a href="#cb15-8" tabindex="-1"></a><span class="co">#&gt; qc_c0         &quot;FALSE&quot;   </span></span>
-<span id="cb15-9"><a href="#cb15-9" tabindex="-1"></a><span class="co">#&gt; qc_c0_ratio   &quot;1&quot;       </span></span>
-<span id="cb15-10"><a href="#cb15-10" tabindex="-1"></a><span class="co">#&gt; qc_co2_tracer &quot;FALSE&quot;   </span></span>
-<span id="cb15-11"><a href="#cb15-11" tabindex="-1"></a><span class="co">#&gt; qc_co2_slope  &quot;0.824404&quot;</span></span>
-<span id="cb15-12"><a href="#cb15-12" tabindex="-1"></a><span class="co">#&gt; qc_convex     &quot;FALSE&quot;   </span></span>
-<span id="cb15-13"><a href="#cb15-13" tabindex="-1"></a><span class="co">#&gt; qc_min_window &quot;FALSE&quot;   </span></span>
-<span id="cb15-14"><a href="#cb15-14" tabindex="-1"></a><span class="co">#&gt; qc_any        &quot;FALSE&quot;   </span></span>
-<span id="cb15-15"><a href="#cb15-15" tabindex="-1"></a><span class="co">#&gt; qc_note       NA</span></span></code></pre></div>
+<span id="cb15-6"><a href="#cb15-6" tabindex="-1"></a>                            <span class="st">&quot;qc_min_window&quot;</span>, <span class="st">&quot;qc_noisy&quot;</span>, <span class="st">&quot;qc_noisy_ratio&quot;</span>, <span class="st">&quot;qc_any&quot;</span>, <span class="st">&quot;qc_note&quot;</span>)]))</span>
+<span id="cb15-7"><a href="#cb15-7" tabindex="-1"></a><span class="co">#&gt;                [,1]      </span></span>
+<span id="cb15-8"><a href="#cb15-8" tabindex="-1"></a><span class="co">#&gt; qc_c0          &quot;FALSE&quot;   </span></span>
+<span id="cb15-9"><a href="#cb15-9" tabindex="-1"></a><span class="co">#&gt; qc_c0_ratio    &quot;1&quot;       </span></span>
+<span id="cb15-10"><a href="#cb15-10" tabindex="-1"></a><span class="co">#&gt; qc_co2_tracer  &quot;FALSE&quot;   </span></span>
+<span id="cb15-11"><a href="#cb15-11" tabindex="-1"></a><span class="co">#&gt; qc_co2_slope   &quot;0.824404&quot;</span></span>
+<span id="cb15-12"><a href="#cb15-12" tabindex="-1"></a><span class="co">#&gt; qc_convex      &quot;FALSE&quot;   </span></span>
+<span id="cb15-13"><a href="#cb15-13" tabindex="-1"></a><span class="co">#&gt; qc_min_window  &quot;FALSE&quot;   </span></span>
+<span id="cb15-14"><a href="#cb15-14" tabindex="-1"></a><span class="co">#&gt; qc_noisy       &quot;FALSE&quot;   </span></span>
+<span id="cb15-15"><a href="#cb15-15" tabindex="-1"></a><span class="co">#&gt; qc_noisy_ratio &quot;1.01663&quot; </span></span>
+<span id="cb15-16"><a href="#cb15-16" tabindex="-1"></a><span class="co">#&gt; qc_any         &quot;FALSE&quot;   </span></span>
+<span id="cb15-17"><a href="#cb15-17" tabindex="-1"></a><span class="co">#&gt; qc_note        NA</span></span></code></pre></div>
 </div>
 <div id="the-reported-row" class="section level2">
 <h2>The reported row</h2>

@@ -118,6 +118,7 @@ CH4 <- process_fluxes(
   extra     = NULL,                                         # or list(precision=..., mdf=..., conf=...) / "all"
   qc        = list(c0 = list(k = 1.5), co2_tracer = list(min_slope = 0), convex = TRUE,
                    min_window = list(secs = 120), ambient_start = list(sigma = 3, secs = 10),
+                   noisy = list(k = 1.5),                   # per-closure sigma vs campaign sigma (diagnostic)
                    leak = list(rate = 2e-5)),               # bench leak rate, s-1; omit to skip
   group = "campaign", tissue = "tissue")                 # group = field period for the MAD sigma and the C0 median
 CO2 <- process_fluxes(manID, aux = aux, gastype = "CO2dry_ppm", mdf = "two_sigma")
@@ -214,6 +215,7 @@ the latter fails with ggplot2 >= 3.5; it writes the same plots produced by
 | `qc_convex` | stemflux (added) | `qc_screens()` | accelerating trace |
 | `qc_min_window` | stemflux (added) | `qc_screens()` | window shorter than `secs` |
 | `qc_ambient_start`, `qc_ambient_dev_sigma` | stemflux (added) | `qc_screens()` | start already enriched vs pre-closure ambient |
+| `qc_noisy`, `qc_noisy_sigma`, `qc_noisy_ratio` | stemflux (added) | `qc_screens()` | closure sigma > k x campaign sigma (disturbed closure?) |
 | `qc_leak`, `qc_leak_apparent_flux` | stemflux (added) | `qc_screens()` | leak-equivalent flux >= `MDF_emp` |
 | `qc_any`, `qc_note` | stemflux (added) | `qc_screens()` | any screen fired; which |
 | `ebullition_handling`, `n_ebullition_events`, `ebullition_flag` | stemflux add-on (added only with `ebullition = "flag"`/`"split"`) | `detect_ebullition()` | events per closure |

@@ -8,8 +8,8 @@ qc_screens(
   fluxes,
   traces = NULL,
   screens = list(c0 = list(k = 1.5), co2_tracer = list(min_slope = 0), convex = TRUE,
-    min_window = list(secs = NULL), ambient_start = list(sigma = 3, secs = NULL), leak =
-    list(rate = NULL)),
+    min_window = list(secs = NULL), ambient_start = list(sigma = 3, secs = NULL), noisy =
+    list(k = 1.5), leak = list(rate = NULL)),
   group = NULL,
   gastype = NULL,
   co2 = NULL,
@@ -94,6 +94,15 @@ start, or contamination). Ambient is the mean of the rows before the
 auxfile \code{start.time} (the shoulder from \code{obs.win()}), or, if that
 column is absent, of rows with \code{flag == 0} and \code{Etime < 0}. Needs
 \code{traces} with shoulder rows; \code{NA} otherwise.}
+\item{\code{noisy} (\code{k = 1.5})}{the closure's own precision, MAD(dx)/sqrt(2) on
+its flagged rows (\code{\link[=precision_mad]{precision_mad()}}), exceeds \code{k} times the campaign
+(group) sigma that underlies \code{MDF_emp} (\code{sigma_emp} from
+\code{\link[=flag_detection]{flag_detection()}} if present, else MAD over the whole record per
+\code{group}). The per-closure sigma is a \emph{diagnostic}, not an alternative
+MDF basis: a closure much noisier than its campaign was disturbed
+(moves, breaths, a leaking seal) or the analyzer was unstable. Note
+text: "closure sigma = X ppb = Yx campaign sigma (disturbed closure?)".
+Columns \code{qc_noisy_sigma}, \code{qc_noisy_ratio}. Needs \code{traces}.}
 \item{\code{leak} (\code{rate = NULL})}{a bench-measured leak rate \code{rate} (fraction
 of the headspace exchanged per second, e.g. the decay constant of a
 spiked, sealed chamber) times the largest headspace-ambient difference
@@ -111,7 +120,8 @@ best <- goFlux::best.flux(goFlux::goFlux(d, "CH4dry_ppb"))
 co2  <- goFlux::best.flux(goFlux::goFlux(d, "CO2dry_ppm"))
 out <- qc_screens(best, traces = d, gastype = "CH4dry_ppb", co2 = co2,
                   screens = list(c0 = TRUE, co2_tracer = TRUE, convex = TRUE,
-                                 min_window = list(secs = 120), ambient_start = TRUE))
+                                 min_window = list(secs = 120), ambient_start = TRUE,
+                                 noisy = list(k = 1.5)))
 out[, grep("^qc_", names(out))]
 }
 \seealso{

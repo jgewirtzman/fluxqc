@@ -58,7 +58,7 @@
 process_fluxes <- function(manID_data, aux = NULL, gastype = "CH4dry_ppb",
                            precision = "mad", mdf = "wassmann", conf = 0.95, extra = NULL,
                            qc = list(c0 = TRUE, co2_tracer = TRUE, convex = TRUE,
-                                     min_window = TRUE, ambient_start = TRUE),
+                                     min_window = TRUE, ambient_start = TRUE, noisy = TRUE),
                            group = NULL, tissue = NULL, co2 = NULL,
                            ebullition = c("none", "flag", "split"),
                            ebullition_method = c("iqr", "threshold", "runvar"),

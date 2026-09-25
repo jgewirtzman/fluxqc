@@ -43,6 +43,15 @@
 #'     auxfile `start.time` (the shoulder from `obs.win()`), or, if that
 #'     column is absent, of rows with `flag == 0` and `Etime < 0`. Needs
 #'     `traces` with shoulder rows; `NA` otherwise.}
+#'   \item{`noisy` (`k = 1.5`)}{the closure's own precision, MAD(dx)/sqrt(2) on
+#'     its flagged rows ([precision_mad()]), exceeds `k` times the campaign
+#'     (group) sigma that underlies `MDF_emp` (`sigma_emp` from
+#'     [flag_detection()] if present, else MAD over the whole record per
+#'     `group`). The per-closure sigma is a *diagnostic*, not an alternative
+#'     MDF basis: a closure much noisier than its campaign was disturbed
+#'     (moves, breaths, a leaking seal) or the analyzer was unstable. Note
+#'     text: "closure sigma = X ppb = Yx campaign sigma (disturbed closure?)".
+#'     Columns `qc_noisy_sigma`, `qc_noisy_ratio`. Needs `traces`.}
 #'   \item{`leak` (`rate = NULL`)}{a bench-measured leak rate `rate` (fraction
 #'     of the headspace exchanged per second, e.g. the decay constant of a
 #'     spiked, sealed chamber) times the largest headspace-ambient difference
@@ -79,14 +88,15 @@
 #' co2  <- goFlux::best.flux(goFlux::goFlux(d, "CO2dry_ppm"))
 #' out <- qc_screens(best, traces = d, gastype = "CH4dry_ppb", co2 = co2,
 #'                   screens = list(c0 = TRUE, co2_tracer = TRUE, convex = TRUE,
-#'                                  min_window = list(secs = 120), ambient_start = TRUE))
+#'                                  min_window = list(secs = 120), ambient_start = TRUE,
+#'                                  noisy = list(k = 1.5)))
 #' out[, grep("^qc_", names(out))]
 #' @export
 qc_screens <- function(fluxes, traces = NULL,
                        screens = list(c0 = list(k = 1.5), co2_tracer = list(min_slope = 0),
                                       convex = TRUE, min_window = list(secs = NULL),
                                       ambient_start = list(sigma = 3, secs = NULL),
-                                      leak = list(rate = NULL)),
+                                      noisy = list(k = 1.5), leak = list(rate = NULL)),
                        group = NULL, gastype = NULL, co2 = NULL, tissue = NULL,
                        exempt = c("dead", "dormant"), verbose = TRUE) {
   fx <- as.data.frame(fluxes)
@@ -94,7 +104,7 @@ qc_screens <- function(fluxes, traces = NULL,
   defaults <- list(c0 = list(k = 1.5), co2_tracer = list(min_slope = 0, require_detection = TRUE),
                    convex = list(p = 0.05),
                    min_window = list(secs = 60), ambient_start = list(sigma = 3, secs = 10),
-                   leak = list(rate = NULL))
+                   noisy = list(k = 1.5), leak = list(rate = NULL))
   unknown <- setdiff(names(screens), names(defaults))
   if (length(unknown)) stop("unknown screen(s): ", paste(unknown, collapse = ", "))
   cfg <- list()
@@ -220,6 +230,32 @@ qc_screens <- function(fluxes, traces = NULL,
     }
     fired("ambient_start", flag, sprintf("start > %g sigma from ambient", cfg$ambient_start$sigma))
   }
+  # noisy: per-closure sigma (diagnostic) vs the campaign sigma used for MDF_emp
+  if (!is.null(cfg$noisy)) {
+    if (is.null(tr_flag) || is.null(gastype)) flag <- rep(NA, n)
+    else {
+      s_clo <- per_uid(function(d) precision_mad(d[[gastype]]))
+      s_camp <- if ("sigma_emp" %in% names(fx)) fx$sigma_emp
+                else if (is.null(group)) rep(precision_mad(traces[[gastype]]), n)
+                else {
+                  gv <- as.character(fx[[group]]); tg <- gv[match(traces$UniqueID, fx$UniqueID)]
+                  sg <- vapply(unique(gv), function(g) precision_mad(traces[[gastype]][!is.na(tg) & tg == g]), numeric(1))
+                  unname(sg[gv])
+                }
+      ratio <- s_clo / s_camp
+      fx$qc_noisy_sigma <- s_clo; fx$qc_noisy_ratio <- ratio
+      flag <- ifelse(is.finite(ratio), ratio > cfg$noisy$k, NA)
+      un <- if (grepl("ppb", gastype)) "ppb" else if (grepl("ppm", gastype)) "ppm" else ""
+      note_v <- sprintf("closure sigma = %.2f %s = %.1fx campaign sigma (disturbed closure?)", s_clo, un, ratio)
+    }
+    if (exists("note_v", inherits = FALSE)) {
+      hit <- !is.na(flag) & flag
+      fx$qc_noisy <- flag
+      notes[hit] <- ifelse(nzchar(notes[hit]), paste0(notes[hit], "; ", note_v[hit]), note_v[hit])
+      if (verbose) message(sprintf("qc %-14s fired %d, NA %d, of %d", "noisy", sum(hit), sum(is.na(flag)), n))
+      rm(note_v)
+    } else fired("noisy", flag, "")
+  }
   # leak
   if (!is.null(cfg$leak)) {
     if (is.null(cfg$leak$rate)) { if (verbose) message("qc leak           skipped (no bench leak rate)") }
@@ -233,7 +269,7 @@ qc_screens <- function(fluxes, traces = NULL,
       fired("leak", ifelse(is.na(app) | is.na(mdfv), NA, app >= mdfv), "leak-equivalent flux >= MDF")
     }
   }
-  qc_cols <- grep("^qc_(c0|co2_tracer|convex|min_window|ambient_start|leak)$", names(fx), value = TRUE)
+  qc_cols <- grep("^qc_(c0|co2_tracer|convex|min_window|ambient_start|noisy|leak)$", names(fx), value = TRUE)
   if (length(qc_cols)) {
     m <- as.matrix(fx[, qc_cols, drop = FALSE])
     fx$qc_any <- apply(m, 1, function(r) if (all(is.na(r))) NA else any(r, na.rm = TRUE))

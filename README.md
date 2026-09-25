@@ -93,7 +93,9 @@ manuscript itself used `conf = 0.90`, z = 1.645).
 | `christiansen` | sigma_i x 3 x t_crit(nb.obs - 2) | as implemented in the author's scripts; the x3 is their safety factor |
 | `two_sigma` | 2 sigma_i | guidelines paper Table 2.5 illustration |
 
-Comparison columns (`sigma_<precision>`, `MDF_<mdf>_<precision>[_<conf>]`)
+The per-closure sigma is a QC diagnostic, not an MDF basis: `qc_screens(noisy
+= list(k = 1.5))` flags closures whose own MAD sigma exceeds k x the campaign
+sigma. Comparison columns (`sigma_<precision>`, `MDF_<mdf>_<precision>[_<conf>]`)
 are appended only with `extra = list(...)` or `extra = "all"`. The `prec`
 argument of `goFlux::import.*()` feeds only goFlux's own `MDF` column;
 stemflux's estimators are applied after `best.flux()`. Nothing is deleted at
@@ -126,7 +128,7 @@ core sources for gas-column and file-format literals.
 | Quietest-window precision scan | `precision_rolling()` | -- |
 | Empirical precision + MDF appended as `sigma_emp`, `MDF_emp`, `below_MDF_emp`, `MDF_emp_method` (comparison columns via `extra`) | `flag_detection()`, `mdf_multi()` | `MDF()`, `best.flux()` (`MDF` criterion) |
 | (V/A)(P/RT) with goFlux unit conventions | `flux_term()` | `flux.term()` (unexported) |
-| Toggleable physical QC screens (C0, CO2 tracer, convex, min window, ambient start, leak), flags only | `qc_screens()` (`qc_c0_screen()` wrapper) | -- |
+| Toggleable physical QC screens (C0, CO2 tracer, convex, min window, ambient start, noisy closure, leak), flags only | `qc_screens()` (`qc_c0_screen()` wrapper) | -- |
 | Multi-page PDF of `flux.plot()` output, ggplot2 >= 3.5 safe | `flux_pdf()` | `flux2pdf()` |
 | Date subset of huge LI-7810 `.data` files (shim: forwards to `import.LI7810(dates=)` once the upstream patch in `inst/upstream/patches/` is merged) | `import_li7810_subset()` | `import.LI7810()` |
 | Recursive per-file import without the `muffleError` wrapper or `getwd()/RData` writes | `import2RData_flat()` | `import2RData()` |

@@ -59,7 +59,7 @@ test_that("the teaching cases separate through process_fluxes (Figure 4 logic)",
   ex <- stemflux_examples(c("emission_stem_semirigid", "below_detection_stem", "failed_closure_stem",
                             "ambiguous_stem", "uptake_stem", "uptake_soil", "emission_upland_stem"))
   res <- suppressWarnings(process_fluxes(ex$data, gastype = "CH4dry_ppb",
-                                         qc = list(c0 = TRUE, co2_tracer = TRUE, convex = TRUE, min_window = list(secs = 120))))
+                                         qc = list(c0 = TRUE, co2_tracer = TRUE, convex = TRUE, min_window = list(secs = 120), noisy = TRUE)))
   fx <- res$fluxes; rownames(fx) <- fx$UniqueID
   expect_equal(fx["emission_stem_semirigid", "det_class_emp"], "emission"); expect_false(fx["emission_stem_semirigid", "qc_co2_tracer"])
   expect_equal(fx["emission_stem_semirigid", "best.flux"], 0.254, tolerance = 0.02)
@@ -70,6 +70,9 @@ test_that("the teaching cases separate through process_fluxes (Figure 4 logic)",
   expect_equal(fx["uptake_stem", "det_class_emp"], "uptake"); expect_false(fx["uptake_stem", "qc_co2_tracer"])
   expect_equal(fx["uptake_soil", "det_class_emp"], "uptake"); expect_lt(fx["uptake_soil", "best.flux"], -1)
   expect_true(all(c("best.flux", "MDF", "quality.check") %in% names(fx)))
+  # noisy screen (default in process_fluxes): which of the teaching cases are noisier than the set sigma
+  expect_true("qc_noisy" %in% names(fx))
+  expect_true(all(!is.na(fx$qc_noisy)))
 })
 
 test_that("the two other analyzer formats run through goFlux", {

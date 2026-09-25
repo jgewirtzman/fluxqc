@@ -13,7 +13,7 @@ process_fluxes(
   conf = 0.95,
   extra = NULL,
   qc = list(c0 = TRUE, co2_tracer = TRUE, convex = TRUE, min_window = TRUE, ambient_start
-    = TRUE),
+    = TRUE, noisy = TRUE),
   group = NULL,
   tissue = NULL,
   co2 = NULL,

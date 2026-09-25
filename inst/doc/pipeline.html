@@ -451,11 +451,12 @@ first (a utility, not part of the default path):</p>
 <span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>  <span class="at">extra     =</span> <span class="cn">NULL</span>,                                         <span class="co"># or list(precision=..., mdf=..., conf=...) / &quot;all&quot;</span></span>
 <span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>  <span class="at">qc        =</span> <span class="fu">list</span>(<span class="at">c0 =</span> <span class="fu">list</span>(<span class="at">k =</span> <span class="fl">1.5</span>), <span class="at">co2_tracer =</span> <span class="fu">list</span>(<span class="at">min_slope =</span> <span class="dv">0</span>), <span class="at">convex =</span> <span class="cn">TRUE</span>,</span>
 <span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>                   <span class="at">min_window =</span> <span class="fu">list</span>(<span class="at">secs =</span> <span class="dv">120</span>), <span class="at">ambient_start =</span> <span class="fu">list</span>(<span class="at">sigma =</span> <span class="dv">3</span>, <span class="at">secs =</span> <span class="dv">10</span>),</span>
-<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>                   <span class="at">leak =</span> <span class="fu">list</span>(<span class="at">rate =</span> <span class="fl">2e-5</span>)),               <span class="co"># bench leak rate, s-1; omit to skip</span></span>
-<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>  <span class="at">group =</span> <span class="st">&quot;campaign&quot;</span>, <span class="at">tissue =</span> <span class="st">&quot;tissue&quot;</span>)                 <span class="co"># group = field period for the MAD sigma and the C0 median</span></span>
-<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>CO2 <span class="ot">&lt;-</span> <span class="fu">process_fluxes</span>(manID, <span class="at">aux =</span> aux, <span class="at">gastype =</span> <span class="st">&quot;CO2dry_ppm&quot;</span>, <span class="at">mdf =</span> <span class="st">&quot;two_sigma&quot;</span>)</span>
-<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a>CH4</span>
-<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a><span class="fu">table</span>(CH4<span class="sc">$</span>fluxes<span class="sc">$</span>det_class_emp); <span class="fu">table</span>(CH4<span class="sc">$</span>fluxes<span class="sc">$</span>qc_any)</span></code></pre></div>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>                   <span class="at">noisy =</span> <span class="fu">list</span>(<span class="at">k =</span> <span class="fl">1.5</span>),                   <span class="co"># per-closure sigma vs campaign sigma (diagnostic)</span></span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>                   <span class="at">leak =</span> <span class="fu">list</span>(<span class="at">rate =</span> <span class="fl">2e-5</span>)),               <span class="co"># bench leak rate, s-1; omit to skip</span></span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>  <span class="at">group =</span> <span class="st">&quot;campaign&quot;</span>, <span class="at">tissue =</span> <span class="st">&quot;tissue&quot;</span>)                 <span class="co"># group = field period for the MAD sigma and the C0 median</span></span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a>CO2 <span class="ot">&lt;-</span> <span class="fu">process_fluxes</span>(manID, <span class="at">aux =</span> aux, <span class="at">gastype =</span> <span class="st">&quot;CO2dry_ppm&quot;</span>, <span class="at">mdf =</span> <span class="st">&quot;two_sigma&quot;</span>)</span>
+<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a>CH4</span>
+<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a><span class="fu">table</span>(CH4<span class="sc">$</span>fluxes<span class="sc">$</span>det_class_emp); <span class="fu">table</span>(CH4<span class="sc">$</span>fluxes<span class="sc">$</span>qc_any)</span></code></pre></div>
 <p>The same steps by hand, if you want them one at a time:</p>
 <div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>CH4_flux <span class="ot">&lt;-</span> <span class="fu">goFlux</span>(manID, <span class="st">&quot;CH4dry_ppb&quot;</span>)</span>
 <span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>CH4_best <span class="ot">&lt;-</span> <span class="fu">best.flux</span>(CH4_flux)</span>
@@ -662,18 +663,25 @@ plots produced by <code>flux.plot()</code>. Every column of
 <td>start already enriched vs pre-closure ambient</td>
 </tr>
 <tr class="even">
+<td><code>qc_noisy</code>, <code>qc_noisy_sigma</code>,
+<code>qc_noisy_ratio</code></td>
+<td>stemflux (added)</td>
+<td><code>qc_screens()</code></td>
+<td>closure sigma &gt; k x campaign sigma (disturbed closure?)</td>
+</tr>
+<tr class="odd">
 <td><code>qc_leak</code>, <code>qc_leak_apparent_flux</code></td>
 <td>stemflux (added)</td>
 <td><code>qc_screens()</code></td>
 <td>leak-equivalent flux &gt;= <code>MDF_emp</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>qc_any</code>, <code>qc_note</code></td>
 <td>stemflux (added)</td>
 <td><code>qc_screens()</code></td>
 <td>any screen fired; which</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>ebullition_handling</code>, <code>n_ebullition_events</code>,
 <code>ebullition_flag</code></td>
 <td>stemflux add-on (added only with
@@ -681,7 +689,7 @@ plots produced by <code>flux.plot()</code>. Every column of
 <td><code>detect_ebullition()</code></td>
 <td>events per closure</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>flux_diffusive</code>, <code>flux_ebullitive</code>,
 <code>flux_total</code>, <code>ebullition_method</code></td>
 <td>stemflux add-on (added only with <code>&quot;split&quot;</code>)</td>
