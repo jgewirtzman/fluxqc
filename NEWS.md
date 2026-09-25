@@ -9,9 +9,9 @@ local step regression, diffusion/ebullition partition; Camille Minaudo, goFlux
 
 Revision after author review. Renamed from stemflux: the package targets any
 chamber closure processed with goFlux (soil, water, stems, leaves; diffusive
-or ebullitive); tree stems are one application. `qc_screens(surface =,
-co2_tracer_surfaces =)` replace `tissue`/`exempt`: the CO2-tracer screen is
-conditional on the surface, every other screen is surface-independent.
+or ebullitive); tree stems are one application. Screens are plain
+toggles (`tissue`/`exempt` removed); switch `co2_tracer` off for surfaces
+without respiratory CO2 efflux.
 
 * `click_peak2_stacked(gases = ...)` stacks any number and order of gas
   columns (`"auto"` = every recognised goFlux gas present); `auto_id_rise()`

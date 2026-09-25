@@ -75,7 +75,7 @@ aux <- data.frame(
   Vtot  = 7.08,      # L
   Tcham = 24.5,      # C
   Pcham = 101.3,     # kPa
-  campaign = "May-2026", surface = "stem")
+  campaign = "May-2026")
 
 fc  <- find_clock_offset(licor, aux, gas = "CO2dry_ppm", search = c(-1800, 1800), auxfile = aux)
 fc$offset                 # seconds to add to notebook times; inspect fc$scores before trusting it
@@ -125,7 +125,7 @@ CH4 <- process_fluxes(
                    min_window = list(secs = 120), ambient_start = list(sigma = 3, secs = 10),
                    noisy = list(k = 1.5),                   # per-closure sigma vs campaign sigma (diagnostic)
                    leak = list(rate = 2e-5)),               # bench leak rate, s-1; omit to skip
-  group = "campaign", surface = "surface")               # group = field period (MAD sigma, C0 median); surface decides the CO2-tracer screen
+  group = "campaign")                                     # group = field period (MAD sigma, C0 median)
 CO2 <- process_fluxes(manID, aux = aux, gastype = "CO2dry_ppm", mdf = "two_sigma")
 CH4
 table(CH4$fluxes$det_class_emp); table(CH4$fluxes$qc_any)
@@ -158,23 +158,30 @@ author's tree-stem examples as one labelled application: closures that look
 alike in a flux table until the detection flag and the QC screens are
 applied. `fluxqc_examples()` ships ten anonymized real closures across
 surfaces (upland tree stems, a forest soil collar, a mangrove stem, open
-water) with their real geometry, the operator-clicked windows and a `surface`
-column (see `?fluxqc_examples`). Running the whole set in one call, with
-`group` = campaign for the MAD sigma and `surface` deciding where the
-CO2-tracer screen applies:
+water) with their real geometry and the operator-clicked windows (see
+`?fluxqc_examples`). Screens are plain toggles: the nine closures with
+respiring surfaces run with every screen on, and the open-water closure is
+run separately with `co2_tracer = FALSE`, since water has no respiratory CO2
+efflux to serve as a tracer:
 
 ```{r figure4, eval = TRUE}
 library(fluxqc)
 ex <- fluxqc_examples()
-ex$aux[, c("UniqueID", "surface", "campaign", "season_year")]
-invisible(capture.output(
-  res <- suppressWarnings(process_fluxes(ex$data, aux = ex$aux, gastype = "CH4dry_ppb",
-                          group = "campaign", surface = "surface",
-                          qc = list(c0 = TRUE, co2_tracer = TRUE, convex = TRUE, min_window = list(secs = 120),
-                                    noisy = TRUE)))))
-out <- res$fluxes[match(ex$aux$UniqueID, res$fluxes$UniqueID), ]
-out[, c("UniqueID", "best.flux", "sigma_emp", "MDF_emp", "det_class_emp", "qc_co2_tracer_applies",
-        "qc_co2_tracer", "qc_convex", "qc_noisy", "qc_any")]
+ex$aux[, c("UniqueID", "campaign", "season_year")]
+land  <- ex$data[ex$data$UniqueID != "ebullition_floating", ]
+water <- ex$data[ex$data$UniqueID == "ebullition_floating", ]
+screens <- list(c0 = TRUE, co2_tracer = TRUE, convex = TRUE, min_window = list(secs = 120), noisy = TRUE)
+invisible(capture.output({
+  res_land  <- suppressWarnings(process_fluxes(land, aux = ex$aux, gastype = "CH4dry_ppb",
+                                               group = "campaign", qc = screens))
+  res_water <- suppressWarnings(process_fluxes(water, gastype = "CH4dry_ppb",
+                                               qc = modifyList(screens, list(co2_tracer = FALSE))))
+}))
+out <- rbind(res_land$fluxes[, c("UniqueID", "best.flux", "sigma_emp", "MDF_emp", "det_class_emp",
+                                  "qc_co2_tracer", "qc_convex", "qc_noisy", "qc_any")],
+             cbind(res_water$fluxes[, c("UniqueID", "best.flux", "sigma_emp", "MDF_emp", "det_class_emp")],
+                   qc_co2_tracer = NA, res_water$fluxes[, c("qc_convex", "qc_noisy", "qc_any")]))
+out[match(ex$aux$UniqueID, out$UniqueID), ]
 ```
 
 Reading the rows: `emission_stem_semirigid` is detected and passes;
@@ -186,8 +193,8 @@ no CO2 rise, which the tracer screen flags for a look (a leak-free chamber on
 live tissue should accumulate CO2); `uptake_stem` and `uptake_soil` are real,
 detected uptakes with healthy CO2 tracers; `high_flux_wetland_stem` and the
 LI-7810 closure are large clean emissions; `ebullition_floating` is open water,
-so the CO2-tracer screen is `NA` there by design (`qc_co2_tracer_applies =
-FALSE`) and its bubbles are the add-on's business. No row was removed.
+processed with the CO2-tracer screen switched off (no respiratory CO2), and
+its bubbles are the add-on's business. No row was removed.
 
 ## 5. Where the outputs go
 
@@ -218,13 +225,13 @@ the latter fails with ggplot2 >= 3.5; it writes the same plots produced by
 | `HM.flux`, `HM.C0`, `HM.Ci`, `HM.slope`, `HM.MAE`, `HM.RMSE`, `HM.AICc`, `HM.SE`, `HM.se.rel`, `HM.r2`, `HM.k` | goFlux (unchanged) | `goFlux::goFlux()` | Hutchinson-Mosier fit |
 | `C0`, `Ct`, `MDF`, `prec`, `flux.term`, `nb.obs`, `k.max`, `k.mult`, `g.fact` | goFlux (unchanged) | `goFlux::goFlux()` | start/end concentration, goFlux's MDF (datasheet `prec`), (V/A)(P/RT), n, kappa bounds, g-factor |
 | `best.flux`, `model`, `quality.check`, `HM.diagnose`, `LM.diagnose`, `HM.score`, `LM.score`, `*.lim`, `warn.nb.obs` | goFlux (unchanged) | `goFlux::best.flux()` | selected flux and why |
-| `<group>`, `<surface>` | fluxqc (added) | auxfile via `process_fluxes()` | grouping / surface columns merged for the screens |
+| `<group>` | fluxqc (added) | auxfile via `process_fluxes()` | grouping column merged for the screens |
 | `sigma_emp` | fluxqc (added) | `flag_detection()` | per-closure precision by the chosen estimator |
 | `MDF_emp`, `below_MDF_emp`, `MDF_emp_method` | fluxqc (added) | `flag_detection()` | the reported MDF, its flag, and `"<mdf> | <precision> | <conf>"` |
 | `detected_emp`, `det_class_emp` | fluxqc (added) | `flag_detection()` | `emission` / `uptake` / `below detection` by `MDF_emp` |
 | `sigma_<precision>`, `MDF_<mdf>_<precision>[_<conf>]` | fluxqc (added, only with `extra`) | `flag_detection()` | comparison columns |
 | `qc_c0`, `qc_c0_ratio` | fluxqc (added) | `qc_screens()` | C0 > k x group median |
-| `qc_co2_tracer`, `qc_co2_slope`, `qc_co2_tracer_applies` | fluxqc (added) | `qc_screens()` | CO2 tracer screen (conditional on `surface`; NA where it does not apply) |
+| `qc_co2_tracer`, `qc_co2_slope` | fluxqc (added) | `qc_screens()` | CO2 tracer screen (toggle it off for surfaces without respiratory CO2) |
 | `qc_convex` | fluxqc (added) | `qc_screens()` | accelerating trace |
 | `qc_min_window` | fluxqc (added) | `qc_screens()` | window shorter than `secs` |
 | `qc_ambient_start`, `qc_ambient_dev_sigma` | fluxqc (added) | `qc_screens()` | start already enriched vs pre-closure ambient |

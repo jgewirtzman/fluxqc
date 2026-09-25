@@ -21,9 +21,7 @@ together, with \code{flag}, \code{Etime}, \code{start.time_corr}, \code{end.time
 \code{obs.length_corr}) and \code{aux} (data.frame: \code{UniqueID}, \code{start.time},
 \code{obs.length}, \code{Area}, \code{Vtot}, \code{Tcham}, \code{Pcham}, \code{start.time_corr},
 \code{end.time_corr}, \code{kind}, \code{campaign_type}, \code{season_year}, \code{analyzer},
-\code{chamber_family}, \code{surface} (\code{"stem"}, \code{"soil"} or \code{"water"}, for the
-surface-conditional CO2-tracer screen) and \code{campaign} (an anonymous
-campaign key for \code{group})).
+\code{chamber_family} and \code{campaign} (an anonymous campaign key for \code{group})).
 }
 \description{
 Ten real chamber closures from the author's campaigns (two analyzer

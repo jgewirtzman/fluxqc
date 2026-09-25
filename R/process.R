@@ -22,7 +22,7 @@
 #'   [goFlux::click.peak2()], [click_peak2_stacked()], [auto_id_rise()] or
 #'   [windows_from_table()]).
 #' @param aux optional auxfile (one row per `UniqueID`); used for the
-#'   `ebullition` logical column and for `group` / `surface` columns of the QC
+#'   `ebullition` logical column and for the `group` column of the QC
 #'   screens, which are merged into the flux table by `UniqueID`.
 #' @param gastype gas column to process (one gas per call).
 #' @param precision,mdf,conf,extra passed to [flag_detection()]; the defaults are the
@@ -30,13 +30,12 @@
 #'   precision and the Wassmann form at 95 percent two-sided, z = qnorm(0.975) = 1.96,
 #'   i.e. the 2-sigma criterion).
 #' @param qc list of screens passed to [qc_screens()] (`screens` argument), or
-#'   `FALSE` to skip QC.
+#'   `FALSE` to skip QC. Each screen is a toggle; set `co2_tracer = FALSE` for
+#'   surfaces without respiratory CO2 efflux (open water, lit foliage, dead
+#'   wood).
 #' @param group column name (in `aux` or the flux table) defining the field
 #'   periods for the record-wide `"mad"` precision in [flag_detection()] and the
 #'   `c0` median in [qc_screens()].
-#' @param surface the surface enclosed by each chamber: a column name (in `aux`
-#'   or the flux table) or one string for the whole set; passed to
-#'   [qc_screens()], where it decides whether the CO2-tracer screen applies.
 #' @param co2 optional CO2 flux table for the `co2_tracer` screen.
 #' @param ebullition `"none"` (default, core path only), `"flag"` or `"split"`.
 #' @param ebullition_method kept for the API; only `"goAquaFlux"` exists since
@@ -67,7 +66,7 @@ process_fluxes <- function(manID_data, aux = NULL, gastype = "CH4dry_ppb",
                            precision = "mad", mdf = "wassmann", conf = 0.95, extra = NULL,
                            qc = list(c0 = TRUE, co2_tracer = TRUE, convex = TRUE,
                                      min_window = TRUE, ambient_start = TRUE, noisy = TRUE),
-                           group = NULL, surface = NULL, co2 = NULL,
+                           group = NULL, co2 = NULL,
                            ebullition = c("none", "flag", "split"),
                            ebullition_method = "goAquaFlux",
                            ebullition_ids = NULL, ebullition_args = list(),
@@ -96,7 +95,7 @@ process_fluxes <- function(manID_data, aux = NULL, gastype = "CH4dry_ppb",
   gf <- goFlux::goFlux(fit_data, gastype, H2O_col = H2O_col, ...)
   best <- as.data.frame(do.call(goFlux::best.flux, c(list(flux.result = gf), best.flux_args)))
   if (!is.null(aux)) {
-    extra_cols <- setdiff(intersect(c(group, surface), names(aux)), names(best))
+    extra_cols <- setdiff(intersect(group, names(aux)), names(best))
     i <- match(best$UniqueID, aux$UniqueID)
     for (cc in extra_cols) best[[cc]] <- aux[[cc]][i]
   }
@@ -104,7 +103,7 @@ process_fluxes <- function(manID_data, aux = NULL, gastype = "CH4dry_ppb",
                          mdf = mdf, conf = conf, group = group, extra = extra)
   if (!isFALSE(qc)) {
     best <- qc_screens(best, traces = fit_data, screens = qc, group = group, gastype = gastype,
-                       co2 = co2, surface = surface, verbose = FALSE)
+                       co2 = co2, verbose = FALSE)
   }
 
   # ---- add-on columns (only when the add-on ran) -----------------------------
@@ -118,7 +117,7 @@ process_fluxes <- function(manID_data, aux = NULL, gastype = "CH4dry_ppb",
     extra = if (is.null(extra)) NULL else if (identical(extra, "all")) "all" else extra,
     sigma_global = attr(best, "sigma_global"),
     qc = if (isFALSE(qc)) NULL else attr(best, "qc_screens"),
-    group = group, surface = surface,
+    group = group,
     ebullition = ebullition,
     ebullition_method = if (is.null(ebres)) NA else ebullition_method,
     ebullition_ids = eb_ids, ebullition_args = ebullition_args,

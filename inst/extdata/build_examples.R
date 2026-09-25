@@ -109,7 +109,6 @@ for (i in seq_len(nrow(sel))) {
                          end.time_corr = format(x$end.time_corr[1] + shift, "%Y-%m-%d %H:%M:%S"),
                          kind = "real", campaign_type = s$campaign_type, season_year = s$season_year, analyzer = s$analyzer,
                          chamber_family = s$chamber_family,
-                         surface = if (grepl("soil", s$campaign_type)) "soil" else if (grepl("open water", s$campaign_type)) "water" else "stem",
                          campaign = c(semirigid = "ymf_monthly", height = "ymf_height", soil = "ymf_soil", bf_picarro = "blueflux", bf_lgr3 = "blueflux", bf_ebull = "blueflux", santafe = "santafe")[[s$src]])
   # continuity of the flagged window: timestamp gaps and single-sample steps relative to the window's own noise
   dtw <- diff(as.numeric(fl$POSIX.time)); dch <- abs(diff(fl$CH4dry_ppb)); dco <- abs(diff(fl$CO2dry_ppm))

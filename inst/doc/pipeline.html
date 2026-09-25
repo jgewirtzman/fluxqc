@@ -415,7 +415,7 @@ first (a utility, not part of the default path):</p>
 <span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>  <span class="at">Vtot  =</span> <span class="fl">7.08</span>,      <span class="co"># L</span></span>
 <span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>  <span class="at">Tcham =</span> <span class="fl">24.5</span>,      <span class="co"># C</span></span>
 <span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>  <span class="at">Pcham =</span> <span class="fl">101.3</span>,     <span class="co"># kPa</span></span>
-<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>  <span class="at">campaign =</span> <span class="st">&quot;May-2026&quot;</span>, <span class="at">surface =</span> <span class="st">&quot;stem&quot;</span>)</span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>  <span class="at">campaign =</span> <span class="st">&quot;May-2026&quot;</span>)</span>
 <span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a></span>
 <span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a>fc  <span class="ot">&lt;-</span> <span class="fu">find_clock_offset</span>(licor, aux, <span class="at">gas =</span> <span class="st">&quot;CO2dry_ppm&quot;</span>, <span class="at">search =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1800</span>, <span class="dv">1800</span>), <span class="at">auxfile =</span> aux)</span>
 <span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a>fc<span class="sc">$</span>offset                 <span class="co"># seconds to add to notebook times; inspect fc$scores before trusting it</span></span>
@@ -458,7 +458,7 @@ first (a utility, not part of the default path):</p>
 <span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>                   <span class="at">min_window =</span> <span class="fu">list</span>(<span class="at">secs =</span> <span class="dv">120</span>), <span class="at">ambient_start =</span> <span class="fu">list</span>(<span class="at">sigma =</span> <span class="dv">3</span>, <span class="at">secs =</span> <span class="dv">10</span>),</span>
 <span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>                   <span class="at">noisy =</span> <span class="fu">list</span>(<span class="at">k =</span> <span class="fl">1.5</span>),                   <span class="co"># per-closure sigma vs campaign sigma (diagnostic)</span></span>
 <span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>                   <span class="at">leak =</span> <span class="fu">list</span>(<span class="at">rate =</span> <span class="fl">2e-5</span>)),               <span class="co"># bench leak rate, s-1; omit to skip</span></span>
-<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>  <span class="at">group =</span> <span class="st">&quot;campaign&quot;</span>, <span class="at">surface =</span> <span class="st">&quot;surface&quot;</span>)               <span class="co"># group = field period (MAD sigma, C0 median); surface decides the CO2-tracer screen</span></span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>  <span class="at">group =</span> <span class="st">&quot;campaign&quot;</span>)                                     <span class="co"># group = field period (MAD sigma, C0 median)</span></span>
 <span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a>CO2 <span class="ot">&lt;-</span> <span class="fu">process_fluxes</span>(manID, <span class="at">aux =</span> aux, <span class="at">gastype =</span> <span class="st">&quot;CO2dry_ppm&quot;</span>, <span class="at">mdf =</span> <span class="st">&quot;two_sigma&quot;</span>)</span>
 <span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a>CH4</span>
 <span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a><span class="fu">table</span>(CH4<span class="sc">$</span>fluxes<span class="sc">$</span>det_class_emp); <span class="fu">table</span>(CH4<span class="sc">$</span>fluxes<span class="sc">$</span>qc_any)</span></code></pre></div>
@@ -483,55 +483,62 @@ the author’s tree-stem examples as one labelled application: closures
 that look alike in a flux table until the detection flag and the QC
 screens are applied. <code>fluxqc_examples()</code> ships ten anonymized
 real closures across surfaces (upland tree stems, a forest soil collar,
-a mangrove stem, open water) with their real geometry, the
-operator-clicked windows and a <code>surface</code> column (see
-<code>?fluxqc_examples</code>). Running the whole set in one call, with
-<code>group</code> = campaign for the MAD sigma and <code>surface</code>
-deciding where the CO2-tracer screen applies:</p>
+a mangrove stem, open water) with their real geometry and the
+operator-clicked windows (see <code>?fluxqc_examples</code>). Screens
+are plain toggles: the nine closures with respiring surfaces run with
+every screen on, and the open-water closure is run separately with
+<code>co2_tracer = FALSE</code>, since water has no respiratory CO2
+efflux to serve as a tracer:</p>
 <div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">library</span>(fluxqc)</span>
 <span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>ex <span class="ot">&lt;-</span> <span class="fu">fluxqc_examples</span>()</span>
-<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>ex<span class="sc">$</span>aux[, <span class="fu">c</span>(<span class="st">&quot;UniqueID&quot;</span>, <span class="st">&quot;surface&quot;</span>, <span class="st">&quot;campaign&quot;</span>, <span class="st">&quot;season_year&quot;</span>)]</span>
-<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="co">#&gt;                   UniqueID surface    campaign               season_year</span></span>
-<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a><span class="co">#&gt; 1  emission_stem_semirigid    stem ymf_monthly               spring 2021</span></span>
-<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a><span class="co">#&gt; 2     emission_upland_stem    stem  ymf_height               summer 2021</span></span>
-<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a><span class="co">#&gt; 3     below_detection_stem    stem  ymf_height               summer 2021</span></span>
-<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a><span class="co">#&gt; 4      failed_closure_stem    stem ymf_monthly               winter 2021</span></span>
-<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a><span class="co">#&gt; 5           ambiguous_stem    stem ymf_monthly               winter 2020</span></span>
-<span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a><span class="co">#&gt; 6              uptake_stem    stem ymf_monthly               summer 2020</span></span>
-<span id="cb9-11"><a href="#cb9-11" tabindex="-1"></a><span class="co">#&gt; 7              uptake_soil    soil    ymf_soil               summer 2020</span></span>
-<span id="cb9-12"><a href="#cb9-12" tabindex="-1"></a><span class="co">#&gt; 8   high_flux_wetland_stem    stem    blueflux wet season 2022 (October)</span></span>
-<span id="cb9-13"><a href="#cb9-13" tabindex="-1"></a><span class="co">#&gt; 9      ebullition_floating   water    blueflux wet season 2022 (October)</span></span>
-<span id="cb9-14"><a href="#cb9-14" tabindex="-1"></a><span class="co">#&gt; 10    emission_li7810_stem    stem     santafe         spring 2026 (May)</span></span>
-<span id="cb9-15"><a href="#cb9-15" tabindex="-1"></a><span class="fu">invisible</span>(<span class="fu">capture.output</span>(</span>
-<span id="cb9-16"><a href="#cb9-16" tabindex="-1"></a>  res <span class="ot">&lt;-</span> <span class="fu">suppressWarnings</span>(<span class="fu">process_fluxes</span>(ex<span class="sc">$</span>data, <span class="at">aux =</span> ex<span class="sc">$</span>aux, <span class="at">gastype =</span> <span class="st">&quot;CH4dry_ppb&quot;</span>,</span>
-<span id="cb9-17"><a href="#cb9-17" tabindex="-1"></a>                          <span class="at">group =</span> <span class="st">&quot;campaign&quot;</span>, <span class="at">surface =</span> <span class="st">&quot;surface&quot;</span>,</span>
-<span id="cb9-18"><a href="#cb9-18" tabindex="-1"></a>                          <span class="at">qc =</span> <span class="fu">list</span>(<span class="at">c0 =</span> <span class="cn">TRUE</span>, <span class="at">co2_tracer =</span> <span class="cn">TRUE</span>, <span class="at">convex =</span> <span class="cn">TRUE</span>, <span class="at">min_window =</span> <span class="fu">list</span>(<span class="at">secs =</span> <span class="dv">120</span>),</span>
-<span id="cb9-19"><a href="#cb9-19" tabindex="-1"></a>                                    <span class="at">noisy =</span> <span class="cn">TRUE</span>)))))</span>
-<span id="cb9-20"><a href="#cb9-20" tabindex="-1"></a>out <span class="ot">&lt;-</span> res<span class="sc">$</span>fluxes[<span class="fu">match</span>(ex<span class="sc">$</span>aux<span class="sc">$</span>UniqueID, res<span class="sc">$</span>fluxes<span class="sc">$</span>UniqueID), ]</span>
-<span id="cb9-21"><a href="#cb9-21" tabindex="-1"></a>out[, <span class="fu">c</span>(<span class="st">&quot;UniqueID&quot;</span>, <span class="st">&quot;best.flux&quot;</span>, <span class="st">&quot;sigma_emp&quot;</span>, <span class="st">&quot;MDF_emp&quot;</span>, <span class="st">&quot;det_class_emp&quot;</span>, <span class="st">&quot;qc_co2_tracer_applies&quot;</span>,</span>
-<span id="cb9-22"><a href="#cb9-22" tabindex="-1"></a>        <span class="st">&quot;qc_co2_tracer&quot;</span>, <span class="st">&quot;qc_convex&quot;</span>, <span class="st">&quot;qc_noisy&quot;</span>, <span class="st">&quot;qc_any&quot;</span>)]</span>
-<span id="cb9-23"><a href="#cb9-23" tabindex="-1"></a><span class="co">#&gt;                   UniqueID   best.flux sigma_emp    MDF_emp   det_class_emp</span></span>
-<span id="cb9-24"><a href="#cb9-24" tabindex="-1"></a><span class="co">#&gt; 5  emission_stem_semirigid  0.25372243  1.782206 0.00304789        emission</span></span>
-<span id="cb9-25"><a href="#cb9-25" tabindex="-1"></a><span class="co">#&gt; 6     emission_upland_stem  0.17112916  1.090291 0.01856319        emission</span></span>
-<span id="cb9-26"><a href="#cb9-26" tabindex="-1"></a><span class="co">#&gt; 2     below_detection_stem  0.00176277  1.090291 0.01991603 below detection</span></span>
-<span id="cb9-27"><a href="#cb9-27" tabindex="-1"></a><span class="co">#&gt; 7      failed_closure_stem  0.00180431  1.782206 0.00731827 below detection</span></span>
-<span id="cb9-28"><a href="#cb9-28" tabindex="-1"></a><span class="co">#&gt; 1           ambiguous_stem -0.00463082  1.782206 0.00448678          uptake</span></span>
-<span id="cb9-29"><a href="#cb9-29" tabindex="-1"></a><span class="co">#&gt; 10             uptake_stem -0.17570494  1.782206 0.00761664          uptake</span></span>
-<span id="cb9-30"><a href="#cb9-30" tabindex="-1"></a><span class="co">#&gt; 9              uptake_soil -2.25416186  2.023328 0.06021537          uptake</span></span>
-<span id="cb9-31"><a href="#cb9-31" tabindex="-1"></a><span class="co">#&gt; 8   high_flux_wetland_stem 29.31887174  3.595863 0.16431266        emission</span></span>
-<span id="cb9-32"><a href="#cb9-32" tabindex="-1"></a><span class="co">#&gt; 3      ebullition_floating 36.54058174  3.595863 0.13521156        emission</span></span>
-<span id="cb9-33"><a href="#cb9-33" tabindex="-1"></a><span class="co">#&gt; 4     emission_li7810_stem  0.65296335  0.162495 0.00149805        emission</span></span>
-<span id="cb9-34"><a href="#cb9-34" tabindex="-1"></a><span class="co">#&gt;    qc_co2_tracer_applies qc_co2_tracer qc_convex qc_noisy qc_any</span></span>
-<span id="cb9-35"><a href="#cb9-35" tabindex="-1"></a><span class="co">#&gt; 5                   TRUE         FALSE     FALSE    FALSE  FALSE</span></span>
-<span id="cb9-36"><a href="#cb9-36" tabindex="-1"></a><span class="co">#&gt; 6                   TRUE         FALSE     FALSE    FALSE  FALSE</span></span>
-<span id="cb9-37"><a href="#cb9-37" tabindex="-1"></a><span class="co">#&gt; 2                   TRUE         FALSE      TRUE    FALSE   TRUE</span></span>
-<span id="cb9-38"><a href="#cb9-38" tabindex="-1"></a><span class="co">#&gt; 7                   TRUE          TRUE      TRUE    FALSE   TRUE</span></span>
-<span id="cb9-39"><a href="#cb9-39" tabindex="-1"></a><span class="co">#&gt; 1                   TRUE          TRUE      TRUE    FALSE   TRUE</span></span>
-<span id="cb9-40"><a href="#cb9-40" tabindex="-1"></a><span class="co">#&gt; 10                  TRUE         FALSE      TRUE    FALSE   TRUE</span></span>
-<span id="cb9-41"><a href="#cb9-41" tabindex="-1"></a><span class="co">#&gt; 9                   TRUE         FALSE     FALSE    FALSE  FALSE</span></span>
-<span id="cb9-42"><a href="#cb9-42" tabindex="-1"></a><span class="co">#&gt; 8                   TRUE         FALSE     FALSE    FALSE  FALSE</span></span>
-<span id="cb9-43"><a href="#cb9-43" tabindex="-1"></a><span class="co">#&gt; 3                  FALSE            NA     FALSE    FALSE  FALSE</span></span>
-<span id="cb9-44"><a href="#cb9-44" tabindex="-1"></a><span class="co">#&gt; 4                   TRUE         FALSE     FALSE    FALSE  FALSE</span></span></code></pre></div>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>ex<span class="sc">$</span>aux[, <span class="fu">c</span>(<span class="st">&quot;UniqueID&quot;</span>, <span class="st">&quot;campaign&quot;</span>, <span class="st">&quot;season_year&quot;</span>)]</span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="co">#&gt;                   UniqueID    campaign               season_year</span></span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a><span class="co">#&gt; 1  emission_stem_semirigid ymf_monthly               spring 2021</span></span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a><span class="co">#&gt; 2     emission_upland_stem  ymf_height               summer 2021</span></span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a><span class="co">#&gt; 3     below_detection_stem  ymf_height               summer 2021</span></span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a><span class="co">#&gt; 4      failed_closure_stem ymf_monthly               winter 2021</span></span>
+<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a><span class="co">#&gt; 5           ambiguous_stem ymf_monthly               winter 2020</span></span>
+<span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a><span class="co">#&gt; 6              uptake_stem ymf_monthly               summer 2020</span></span>
+<span id="cb9-11"><a href="#cb9-11" tabindex="-1"></a><span class="co">#&gt; 7              uptake_soil    ymf_soil               summer 2020</span></span>
+<span id="cb9-12"><a href="#cb9-12" tabindex="-1"></a><span class="co">#&gt; 8   high_flux_wetland_stem    blueflux wet season 2022 (October)</span></span>
+<span id="cb9-13"><a href="#cb9-13" tabindex="-1"></a><span class="co">#&gt; 9      ebullition_floating    blueflux wet season 2022 (October)</span></span>
+<span id="cb9-14"><a href="#cb9-14" tabindex="-1"></a><span class="co">#&gt; 10    emission_li7810_stem     santafe         spring 2026 (May)</span></span>
+<span id="cb9-15"><a href="#cb9-15" tabindex="-1"></a>land  <span class="ot">&lt;-</span> ex<span class="sc">$</span>data[ex<span class="sc">$</span>data<span class="sc">$</span>UniqueID <span class="sc">!=</span> <span class="st">&quot;ebullition_floating&quot;</span>, ]</span>
+<span id="cb9-16"><a href="#cb9-16" tabindex="-1"></a>water <span class="ot">&lt;-</span> ex<span class="sc">$</span>data[ex<span class="sc">$</span>data<span class="sc">$</span>UniqueID <span class="sc">==</span> <span class="st">&quot;ebullition_floating&quot;</span>, ]</span>
+<span id="cb9-17"><a href="#cb9-17" tabindex="-1"></a>screens <span class="ot">&lt;-</span> <span class="fu">list</span>(<span class="at">c0 =</span> <span class="cn">TRUE</span>, <span class="at">co2_tracer =</span> <span class="cn">TRUE</span>, <span class="at">convex =</span> <span class="cn">TRUE</span>, <span class="at">min_window =</span> <span class="fu">list</span>(<span class="at">secs =</span> <span class="dv">120</span>), <span class="at">noisy =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb9-18"><a href="#cb9-18" tabindex="-1"></a><span class="fu">invisible</span>(<span class="fu">capture.output</span>({</span>
+<span id="cb9-19"><a href="#cb9-19" tabindex="-1"></a>  res_land  <span class="ot">&lt;-</span> <span class="fu">suppressWarnings</span>(<span class="fu">process_fluxes</span>(land, <span class="at">aux =</span> ex<span class="sc">$</span>aux, <span class="at">gastype =</span> <span class="st">&quot;CH4dry_ppb&quot;</span>,</span>
+<span id="cb9-20"><a href="#cb9-20" tabindex="-1"></a>                                               <span class="at">group =</span> <span class="st">&quot;campaign&quot;</span>, <span class="at">qc =</span> screens))</span>
+<span id="cb9-21"><a href="#cb9-21" tabindex="-1"></a>  res_water <span class="ot">&lt;-</span> <span class="fu">suppressWarnings</span>(<span class="fu">process_fluxes</span>(water, <span class="at">gastype =</span> <span class="st">&quot;CH4dry_ppb&quot;</span>,</span>
+<span id="cb9-22"><a href="#cb9-22" tabindex="-1"></a>                                               <span class="at">qc =</span> <span class="fu">modifyList</span>(screens, <span class="fu">list</span>(<span class="at">co2_tracer =</span> <span class="cn">FALSE</span>))))</span>
+<span id="cb9-23"><a href="#cb9-23" tabindex="-1"></a>}))</span>
+<span id="cb9-24"><a href="#cb9-24" tabindex="-1"></a>out <span class="ot">&lt;-</span> <span class="fu">rbind</span>(res_land<span class="sc">$</span>fluxes[, <span class="fu">c</span>(<span class="st">&quot;UniqueID&quot;</span>, <span class="st">&quot;best.flux&quot;</span>, <span class="st">&quot;sigma_emp&quot;</span>, <span class="st">&quot;MDF_emp&quot;</span>, <span class="st">&quot;det_class_emp&quot;</span>,</span>
+<span id="cb9-25"><a href="#cb9-25" tabindex="-1"></a>                                  <span class="st">&quot;qc_co2_tracer&quot;</span>, <span class="st">&quot;qc_convex&quot;</span>, <span class="st">&quot;qc_noisy&quot;</span>, <span class="st">&quot;qc_any&quot;</span>)],</span>
+<span id="cb9-26"><a href="#cb9-26" tabindex="-1"></a>             <span class="fu">cbind</span>(res_water<span class="sc">$</span>fluxes[, <span class="fu">c</span>(<span class="st">&quot;UniqueID&quot;</span>, <span class="st">&quot;best.flux&quot;</span>, <span class="st">&quot;sigma_emp&quot;</span>, <span class="st">&quot;MDF_emp&quot;</span>, <span class="st">&quot;det_class_emp&quot;</span>)],</span>
+<span id="cb9-27"><a href="#cb9-27" tabindex="-1"></a>                   <span class="at">qc_co2_tracer =</span> <span class="cn">NA</span>, res_water<span class="sc">$</span>fluxes[, <span class="fu">c</span>(<span class="st">&quot;qc_convex&quot;</span>, <span class="st">&quot;qc_noisy&quot;</span>, <span class="st">&quot;qc_any&quot;</span>)]))</span>
+<span id="cb9-28"><a href="#cb9-28" tabindex="-1"></a>out[<span class="fu">match</span>(ex<span class="sc">$</span>aux<span class="sc">$</span>UniqueID, out<span class="sc">$</span>UniqueID), ]</span>
+<span id="cb9-29"><a href="#cb9-29" tabindex="-1"></a><span class="co">#&gt;                   UniqueID   best.flux sigma_emp    MDF_emp   det_class_emp qc_co2_tracer</span></span>
+<span id="cb9-30"><a href="#cb9-30" tabindex="-1"></a><span class="co">#&gt; 4  emission_stem_semirigid  0.25372243  1.782206 0.00304789        emission         FALSE</span></span>
+<span id="cb9-31"><a href="#cb9-31" tabindex="-1"></a><span class="co">#&gt; 5     emission_upland_stem  0.17112916  1.090291 0.01856319        emission         FALSE</span></span>
+<span id="cb9-32"><a href="#cb9-32" tabindex="-1"></a><span class="co">#&gt; 2     below_detection_stem  0.00176277  1.090291 0.01991603 below detection         FALSE</span></span>
+<span id="cb9-33"><a href="#cb9-33" tabindex="-1"></a><span class="co">#&gt; 6      failed_closure_stem  0.00180431  1.782206 0.00731827 below detection          TRUE</span></span>
+<span id="cb9-34"><a href="#cb9-34" tabindex="-1"></a><span class="co">#&gt; 1           ambiguous_stem -0.00463082  1.782206 0.00448678          uptake          TRUE</span></span>
+<span id="cb9-35"><a href="#cb9-35" tabindex="-1"></a><span class="co">#&gt; 9              uptake_stem -0.17570494  1.782206 0.00761664          uptake         FALSE</span></span>
+<span id="cb9-36"><a href="#cb9-36" tabindex="-1"></a><span class="co">#&gt; 8              uptake_soil -2.25416186  2.023328 0.06021537          uptake         FALSE</span></span>
+<span id="cb9-37"><a href="#cb9-37" tabindex="-1"></a><span class="co">#&gt; 7   high_flux_wetland_stem 29.31887174  4.277295 0.19545062        emission         FALSE</span></span>
+<span id="cb9-38"><a href="#cb9-38" tabindex="-1"></a><span class="co">#&gt; 10     ebullition_floating 36.54058174  1.855591 0.06977390        emission            NA</span></span>
+<span id="cb9-39"><a href="#cb9-39" tabindex="-1"></a><span class="co">#&gt; 3     emission_li7810_stem  0.65296335  0.162495 0.00149805        emission         FALSE</span></span>
+<span id="cb9-40"><a href="#cb9-40" tabindex="-1"></a><span class="co">#&gt;    qc_convex qc_noisy qc_any</span></span>
+<span id="cb9-41"><a href="#cb9-41" tabindex="-1"></a><span class="co">#&gt; 4      FALSE    FALSE  FALSE</span></span>
+<span id="cb9-42"><a href="#cb9-42" tabindex="-1"></a><span class="co">#&gt; 5      FALSE    FALSE  FALSE</span></span>
+<span id="cb9-43"><a href="#cb9-43" tabindex="-1"></a><span class="co">#&gt; 2       TRUE    FALSE   TRUE</span></span>
+<span id="cb9-44"><a href="#cb9-44" tabindex="-1"></a><span class="co">#&gt; 6       TRUE    FALSE   TRUE</span></span>
+<span id="cb9-45"><a href="#cb9-45" tabindex="-1"></a><span class="co">#&gt; 1       TRUE    FALSE   TRUE</span></span>
+<span id="cb9-46"><a href="#cb9-46" tabindex="-1"></a><span class="co">#&gt; 9       TRUE    FALSE   TRUE</span></span>
+<span id="cb9-47"><a href="#cb9-47" tabindex="-1"></a><span class="co">#&gt; 8      FALSE    FALSE  FALSE</span></span>
+<span id="cb9-48"><a href="#cb9-48" tabindex="-1"></a><span class="co">#&gt; 7      FALSE    FALSE  FALSE</span></span>
+<span id="cb9-49"><a href="#cb9-49" tabindex="-1"></a><span class="co">#&gt; 10     FALSE    FALSE  FALSE</span></span>
+<span id="cb9-50"><a href="#cb9-50" tabindex="-1"></a><span class="co">#&gt; 3      FALSE    FALSE  FALSE</span></span></code></pre></div>
 <p>Reading the rows: <code>emission_stem_semirigid</code> is detected
 and passes; <code>below_detection_stem</code> is a good closure whose
 CH4 flux is below the detection limit (kept, flagged);
@@ -543,9 +550,8 @@ chamber on live tissue should accumulate CO2); <code>uptake_stem</code>
 and <code>uptake_soil</code> are real, detected uptakes with healthy CO2
 tracers; <code>high_flux_wetland_stem</code> and the LI-7810 closure are
 large clean emissions; <code>ebullition_floating</code> is open water,
-so the CO2-tracer screen is <code>NA</code> there by design
-(<code>qc_co2_tracer_applies = FALSE</code>) and its bubbles are the
-add-on’s business. No row was removed.</p>
+processed with the CO2-tracer screen switched off (no respiratory CO2),
+and its bubbles are the add-on’s business. No row was removed.</p>
 </div>
 <div id="where-the-outputs-go" class="section level2">
 <h2>5. Where the outputs go</h2>
@@ -627,10 +633,10 @@ plots produced by <code>flux.plot()</code>. Every column of
 <td>selected flux and why</td>
 </tr>
 <tr class="even">
-<td><code>&lt;group&gt;</code>, <code>&lt;surface&gt;</code></td>
+<td><code>&lt;group&gt;</code></td>
 <td>fluxqc (added)</td>
 <td>auxfile via <code>process_fluxes()</code></td>
-<td>grouping / surface columns merged for the screens</td>
+<td>grouping column merged for the screens</td>
 </tr>
 <tr class="odd">
 <td><code>sigma_emp</code></td>
@@ -667,12 +673,11 @@ plots produced by <code>flux.plot()</code>. Every column of
 <td>C0 &gt; k x group median</td>
 </tr>
 <tr class="even">
-<td><code>qc_co2_tracer</code>, <code>qc_co2_slope</code>,
-<code>qc_co2_tracer_applies</code></td>
+<td><code>qc_co2_tracer</code>, <code>qc_co2_slope</code></td>
 <td>fluxqc (added)</td>
 <td><code>qc_screens()</code></td>
-<td>CO2 tracer screen (conditional on <code>surface</code>; NA where it
-does not apply)</td>
+<td>CO2 tracer screen (toggle it off for surfaces without respiratory
+CO2)</td>
 </tr>
 <tr class="odd">
 <td><code>qc_convex</code></td>

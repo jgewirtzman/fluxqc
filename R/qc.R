@@ -4,19 +4,13 @@
 #' [goFlux::goFlux()]) table and appends one logical column per screen
 #' (`qc_<screen>`, `TRUE` = the screen fired), plus `qc_any` and a `qc_note`
 #' string listing the screens that fired. Rows are retained and flagged only.
-#' Screens that cannot be evaluated for a row (missing inputs, a surface they do not apply to)
+#' Screens that cannot be evaluated for a row (missing inputs)
 #' give `NA`, which is *not* a clean bill of health.
 #'
-#' @section Surface applicability:
-#' | screen | applies to | needs |
-#' |---|---|---|
-#' | `c0` | any surface | `C0` (goFlux) |
-#' | `co2_tracer` | **conditional**: surfaces where CO2 efflux is expected (`co2_tracer_surfaces`, default stem/soil/branch/root/live); `NA` on water, leaves in light, dead/dormant tissue | CO2 table or traces with `CO2dry_ppm` |
-#' | `convex` | any surface | traces (or `HM.k`) |
-#' | `min_window` | any surface | traces or `nb.obs` |
-#' | `ambient_start` | any surface | traces with pre-closure rows |
-#' | `noisy` | any surface | traces |
-#' | `leak` | any surface | bench leak rate, `MDF_emp` |
+#' Each screen is a simple post-hoc toggle: `TRUE`, `FALSE` or a parameter
+#' list in `screens`. None depends on what surface the chamber enclosed; the
+#' only one to switch off deliberately is `co2_tracer`, for surfaces without
+#' respiratory CO2 efflux (open water, lit foliage, dead wood).
 #'
 #' @section Screens:
 #' \describe{
@@ -36,10 +30,9 @@
 #'     leaked, was not sealed, or was on dead/dormant tissue. The CO2 slope
 #'     comes from, in order: the `co2` table (`LM.slope` by `UniqueID`),
 #'     `traces` (linear fit of `CO2dry_ppm` on flagged rows), or
-#'     `fluxes$LM.slope` when `fluxes` is itself the CO2 table. **Conditional
-#'     on the surface:** applies only where `surface` is in
-#'     `co2_tracer_surfaces`; other surfaces get `NA` and
-#'     `qc_co2_tracer_applies = FALSE`.}
+#'     `fluxes$LM.slope` when `fluxes` is itself the CO2 table. Turn it off
+#'     (`co2_tracer = FALSE`) for surfaces without respiratory CO2 efflux (open
+#'     water, lit foliage, dead wood).}
 #'   \item{`convex` (`p = 0.05`)}{accelerating (convex) concentration change,
 #'     which no chamber mechanism produces and which points at a leak, a
 #'     disturbance or a delayed seal. With `traces`: a quadratic fit on the
@@ -87,14 +80,6 @@
 #' @param gastype gas column of `traces` (inferred when unique).
 #' @param co2 optional CO2 flux table (`best.flux()` output on `CO2dry_ppm`)
 #'   for the `co2_tracer` screen.
-#' @param surface the surface enclosed by each chamber: the name of a column
-#'   in `fluxes`, or one string for the whole table (e.g. `"soil"`,
-#'   `"water"`, `"stem"`, `"leaf"`, `"dead"`). Only used by the conditional
-#'   `co2_tracer` screen; `NULL` applies that screen to every row.
-#' @param co2_tracer_surfaces surfaces on which CO2 efflux is expected, so the
-#'   `co2_tracer` screen applies; any other surface value (open water, leaves
-#'   in the light, dead or dormant tissue, ...) gets `NA`. Matching is
-#'   case-insensitive.
 #' @param verbose print a per-screen summary.
 #' @return `fluxes` with `qc_<screen>` columns, `qc_any` and `qc_note`. The
 #'   parameters used are stored in the attribute `"qc_screens"`.
@@ -107,6 +92,8 @@
 #'                   screens = list(c0 = TRUE, co2_tracer = TRUE, convex = TRUE,
 #'                                  min_window = list(secs = 120), ambient_start = TRUE,
 #'                                  noisy = list(k = 1.5)))
+#' # open water: no respiratory CO2, so switch the tracer screen off
+#' # qc_screens(best_water, traces = water, screens = list(c0 = TRUE, co2_tracer = FALSE))
 #' out[, grep("^qc_", names(out))]
 #' @export
 qc_screens <- function(fluxes, traces = NULL,
@@ -114,9 +101,7 @@ qc_screens <- function(fluxes, traces = NULL,
                                       convex = TRUE, min_window = list(secs = NULL),
                                       ambient_start = list(sigma = 3, secs = NULL),
                                       noisy = list(k = 1.5), leak = list(rate = NULL)),
-                       group = NULL, gastype = NULL, co2 = NULL, surface = NULL,
-                       co2_tracer_surfaces = c("stem", "soil", "branch", "root", "live"),
-                       verbose = TRUE) {
+                       group = NULL, gastype = NULL, co2 = NULL, verbose = TRUE) {
   fx <- as.data.frame(fluxes)
   if (!"UniqueID" %in% names(fx)) stop("'fluxes' needs a 'UniqueID' column")
   defaults <- list(c0 = list(k = 1.5), co2_tracer = list(min_slope = 0, require_detection = TRUE),
@@ -199,12 +184,6 @@ qc_screens <- function(fluxes, traces = NULL,
         }) == 1
       }
       flag <- ifelse(is.na(flag), NA, flag | (!is.na(undetected) & undetected))
-    }
-    if (!is.null(surface)) {
-      sv <- if (length(surface) == 1 && surface %in% names(fx)) as.character(fx[[surface]])
-            else rep_len(as.character(surface), n)
-      fx$qc_co2_tracer_applies <- !is.na(sv) & tolower(sv) %in% tolower(co2_tracer_surfaces)
-      flag[!fx$qc_co2_tracer_applies] <- NA                 # screen does not apply to this surface
     }
     fired("co2_tracer", flag, sprintf("CO2 slope <= %g", cfg$co2_tracer$min_slope))
   }

@@ -59,7 +59,7 @@ licor <- import_li7810_subset("TG10-01503-2026-05-01T000000.data",
                               dates = c("2026-05-22", "2026-05-23"), timezone = "UTC")
 ow    <- obs.win(licor, auxfile = aux, obs.length = 600, shoulder = 120)
 manID <- auto_id_rise(ow, plot.dir = "plots/auto_id")     # or click_peak2_stacked(ow, gases = "auto")
-CH4   <- process_fluxes(manID, aux = aux, gastype = "CH4dry_ppb", group = "campaign", surface = "soil")
+CH4   <- process_fluxes(manID, aux = aux, gastype = "CH4dry_ppb", group = "campaign")
 write_outputs(CH4, "results/CH4")
 ```
 
@@ -129,7 +129,7 @@ core sources for gas-column and file-format literals.
 | Quietest-window precision scan | `precision_rolling()` | -- |
 | Empirical precision + MDF appended as `sigma_emp`, `MDF_emp`, `below_MDF_emp`, `MDF_emp_method` (comparison columns via `extra`) | `flag_detection()`, `mdf_multi()` | `MDF()`, `best.flux()` (`MDF` criterion) |
 | (V/A)(P/RT) with goFlux unit conventions | `flux_term()` | `flux.term()` (unexported) |
-| Toggleable physical QC screens (C0, CO2 tracer [conditional on `surface`], convex, min window, ambient start, noisy closure, leak), flags only | `qc_screens()` (`qc_c0_screen()` wrapper) | -- |
+| Toggleable physical QC screens (C0, CO2 tracer, convex, min window, ambient start, noisy closure, leak), flags only; switch `co2_tracer` off for surfaces without respiratory CO2 | `qc_screens()` (`qc_c0_screen()` wrapper) | -- |
 | Multi-page PDF of `flux.plot()` output, ggplot2 >= 3.5 safe | `flux_pdf()` | `flux2pdf()` |
 | Date subset of huge LI-7810 `.data` files (shim: forwards to `import.LI7810(dates=)` once the upstream patch in `inst/upstream/patches/` is merged) | `import_li7810_subset()` | `import.LI7810()` |
 | Recursive per-file import without the `muffleError` wrapper or `getwd()/RData` writes | `import2RData_flat()` | `import2RData()` |

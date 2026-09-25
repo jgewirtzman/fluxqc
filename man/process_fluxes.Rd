@@ -15,7 +15,6 @@ process_fluxes(
   qc = list(c0 = TRUE, co2_tracer = TRUE, convex = TRUE, min_window = TRUE, ambient_start
     = TRUE, noisy = TRUE),
   group = NULL,
-  surface = NULL,
   co2 = NULL,
   ebullition = c("none", "flag", "split"),
   ebullition_method = "goAquaFlux",
@@ -32,7 +31,7 @@ process_fluxes(
 \code{\link[=windows_from_table]{windows_from_table()}}).}
 
 \item{aux}{optional auxfile (one row per \code{UniqueID}); used for the
-\code{ebullition} logical column and for \code{group} / \code{surface} columns of the QC
+\code{ebullition} logical column and for the \code{group} column of the QC
 screens, which are merged into the flux table by \code{UniqueID}.}
 
 \item{gastype}{gas column to process (one gas per call).}
@@ -43,15 +42,13 @@ precision and the Wassmann form at 95 percent two-sided, z = qnorm(0.975) = 1.96
 i.e. the 2-sigma criterion).}
 
 \item{qc}{list of screens passed to \code{\link[=qc_screens]{qc_screens()}} (\code{screens} argument), or
-\code{FALSE} to skip QC.}
+\code{FALSE} to skip QC. Each screen is a toggle; set \code{co2_tracer = FALSE} for
+surfaces without respiratory CO2 efflux (open water, lit foliage, dead
+wood).}
 
 \item{group}{column name (in \code{aux} or the flux table) defining the field
 periods for the record-wide \code{"mad"} precision in \code{\link[=flag_detection]{flag_detection()}} and the
 \code{c0} median in \code{\link[=qc_screens]{qc_screens()}}.}
-
-\item{surface}{the surface enclosed by each chamber: a column name (in \code{aux}
-or the flux table) or one string for the whole set; passed to
-\code{\link[=qc_screens]{qc_screens()}}, where it decides whether the CO2-tracer screen applies.}
 
 \item{co2}{optional CO2 flux table for the \code{co2_tracer} screen.}
 

@@ -72,9 +72,7 @@
 #'   `obs.length_corr`) and `aux` (data.frame: `UniqueID`, `start.time`,
 #'   `obs.length`, `Area`, `Vtot`, `Tcham`, `Pcham`, `start.time_corr`,
 #'   `end.time_corr`, `kind`, `campaign_type`, `season_year`, `analyzer`,
-#'   `chamber_family`, `surface` (`"stem"`, `"soil"` or `"water"`, for the
-#'   surface-conditional CO2-tracer screen) and `campaign` (an anonymous
-#'   campaign key for `group`)).
+#'   `chamber_family` and `campaign` (an anonymous campaign key for `group`)).
 #' @examples
 #' ex <- fluxqc_examples()
 #' ex$aux[, c("UniqueID", "campaign_type", "analyzer")]
