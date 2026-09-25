@@ -55,7 +55,7 @@ a steady rise. We put it next to the clean closure `emission_stem_semirigid`.
 library(fluxqc)
 ex <- fluxqc_examples(c("ebullition_floating", "emission_stem_semirigid"))
 both <- ex$data
-ex$aux[, c("UniqueID", "surface", "obs.length", "Area", "Vtot", "Tcham", "analyzer")]
+ex$aux[, c("UniqueID", "obs.length", "Area", "Vtot", "Tcham", "analyzer")]
 e <- both[both$UniqueID == "ebullition_floating", ]
 ```
 
