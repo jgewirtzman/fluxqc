@@ -1,0 +1,13 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^LICENSE\.md$
+^README\.Rmd$
+^\.github$
+^CITATION\.cff$
+^\.zenodo\.json$
+^\.git$
+^\.gitignore$
+^doc$
+^Meta$
+^.*\.Rcheck$
+^.*\.tar\.gz$

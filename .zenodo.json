@@ -1,0 +1,32 @@
+{
+  "title": "stemflux: Window Selection, Empirical Precision and Detection Limits for Chamber Flux Data Processed with goFlux",
+  "description": "An R package extending goFlux (Rheault et al. 2024) with tools for tree-stem, soil and water chamber flux measurements: stacked CO2/CH4 window selection, non-interactive window detection, empirical per-measurement precision (Allan deviation of first differences, robust MAD variant), minimum detectable flux by several published methods with detection flags, a chamber-contamination screen, a ggplot2-compatible PDF exporter, analyzer clock-reset handling, ebullition detection and partitioning, and import helpers for very large LI-7810 files.",
+  "creators": [
+    {
+      "name": "Gewirtzman, Jonathan"
+    }
+  ],
+  "license": "MIT",
+  "upload_type": "software",
+  "keywords": [
+    "greenhouse gas",
+    "chamber flux",
+    "methane",
+    "carbon dioxide",
+    "tree stem",
+    "goFlux",
+    "minimum detectable flux",
+    "Allan deviation",
+    "R package"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "10.21105/joss.06393",
+      "relation": "requires",
+      "scheme": "doi",
+      "resource_type": "software"
+    }
+  ],
+  "version": "0.1.0",
+  "language": "eng"
+}

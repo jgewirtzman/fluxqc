@@ -1,0 +1,37 @@
+cff-version: 1.2.0
+message: "If you use stemflux, please cite it as below, and cite goFlux (Rheault et al. 2024) for the underlying flux calculation."
+type: software
+title: "stemflux: Window Selection, Empirical Precision and Detection Limits for Chamber Flux Data Processed with goFlux"
+version: 0.1.0
+date-released: "2026-09-24"
+authors:
+  - family-names: Gewirtzman
+    given-names: Jonathan
+    email: jongewirtzman@gmail.com
+license: MIT
+repository-code: "https://github.com/jongewirtzman/stemflux"
+keywords:
+  - greenhouse gas
+  - chamber flux
+  - methane
+  - tree stem
+  - goFlux
+  - minimum detectable flux
+  - Allan deviation
+  - R package
+references:
+  - type: article
+    authors:
+      - family-names: Rheault
+        given-names: Karelle
+      - family-names: Christiansen
+        given-names: Jesper Riis
+      - family-names: Larsen
+        given-names: Klaus Steenberg
+    title: "goFlux: A user-friendly way to calculate GHG fluxes yourself, regardless of user experience"
+    journal: "Journal of Open Source Software"
+    year: 2024
+    volume: 9
+    issue: 96
+    start: 6393
+    doi: 10.21105/joss.06393

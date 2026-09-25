@@ -1,0 +1,23 @@
+citHeader("To cite stemflux in publications use the package entry below, and cite goFlux for the underlying flux calculation:")
+
+bibentry(
+  bibtype = "Manual",
+  title   = "stemflux: Window Selection, Empirical Precision and Detection Limits for Chamber Flux Data Processed with goFlux",
+  author  = person("Jonathan", "Gewirtzman", email = "jongewirtzman@gmail.com"),
+  year    = "2026",
+  note    = "R package version 0.1.0",
+  url     = "https://github.com/jongewirtzman/stemflux"
+)
+
+bibentry(
+  bibtype = "Article",
+  title   = "goFlux: A user-friendly way to calculate GHG fluxes yourself, regardless of user experience",
+  author  = c(person("Karelle", "Rheault"), person("Jesper Riis", "Christiansen"),
+              person("Klaus Steenberg", "Larsen")),
+  journal = "Journal of Open Source Software",
+  year    = "2024",
+  volume  = "9",
+  number  = "96",
+  pages   = "6393",
+  doi     = "10.21105/joss.06393"
+)
