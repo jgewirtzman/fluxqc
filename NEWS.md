@@ -1,3 +1,13 @@
+# fluxqc 0.2.3
+
+* `precision_mad_runs()`: MAD precision per run of constant logging interval, with a warning when a record changed interval; `flag_detection(precision = "mad")` uses it and assigns each closure the sigma of its own interval.
+* `spec_at_interval()`: datasheet precision rescaled to a logging interval (spec / sqrt(dt)); compare empirical precision of 5-10 s records with this, not with the 1 s figure.
+* Docs: the `christiansen` variant is no longer attributed to Christiansen et al. (2015) (their MDF is precision / t; the 3 x SD x t99 is a GC quantification limit); the `wassmann` entry notes Wassmann et al. used k = 3 and cites Parkin et al. (2012) for alpha = 0.05.
+
+# fluxqc 0.2.2
+
+* `flag_detection()` no longer assumes 1 Hz logging: the closure length `t` is now taken from `traces` through the new `closure_seconds()` (span of the flagged rows plus one logging interval, = goFlux's `max(Etime) + 1` at 1 Hz). Without `traces` it falls back to `nb.obs` with a warning. Records logged every 5 or 10 s previously got MDFs 5-10x too high.
+
 # fluxqc 0.2.1
 
 Pruning, now that goFlux 0.4.0 covers the ground and the general pieces are

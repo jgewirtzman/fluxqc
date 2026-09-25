@@ -1,7 +1,9 @@
 d <- example_closure()
 res <- suppressWarnings(goFlux::goFlux(d, "CH4dry_ppb"))
 best <- suppressWarnings(goFlux::best.flux(res))
-ft <- best$flux.term; t <- best$nb.obs
+ft <- best$flux.term
+t <- closure_seconds(d)$t          # seconds (span of flagged rows + 1 interval), not nb.obs
+nobs <- best$nb.obs
 
 test_that("mdf_multi reproduces each formula with two-sided quantiles", {
   m <- mdf_multi(flux.term = ft, t = 540, prec = 0.9, sigma = 2.2, sigma.global = 1.2)
@@ -18,7 +20,7 @@ test_that("default = record-wide MAD, Wassmann form at 95% two-sided (z = 1.96, 
   expect_setequal(added, c("sigma_emp", "MDF_emp", "below_MDF_emp", "MDF_emp_method",
                            "detected_emp", "det_class_emp"))
   for (nm in names(best)) expect_identical(out[[nm]], best[[nm]], info = nm)
-  expect_equal(out$sigma_emp, precision_mad(d$CH4dry_ppb))          # ALL rows, not just flagged
+  expect_equal(out$sigma_emp, precision_mad_runs(d$CH4dry_ppb, d$POSIX.time)$sigma)   # ALL rows, not just flagged
   expect_equal(out$MDF_emp, qnorm(0.975) * out$sigma_emp / t * ft)
   expect_equal(out$MDF_emp_method, "wassmann | mad | 0.95")
   expect_false(out$below_MDF_emp); expect_equal(out$det_class_emp, "emission")
@@ -30,30 +32,35 @@ test_that("mad is computed per group over the whole record", {
   b2 <- suppressWarnings(goFlux::best.flux(suppressWarnings(goFlux::goFlux(both, "CH4dry_ppb"))))
   b2$camp <- c("x", "y")[match(b2$UniqueID, c("emission_stem_semirigid", "second"))]
   g <- flag_detection(b2, traces = both, gastype = "CH4dry_ppb", group = "camp")
-  expect_equal(g$sigma_emp[g$UniqueID == "emission_stem_semirigid"], precision_mad(d$CH4dry_ppb))
-  expect_equal(g$sigma_emp[g$UniqueID == "second"], precision_mad(d2$CH4dry_ppb))
+  expect_equal(g$sigma_emp[g$UniqueID == "emission_stem_semirigid"], precision_mad_runs(d$CH4dry_ppb, d$POSIX.time)$sigma)
+  expect_equal(g$sigma_emp[g$UniqueID == "second"], precision_mad_runs(d2$CH4dry_ppb, d2$POSIX.time)$sigma)
   expect_gt(g$sigma_emp[g$UniqueID == "second"], g$sigma_emp[g$UniqueID != "second"])
   u <- flag_detection(b2, traces = both, gastype = "CH4dry_ppb")     # no group: one record
   expect_equal(u$sigma_emp[1], u$sigma_emp[2])
-  expect_equal(u$sigma_emp[1], precision_mad(both$CH4dry_ppb))
+  expect_equal(u$sigma_emp[1], precision_mad_runs(both$CH4dry_ppb, both$POSIX.time)$sigma)
   expect_error(flag_detection(b2, traces = both, gastype = "CH4dry_ppb", group = "nope"), "group")
 })
 
 test_that("other estimators and methods", {
-  o <- flag_detection(best, precision = "datasheet", mdf = "goflux")
-  expect_equal(o$MDF_emp, 0.9 / t * ft)
+  o <- suppressWarnings(flag_detection(best, precision = "datasheet", mdf = "goflux"))   # no traces: t = nb.obs
+  expect_equal(o$MDF_emp, 0.9 / nobs * ft)
   expect_equal(o$MDF_emp, best$MDF, tolerance = 0.01)
   expect_equal(o$MDF_emp_method, "goflux | datasheet")
   o2 <- flag_detection(best, traces = d, gastype = "CH4dry_ppb", precision = "allan", mdf = "christiansen", conf = 0.95)
   sa <- precision_allan(d$CH4dry_ppb[d$flag == 1])
   expect_equal(o2$sigma_emp, sa)
-  expect_equal(o2$MDF_emp, 3 * sa * qt(0.975, t - 2) / t * ft)
+  expect_equal(o2$MDF_emp, 3 * sa * qt(0.975, nobs - 2) / t * ft)
   expect_equal(o2$MDF_emp_method, "christiansen | allan | 0.95")
   o3 <- flag_detection(best, traces = d, gastype = "CH4dry_ppb", precision = "allan", mdf = "wassmann",
                        conf = 0.9, sigma.global = 1.2)
   expect_equal(o3$MDF_emp, qnorm(0.95) * 1.2 / t * ft)
-  cu <- flag_detection(best, precision = "custom", mdf = "goflux", sigma = data.frame(UniqueID = best$UniqueID, sigma = 5))
-  expect_equal(cu$MDF_emp, 5 / t * ft)
+  cu <- suppressWarnings(flag_detection(best, precision = "custom", mdf = "goflux", sigma = data.frame(UniqueID = best$UniqueID, sigma = 5)))
+  expect_equal(cu$MDF_emp, 5 / nobs * ft)   # no traces: falls back to nb.obs (with a warning)
+  expect_warning(flag_detection(best, precision = "custom", mdf = "goflux", sigma = data.frame(UniqueID = best$UniqueID, sigma = 5)), "1 Hz")
+  d5 <- d; d5$POSIX.time <- d5$POSIX.time[1] + 5 * (seq_len(nrow(d5)) - 1)   # same samples logged every 5 s
+  expect_equal(closure_seconds(d5)$dt, 5)
+  o5 <- flag_detection(best, traces = d5, gastype = "CH4dry_ppb"); o1 <- flag_detection(best, traces = d, gastype = "CH4dry_ppb")
+  expect_equal(o5$MDF_emp * closure_seconds(d5)$t / o5$sigma_emp, o1$MDF_emp * t / o1$sigma_emp)   # same z / flux.term
   o4 <- flag_detection(best, traces = d, gastype = "CH4dry_ppb", precision = "rolling", mdf = "two_sigma")
   expect_true(is.finite(o4$sigma_emp))
   expect_error(flag_detection(best), "need 'traces'")
@@ -77,7 +84,7 @@ test_that("extra appends comparison columns with the documented names", {
   expect_equal(out$MDF_goflux_datasheet, 0.9 / t * ft)
   expect_equal(out$MDF_wassmann_mad_95, out$MDF_emp)
   expect_equal(out$MDF_wassmann_datasheet_90, qnorm(0.95) * 0.9 / t * ft)
-  expect_equal(out$MDF_christiansen_allan_95, 3 * out$sigma_allan * qt(0.975, t - 2) / t * ft)
+  expect_equal(out$MDF_christiansen_allan_95, 3 * out$sigma_allan * qt(0.975, nobs - 2) / t * ft)
   all <- flag_detection(best, traces = d, gastype = "CH4dry_ppb", extra = "all")
   expect_true(all(c("MDF_wassmann_rolling_99", "MDF_two_sigma_datasheet") %in% names(all)))
   expect_error(flag_detection(best, traces = d, gastype = "CH4dry_ppb", extra = 3), "extra")

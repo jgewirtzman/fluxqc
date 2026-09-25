@@ -153,3 +153,69 @@ precision_by_id <- function(dataframe, gastype, method = c("allan", "mad"),
   rownames(out) <- NULL
   out
 }
+
+#' Robust precision per run of constant logging interval
+#'
+#' [precision_mad()] over a whole record assumes one logging interval. An
+#' analyzer whose interval was changed mid-record (1 s to 10 s, say) would mix
+#' two noise scales in one MAD, and the result would describe neither. This
+#' splits the record wherever the spacing of `posix` changes by more than
+#' `tol` (a fraction), computes [precision_mad()] on each run, merges runs
+#' with the same interval (gaps between files do not count as a change), and
+#' returns one row per interval. A warning is given when more than one
+#' interval is present. Intervals are rounded to the nearest 0.5 s.
+#'
+#' @param x numeric concentration series.
+#' @param posix POSIXct timestamps of `x`.
+#' @param constant scale factor passed to [stats::mad()].
+#' @param tol fractional change in spacing that starts a new run.
+#' @return data.frame with `dt_s` (logging interval, s), `n` (samples) and
+#'   `sigma` (the MAD precision at that interval).
+#' @examples
+#' t0 <- as.POSIXct("2024-06-01", tz = "UTC")
+#' p <- c(t0 + 0:599, t0 + 600 + 10 * (0:299))
+#' x <- 2000 + c(rnorm(600, 0, 1), rnorm(300, 0, 0.4))
+#' precision_mad_runs(x, p)
+#' @export
+precision_mad_runs <- function(x, posix, constant = 1.4826, tol = 0.2) {
+  ok <- is.finite(x) & !is.na(posix); x <- x[ok]; posix <- posix[ok]
+  d <- diff(as.numeric(posix)); dx <- diff(x)
+  valid <- is.finite(d) & d > 0                     # duplicates / backwards jumps are not intervals
+  if (sum(valid) < 3) return(data.frame(dt_s = NA_real_, n = length(x), sigma = NA_real_))
+  dv <- d[valid]
+  # a run breaks where the spacing changes by more than tol (fraction)
+  brk <- c(TRUE, abs(diff(dv)) > tol * pmax(dv[-1], 1e-9))
+  run <- cumsum(brk)
+  keep <- run %in% which(tabulate(run) >= 3)        # a lone gap between files is not a run
+  idx <- which(valid)[keep]
+  if (length(idx) < 3) return(data.frame(dt_s = NA_real_, n = length(x), sigma = NA_real_))
+  dt_r <- round(d[idx] * 2) / 2                     # nearest 0.5 s
+  # one pooled MAD per interval (runs with the same interval are pooled, not averaged)
+  out <- do.call(rbind, lapply(split(idx, dt_r), function(i)
+    if (length(i) < 3) NULL else                      # an interval seen < 3 times is a gap, not a run
+    data.frame(dt_s = round(d[i[1]] * 2) / 2, n = length(i) + 1,
+               sigma = stats::mad(dx[i], constant = constant) / sqrt(2))))
+  if (is.null(out)) return(data.frame(dt_s = NA_real_, n = length(x), sigma = NA_real_))
+  rownames(out) <- NULL
+  if (nrow(out) > 1)
+    warning("record has ", nrow(out), " logging intervals (", paste(out$dt_s, collapse = ", "),
+            " s); precision is reported per interval")
+  out
+}
+
+#' Datasheet precision rescaled to a logging interval
+#'
+#' Manufacturers quote precision at 1 s. A record logged every `dt_s` seconds
+#' averages that noise down, so the fair reference for an empirical precision
+#' measured on such a record is `spec_1s / sqrt(dt_s)` (white noise). Compare
+#' [precision_mad()] of a 10 s record with this, not with the 1 s figure;
+#' otherwise a unit can appear to beat its datasheet when it is several times
+#' worse. Not valid once `dt_s` exceeds the analyzer's Allan minimum.
+#'
+#' @param spec_1s datasheet precision at 1 s.
+#' @param dt_s logging interval in seconds.
+#' @return numeric, same units as `spec_1s`.
+#' @examples
+#' spec_at_interval(0.9, c(1, 5, 10))
+#' @export
+spec_at_interval <- function(spec_1s, dt_s) spec_1s / sqrt(dt_s)

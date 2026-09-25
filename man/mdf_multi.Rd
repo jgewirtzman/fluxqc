@@ -59,19 +59,25 @@ instrument precision given to goFlux at import (\code{prec}). This is
 goFlux's built-in \code{\link[goFlux:MDF]{goFlux::MDF()}}, whose documentation cites
 Christiansen et al. (2015) for it.}
 \item{\verb{wass\{90,95,99\}}}{\eqn{z \, \sigma_{global} / t \cdot \mathrm{flux.term}},
-Wassmann et al. (2018), with a \emph{global} (instrument-level) empirical
-precision and a two-sided normal quantile: \code{wass90} uses
-\code{qnorm(0.95)} = 1.645, \code{wass95} \code{qnorm(0.975)}, \code{wass99}
-\code{qnorm(0.995)}. \code{wass90} with a record-wide MAD sigma is the method of
-the companion data-processing manuscript.}
+the form of Wassmann et al. (2018) -- a \emph{global} (instrument-level)
+empirical precision times a multiplier -- generalised to a stated
+two-sided confidence: \code{wass90} uses \code{qnorm(0.95)} = 1.645, \code{wass95}
+\code{qnorm(0.975)} = 1.96, \code{wass99} \code{qnorm(0.995)}. Wassmann et al.
+themselves used the SD of replicate ambient-air analyses with a fixed
+k = 3 ("99 percent", citing the MIRSA guidelines); the Monte-Carlo
+limits of Parkin, Venterea & Hargreaves (2012) at alpha = 0.05 give the
+same dependence on precision and closure time. \code{wass95} with a
+record-wide MAD sigma and \code{t} in seconds is the method of the companion
+data-processing manuscript and of the guidelines paper.}
 \item{\verb{chr\{90,95,99\}}}{\eqn{\sigma_i \cdot 3 \cdot t_{crit}(df) / t \cdot
     \mathrm{flux.term}} with the \emph{per-measurement} precision
-\eqn{\sigma_i}, \code{df = nb.obs - 2} and a two-sided t quantile, as
-implemented in the author's processing scripts (there labelled
-"Christiansen"); the factor 3 is those scripts' safety factor. What
-Christiansen et al. (2015) and Nickerson (2016) define could not be
-checked against the papers' text here, so the factor is not attributed
-to them.}
+\eqn{\sigma_i}, \code{df = nb.obs - 2} and a two-sided t quantile: a
+conservative per-closure variant kept for comparison (the column prefix
+\code{chr} is historical). It is NOT the Christiansen et al. (2015) MDF:
+their section 2.5 defines MDF as analytic precision divided by
+enclosure time (k = 1), and the "SD x 3 x t99" there is a gas-chromatograph
+method quantification limit from 15 replicate standards (Corley 2003).
+Nickerson (2016) likewise uses k = 1 with an analytical accuracy.}
 \item{\verb{2sigma}}{\eqn{2 \sigma_i / t \cdot \mathrm{flux.term}}, the
 illustration used in Table 2.5 of the guidelines paper.}
 }
@@ -90,6 +96,10 @@ Christiansen, J. R., Outhwaite, J., & Smukler, S. M. (2015). Comparison of
 CO2, CH4 and N2O soil-atmosphere exchange measured in static chambers with
 cavity ring-down spectroscopy and gas chromatography. Agricultural and
 Forest Meteorology, 211-212, 48-57. \doi{10.1016/j.agrformet.2015.06.004}
+
+Parkin, T. B., Venterea, R. T., & Hargreaves, S. K. (2012). Calculating the
+detection limits of chamber-based soil greenhouse gas flux measurements.
+Journal of Environmental Quality, 41, 705-715. \doi{10.2134/jeq2011.0394}
 
 Wassmann, R., Alberto, M. C., Tirol-Padre, A., Hoang, N. T., Romasanta, R.,
 Centeno, C. A., & Sander, B. O. (2018). Increasing sensitivity of methane

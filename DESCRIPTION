@@ -2,7 +2,7 @@ Package: fluxqc
 Type: Package
 Title: Detection Limits and Quality Screens for Chamber Flux Measurements,
     on Top of 'goFlux'
-Version: 0.2.1
+Version: 0.2.3
 Authors@R: person("Jonathan", "Gewirtzman", email = "jongewirtzman@gmail.com",
     role = c("aut", "cre"))
 Description: Works on any closure processed with the 'goFlux' package

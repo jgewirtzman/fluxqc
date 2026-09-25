@@ -40,3 +40,20 @@ test_that("precision_by_id summarises per UniqueID", {
   expect_equal(sm$method, "mad")
   expect_error(precision_by_id(d, "nope"), "not found")
 })
+
+test_that("precision_mad_runs splits a record at an interval change", {
+  set.seed(7)
+  t0 <- as.POSIXct("2024-06-01", tz = "UTC")
+  p <- c(t0 + 0:599, t0 + 600 + 10 * (0:299))
+  x <- 2000 + c(rnorm(600, 0, 1), rnorm(300, 0, 0.4))
+  expect_warning(r <- precision_mad_runs(x, p), "2 logging intervals")
+  expect_equal(r$dt_s, c(1, 10))
+  expect_equal(r$sigma, c(1, 0.4), tolerance = 0.15)
+  one <- precision_mad_runs(x[1:600], p[1:600])
+  expect_equal(nrow(one), 1); expect_equal(one$dt_s, 1)
+  expect_equal(spec_at_interval(0.9, 4), 0.45)
+  # a single odd gap (duplicate timestamp in a 5-s subsample) is not an interval
+  p5 <- t0 + 5 * (0:199); p5[100:200] <- p5[100:200] - 1
+  expect_silent(r5 <- precision_mad_runs(rnorm(200), p5))
+  expect_equal(nrow(r5), 1); expect_equal(r5$dt_s, 5)
+})

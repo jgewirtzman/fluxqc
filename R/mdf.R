@@ -12,19 +12,25 @@
 #'     goFlux's built-in [goFlux::MDF()], whose documentation cites
 #'     Christiansen et al. (2015) for it.}
 #'   \item{`wass{90,95,99}`}{\eqn{z \, \sigma_{global} / t \cdot \mathrm{flux.term}},
-#'     Wassmann et al. (2018), with a *global* (instrument-level) empirical
-#'     precision and a two-sided normal quantile: `wass90` uses
-#'     `qnorm(0.95)` = 1.645, `wass95` `qnorm(0.975)`, `wass99`
-#'     `qnorm(0.995)`. `wass90` with a record-wide MAD sigma is the method of
-#'     the companion data-processing manuscript.}
+#'     the form of Wassmann et al. (2018) -- a *global* (instrument-level)
+#'     empirical precision times a multiplier -- generalised to a stated
+#'     two-sided confidence: `wass90` uses `qnorm(0.95)` = 1.645, `wass95`
+#'     `qnorm(0.975)` = 1.96, `wass99` `qnorm(0.995)`. Wassmann et al.
+#'     themselves used the SD of replicate ambient-air analyses with a fixed
+#'     k = 3 ("99 percent", citing the MIRSA guidelines); the Monte-Carlo
+#'     limits of Parkin, Venterea & Hargreaves (2012) at alpha = 0.05 give the
+#'     same dependence on precision and closure time. `wass95` with a
+#'     record-wide MAD sigma and `t` in seconds is the method of the companion
+#'     data-processing manuscript and of the guidelines paper.}
 #'   \item{`chr{90,95,99}`}{\eqn{\sigma_i \cdot 3 \cdot t_{crit}(df) / t \cdot
 #'     \mathrm{flux.term}} with the *per-measurement* precision
-#'     \eqn{\sigma_i}, `df = nb.obs - 2` and a two-sided t quantile, as
-#'     implemented in the author's processing scripts (there labelled
-#'     "Christiansen"); the factor 3 is those scripts' safety factor. What
-#'     Christiansen et al. (2015) and Nickerson (2016) define could not be
-#'     checked against the papers' text here, so the factor is not attributed
-#'     to them.}
+#'     \eqn{\sigma_i}, `df = nb.obs - 2` and a two-sided t quantile: a
+#'     conservative per-closure variant kept for comparison (the column prefix
+#'     `chr` is historical). It is NOT the Christiansen et al. (2015) MDF:
+#'     their section 2.5 defines MDF as analytic precision divided by
+#'     enclosure time (k = 1), and the "SD x 3 x t99" there is a gas-chromatograph
+#'     method quantification limit from 15 replicate standards (Corley 2003).
+#'     Nickerson (2016) likewise uses k = 1 with an analytical accuracy.}
 #'   \item{`2sigma`}{\eqn{2 \sigma_i / t \cdot \mathrm{flux.term}}, the
 #'     illustration used in Table 2.5 of the guidelines paper.}
 #' }
@@ -58,6 +64,10 @@
 #' CO2, CH4 and N2O soil-atmosphere exchange measured in static chambers with
 #' cavity ring-down spectroscopy and gas chromatography. Agricultural and
 #' Forest Meteorology, 211-212, 48-57. \doi{10.1016/j.agrformet.2015.06.004}
+#'
+#' Parkin, T. B., Venterea, R. T., & Hargreaves, S. K. (2012). Calculating the
+#' detection limits of chamber-based soil greenhouse gas flux measurements.
+#' Journal of Environmental Quality, 41, 705-715. \doi{10.2134/jeq2011.0394}
 #'
 #' Wassmann, R., Alberto, M. C., Tirol-Padre, A., Hoang, N. T., Romasanta, R.,
 #' Centeno, C. A., & Sander, B. O. (2018). Increasing sensitivity of methane
@@ -139,13 +149,16 @@ mdf_multi <- function(flux.term, t, prec = NULL, sigma = NULL, sigma.global = NU
 #'     normal quantile `z = qnorm(1 - (1 - conf)/2)` and
 #'     \eqn{\sigma_{global}} = `sigma.global` if given, else the median of
 #'     the chosen estimator across the table (for `"mad"` that is the
-#'     record-wide value itself).}
+#'     record-wide value itself). The record is checked for a change of
+#'     logging interval ([precision_mad_runs()]); if one is found, each closure
+#'     gets the sigma of the interval it was logged at (from
+#'     [closure_seconds()]) and a warning is given.}
 #'   \item{`"christiansen"`}{\eqn{\sigma_i \cdot 3 \cdot t_{crit}(df) / t
 #'     \cdot \mathrm{flux.term}}, per closure, `df = nb.obs - 2`, two-sided t
-#'     quantile: the variant implemented in the author's processing scripts
-#'     under that name. The factor 3 (`chr.mult`) is those scripts' safety
-#'     factor; it is not attributed here to Christiansen et al. (2015) or
-#'     Nickerson (2016), whose text could not be checked.}
+#'     quantile: a conservative per-closure variant kept for comparison. The
+#'     name is historical and misleading -- see [mdf_multi()]: Christiansen et
+#'     al. (2015) define MDF = precision / t (k = 1); their 3 x SD x t99 is a
+#'     GC quantification limit, not a per-closure flux threshold.}
 #'   \item{`"two_sigma"`}{\eqn{2 \sigma_i / t \cdot \mathrm{flux.term}}, the
 #'     illustration of Table 2.5 of the guidelines paper.}
 #'   \item{`"goflux"`}{\eqn{\sigma / t \cdot \mathrm{flux.term}}; with
@@ -186,7 +199,12 @@ mdf_multi <- function(flux.term, t, prec = NULL, sigma = NULL, sigma.global = NU
 #'   (used by `precision = "custom"`).
 #' @param sigma.global optional global precision for `wassmann` (a number, or
 #'   a named vector/list keyed by estimator name).
-#' @param t closure length in seconds; default `nb.obs` (1 Hz).
+#' @param t closure length in seconds. Default `NULL`: taken from `traces`
+#'   through [closure_seconds()] (span of the flagged rows plus one logging
+#'   interval, which equals goFlux's `max(Etime) + 1` at 1 Hz); without
+#'   `traces` it falls back to `nb.obs`, which assumes 1 Hz logging and is
+#'   wrong by the logging interval for records logged every 5 or 10 s
+#'   (a warning says so).
 #' @param flux.col flux column to test.
 #' @param rolling.window window (samples) for `"rolling"`.
 #' @param chr.mult multiplier in the Christiansen-style method (3).
@@ -245,20 +263,40 @@ flag_detection <- function(flux.result, traces = NULL, gastype = NULL,
     if (!gastype %in% names(traces)) stop("column '", gastype, "' not in 'traces'")
   }
   if (!is.null(group) && !group %in% names(fr)) stop("'group' column '", group, "' not in 'flux.result'")
-  if (is.null(t)) t <- fr$nb.obs
+  if (is.null(t)) {
+    if (!is.null(traces) && all(c("UniqueID", "POSIX.time", "flag") %in% names(traces))) {
+      cs <- closure_seconds(traces)
+      t <- cs$t[match(fr$UniqueID, cs$UniqueID)]
+      miss <- is.na(t)
+      if (any(miss)) t[miss] <- fr$nb.obs[miss]
+    } else {
+      t <- fr$nb.obs
+      warning("'t' taken as nb.obs, which assumes 1 Hz logging; pass 't' or 'traces' ",
+              "for records logged at other intervals")
+    }
+  }
   n <- nrow(fr)
 
   sig <- list()
   for (p in all_prec) {
     sig[[p]] <- switch(p,
       mad = {
-        # whole record per group (the FINAL-script method), not per closure
-        if (is.null(group)) rep(precision_mad(traces[[gastype]]), n)
+        # whole record per group (the FINAL-script method), not per closure;
+        # split by logging interval if the record changed interval mid-way
+        mad_for <- function(rows) {
+          r <- precision_mad_runs(traces[[gastype]][rows], traces$POSIX.time[rows])
+          if (nrow(r) == 1 || all(is.na(r$dt_s))) return(rep(r$sigma[1], n))
+          cs <- closure_seconds(traces[rows, ])
+          dtc <- cs$dt[match(fr$UniqueID, cs$UniqueID)]
+          r$sigma[vapply(dtc, function(v) if (is.na(v)) 1L else which.min(abs(r$dt_s - v)), integer(1))]
+        }
+        if (is.null(group)) mad_for(rep(TRUE, nrow(traces)))
         else {
           gv <- as.character(fr[[group]])
           tg <- gv[match(traces$UniqueID, fr$UniqueID)]
-          s <- vapply(unique(gv), function(g) precision_mad(traces[[gastype]][!is.na(tg) & tg == g]), numeric(1))
-          unname(s[gv])
+          out <- rep(NA_real_, n)
+          for (g in unique(gv)) out[gv == g] <- mad_for(!is.na(tg) & tg == g)[gv == g]
+          out
         }
       },
       datasheet = {
@@ -315,4 +353,35 @@ flag_detection <- function(flux.result, traces = NULL, gastype = NULL,
   }
   attr(fr, "sigma_global") <- unlist(glob)
   fr
+}
+
+#' Closure length in seconds from flagged concentration data
+#'
+#' goFlux's `nb.obs` counts samples, not seconds; the two differ by the logging
+#' interval for analyzers set to report every 5 or 10 s. This returns, per
+#' `UniqueID`, the span of the flagged rows plus one logging interval (the
+#' median spacing of `POSIX.time` inside the window), which equals goFlux's
+#' `max(Etime) + 1` for 1 Hz data.
+#'
+#' @param traces data.frame with `UniqueID`, `POSIX.time` and `flag`.
+#' @return data.frame with `UniqueID`, `t` (seconds), `dt` (logging interval,
+#'   seconds) and `n` (flagged samples).
+#' @examples
+#' d <- example_closure()
+#' closure_seconds(d)
+#' @export
+closure_seconds <- function(traces) {
+  for (col in c("UniqueID", "POSIX.time", "flag"))
+    if (!col %in% names(traces)) stop("'traces' has no column '", col, "'")
+  tr <- traces[!is.na(traces$flag) & traces$flag == 1, ]
+  sp <- split(tr$POSIX.time, as.character(tr$UniqueID))
+  one <- function(p) {
+    p <- sort(as.numeric(p)); n <- length(p)
+    if (n < 2) return(c(NA_real_, NA_real_, n))
+    dt <- stats::median(diff(p))
+    c(diff(range(p)) + dt, dt, n)
+  }
+  m <- t(vapply(sp, one, numeric(3)))
+  data.frame(UniqueID = names(sp), t = m[, 1], dt = m[, 2], n = as.integer(m[, 3]),
+             stringsAsFactors = FALSE, row.names = NULL)
 }

@@ -54,7 +54,12 @@ record. Trace rows are assigned to groups through their \code{UniqueID}.}
 \item{sigma.global}{optional global precision for \code{wassmann} (a number, or
 a named vector/list keyed by estimator name).}
 
-\item{t}{closure length in seconds; default \code{nb.obs} (1 Hz).}
+\item{t}{closure length in seconds. Default \code{NULL}: taken from \code{traces}
+through \code{\link[=closure_seconds]{closure_seconds()}} (span of the flagged rows plus one logging
+interval, which equals goFlux's \code{max(Etime) + 1} at 1 Hz); without
+\code{traces} it falls back to \code{nb.obs}, which assumes 1 Hz logging and is
+wrong by the logging interval for records logged every 5 or 10 s
+(a warning says so).}
 
 \item{flux.col}{flux column to test.}
 
@@ -120,13 +125,16 @@ bench sigma from a closed-loop test, Box 2 of the guidelines paper).}
 normal quantile \code{z = qnorm(1 - (1 - conf)/2)} and
 \eqn{\sigma_{global}} = \code{sigma.global} if given, else the median of
 the chosen estimator across the table (for \code{"mad"} that is the
-record-wide value itself).}
+record-wide value itself). The record is checked for a change of
+logging interval (\code{\link[=precision_mad_runs]{precision_mad_runs()}}); if one is found, each closure
+gets the sigma of the interval it was logged at (from
+\code{\link[=closure_seconds]{closure_seconds()}}) and a warning is given.}
 \item{\code{"christiansen"}}{\eqn{\sigma_i \cdot 3 \cdot t_{crit}(df) / t
     \cdot \mathrm{flux.term}}, per closure, \code{df = nb.obs - 2}, two-sided t
-quantile: the variant implemented in the author's processing scripts
-under that name. The factor 3 (\code{chr.mult}) is those scripts' safety
-factor; it is not attributed here to Christiansen et al. (2015) or
-Nickerson (2016), whose text could not be checked.}
+quantile: a conservative per-closure variant kept for comparison. The
+name is historical and misleading -- see \code{\link[=mdf_multi]{mdf_multi()}}: Christiansen et
+al. (2015) define MDF = precision / t (k = 1); their 3 x SD x t99 is a
+GC quantification limit, not a per-closure flux threshold.}
 \item{\code{"two_sigma"}}{\eqn{2 \sigma_i / t \cdot \mathrm{flux.term}}, the
 illustration of Table 2.5 of the guidelines paper.}
 \item{\code{"goflux"}}{\eqn{\sigma / t \cdot \mathrm{flux.term}}; with
