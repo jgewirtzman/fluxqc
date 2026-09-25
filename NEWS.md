@@ -20,7 +20,7 @@ Revision after author review.
 * `detect_ebullition(merge.consecutive = TRUE)`: a run of consecutive flagged
   samples is one event (bubble bursts span several 1 Hz samples).
 * `stemflux_examples()`: ten anonymized real closures across campaigns and
-  three analyzer formats (UGGA/GLA131, Picarro G4301, LI-7810), each the
+  two analyzer families (ABB/LGR UGGA/GLA131, LI-COR LI-7810), each the
   campaign's clicked goFlux window with obs.win context and real geometry,
   chosen by audited criteria (`inst/extdata/build_examples.R`, one BlueFlux ebullition closure, one synthetic
   uptake), released with the package; `example_closure()` is the alias for

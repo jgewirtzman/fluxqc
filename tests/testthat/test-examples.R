@@ -18,7 +18,7 @@ test_that("bundled examples load, anonymized, with real geometry and goFlux colu
   # real geometry
   expect_equal(ex$aux$Area[1], 4254.121, tolerance = 1e-6); expect_equal(ex$aux$Vtot[1], 7.082698, tolerance = 1e-6)
   expect_equal(ex$aux$Area[ex$aux$UniqueID == "ebullition_floating"], 324.3)
-  expect_equal(ex$aux$Area[ex$aux$UniqueID == "high_flux_wetland_stem"], 213.35)
+  expect_equal(ex$aux$Area[ex$aux$UniqueID == "high_flux_wetland_stem"], 107.68)
   # shipped (clicked) flags and segment sizes match the diagnostics table
   dg <- read.csv(system.file("extdata", "stemflux_examples_diagnostics.csv", package = "stemflux"), stringsAsFactors = FALSE)
   expect_equal(dg$key, keys)
@@ -28,10 +28,18 @@ test_that("bundled examples load, anonymized, with real geometry and goFlux colu
   expect_equal(as.numeric(difftime(a$start.time_corr[1], a$start.time[1], units = "secs")), 91)
   expect_equal(unique(a$obs.length_corr), 765)
   expect_equal(min(a$Etime[a$flag == 1]), 0)
-  # three analyzer formats, sampling intervals preserved
-  expect_equal(length(unique(dg$analyzer)), 4)
+  # two analyzer families, sampling intervals preserved
+  expect_true(any(grepl("LI-7810", dg$analyzer)) && any(grepl("UGGA", dg$analyzer)))
   expect_equal(dg$sampling_interval_s[dg$key == "emission_upland_stem"], 5)
-  expect_equal(dg$sampling_interval_s[dg$key == "high_flux_wetland_stem"], 3)
+  expect_equal(dg$sampling_interval_s[dg$key == "high_flux_wetland_stem"], 1)
+  # continuity of every clicked window (recomputed, not just read from the table)
+  cont <- t(sapply(split(ex$data, ex$data$UniqueID)[keys], function(x) { w <- x[x$flag == 1, ]; w <- w[order(w$POSIX.time), ]
+    dt <- as.numeric(diff(w$POSIX.time), units = "secs"); dc <- abs(diff(w$CH4dry_ppb))
+    c(gap = max(dt) / median(dt), step = max(dc) / mad(dc)) }))
+  expect_true(all(cont[, "gap"] <= 2))
+  expect_true(all(cont[keys != "ebullition_floating", "step"] <= 6))   # Gaussian extreme over 200-800 differences
+  expect_gt(cont["ebullition_floating", "step"], 20)                    # the burst
+  expect_equal(dg$max_gap_s, unname(cont[, "gap"] * dg$sampling_interval_s), tolerance = 0.05)
   # a numeric dead.band re-flags from start.time instead
   re <- stemflux_examples("emission_stem_semirigid", dead.band = 60)$data
   expect_equal(sum(re$flag), sum(re$t_s >= 60))
@@ -69,7 +77,7 @@ test_that("the two other analyzer formats run through goFlux", {
   res <- suppressWarnings(process_fluxes(ex$data, gastype = "CH4dry_ppb", qc = FALSE))
   fx <- res$fluxes; rownames(fx) <- fx$UniqueID
   expect_gt(fx["high_flux_wetland_stem", "best.flux"], 15)
-  expect_equal(fx["emission_li7810_stem", "best.flux"], 0.414, tolerance = 0.05)
+  expect_equal(fx["emission_li7810_stem", "best.flux"], 0.653, tolerance = 0.05)
 })
 
 test_that("ebullition_floating carries one real bubble burst", {

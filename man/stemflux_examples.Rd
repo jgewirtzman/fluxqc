@@ -24,7 +24,8 @@ together, with \code{flag}, \code{Etime}, \code{start.time_corr}, \code{end.time
 \code{chamber_family}).
 }
 \description{
-Ten real chamber closures from the author's campaigns, shipped in
+Ten real chamber closures from the author's campaigns (two analyzer
+families: ABB/LGR UGGA/GLA131 and LI-COR LI-7810), shipped in
 \verb{inst/extdata/} and returned in goFlux shape (the structure of
 \code{\link[goFlux:click.peak2]{goFlux::click.peak2()}} output) together with an auxfile carrying the real
 geometry of each. Every closure is the campaign's own goFlux manID output:
@@ -50,19 +51,25 @@ audit numbers below are in \code{stemflux_examples_diagnostics.csv} next to it.\
    \code{ambiguous_stem} \tab CH4 marginally detected (uptake just past MDF95) over a flat CO2 tracer \tab upland tree stem, monthly survey, winter 2020 \tab ABB/LGR UGGA, 1 s \tab 583, 587 \tab -0.0003, 0.69 \tab -0.0046, 0.0046, uptake \cr
    \code{uptake_stem} \tab strongest coherent stem uptake, CO2 rising, headspace drawn ~70 ppb below start \tab upland tree stem, monthly survey, summer 2020 \tab ABB/LGR UGGA, 1 s \tab 291, 293 \tab 0.730, ~0 \tab -0.176, 0.0078, uptake \cr
    \code{uptake_soil} \tab strong, clean soil CH4 uptake \tab forest soil collar, summer 2020 \tab ABB/LGR UGGA, 1 s \tab 387, 390 \tab 0.611, ~0 \tab -2.25, 0.060, uptake \cr
-   \code{high_flux_wetland_stem} \tab large diffusive mangrove-stem emission \tab coastal wetland tree stem, dry season 2022 \tab Picarro G4301, 3 s \tab 472, 149 \tab 0.242, 2e-135 \tab 23.1, 0.0006, emission \cr
+   \code{high_flux_wetland_stem} \tab large diffusive mangrove-stem emission \tab coastal wetland tree stem, wet season 2022 \tab ABB/LGR GLA131, 1 s \tab 220, 222 \tab 0.182, 2e-203 \tab 29.3, 0.021, emission \cr
    \code{ebullition_floating} \tab one bubble burst (5 consecutive samples at 42-46 s, ~675 ppb) inside a sealed floating-chamber closure \tab open water, ghost-forest mangrove site, wet season 2022 \tab ABB/LGR GLA131, 1 s \tab 276, 278 \tab 0.114, ~0 \tab not processed for MDF \cr
-   \code{emission_li7810_stem} \tab clean emission, third analyzer format; \code{Tcham} is the campaign default (24 C) \tab tree stem, Santa Fe 2026, spring \tab LI-COR LI-7810, 1 s \tab 367, 368 \tab 0.565, ~0 \tab 0.414, 0.0031, emission \cr
+   \code{emission_li7810_stem} \tab clean emission, second analyzer format; \code{Tcham} is the campaign default (24 C) \tab tree stem, Santa Fe 2026, spring \tab LI-COR LI-7810, 1 s \tab 402, 403 \tab 0.607, ~0 \tab 0.653, 0.0028, emission \cr
 }
 
 
 \code{MDF95} and \code{class} come from each campaign's own processed table
-(\code{flux_FINAL.csv}, \code{flux_after_tier1.csv}, the BlueFlux Picarro best-flux
+(\code{flux_FINAL.csv}, \code{flux_after_tier1.csv}, the BlueFlux LGR3 best-flux
 table, the Santa Fe flux table); the CO2 slope is a linear fit on the
-flagged rows made while building the set. The UGGA closures carry the
-campaign's water column (\code{H2O_ppm}); the Picarro, GLA131 (ebullition) and
-LI-7810 rows use the values present in their manID (0 where none was
-logged). The \verb{*_prec} columns hold \code{prec} (\code{c(0.35, 0.9, 200)} by default).
+flagged rows made while building the set. \strong{Continuity:} every clicked
+window was checked for timestamp gaps (none larger than the logging
+interval) and single-sample steps (\verb{max |dCH4| / MAD(dCH4)}, shipped in
+the diagnostics: 3.2-5.9 for the closures, i.e. within what Gaussian noise
+produces over 200-800 differences; 61 for the ebullition burst by design).
+A Santa Fe closure with a 6.1x step and a BlueFlux Picarro G4301 closure
+with a 45x step and a timestamp gap were rejected; no Picarro stem closure
+of that campaign passes (irregular 3-7 s logging), so that format is not
+represented. The UGGA/GLA131 closures carry the campaign's water column
+(\code{H2O_ppm}); the LI-7810 rows likewise; 0 where none was logged. The \verb{*_prec} columns hold \code{prec} (\code{c(0.35, 0.9, 200)} by default).
 }
 \section{Data release and citation}{
 

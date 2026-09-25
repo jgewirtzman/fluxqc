@@ -17,6 +17,14 @@
 #   BF   = ~/My Drive/Research/Blueflux/blueflux-ground
 #   SF   = ~/My Drive/Research/santafe-fluxes-2026
 #   GP   = ~/Downloads/Guidelines Paper/figure-build/fig03_traces/out
+#
+# Continuity rule applied to every clicked window (columns max_gap_s,
+# max_dCH4_over_MAD, max_dCO2_over_MAD in the diagnostics): no timestamp gap
+# larger than twice the logging interval, and no single-sample |dCH4| beyond
+# what Gaussian noise produces over the window (the 5 x MAD guideline, which for
+# 300-800 one-second differences sits at the expected maximum of ~5 x MAD; the
+# ebullition closure is exempt by design). Closures replaced for failing it:
+# SF19_DBH_r1 (6.1 x MAD step) and Mar_22_T1_52_FLM30_stem (45 x MAD, 4 s gap).
 # =============================================================================
 suppressMessages(library(data.table))
 YMF <- path.expand("~/My Drive/Research/YMF Tree Microbiomes & Methane/tree-methanogens")
@@ -35,9 +43,9 @@ sel <- rbindlist(list(
   list("ambiguous_stem",          "semirigid", "2020-12-09_5091_I_5",    "upland tree stem, monthly survey", "winter 2020", "ABB/LGR UGGA (GLA131)", "semi-rigid sleeve chamber", "flux_FINAL.csv"),
   list("uptake_stem",             "semirigid", "2020-07-20_3325_U_3",    "upland tree stem, monthly survey", "summer 2020", "ABB/LGR UGGA (GLA131)", "semi-rigid sleeve chamber", "flux_FINAL.csv"),
   list("uptake_soil",             "soil",      "20200824_2-4-U_11",      "upland forest soil collar",        "summer 2020", "ABB/LGR UGGA (GLA131)", "soil collar chamber", "flux_after_tier1.csv (MDF95)"),
-  list("high_flux_wetland_stem",  "bf_picarro","Mar_22_T1_52_FLM30_stem","mangrove tree stem, coastal wetland","dry season 2022 (March)", "Picarro G4301", "rigid stem chamber", "CH4_best_flux_picarro_results.csv (goFlux MDF)"),
+  list("high_flux_wetland_stem",  "bf_lgr3",   "Oct_22_84_FLM30_stem",   "mangrove tree stem, coastal wetland","wet season 2022 (October)", "ABB/LGR GLA131 (LGR3)", "rigid stem chamber", "CH4_best_flux_lgr3_results.csv (goFlux MDF)"),
   list("ebullition_floating",     "bf_ebull",  "LGR2_2022-10-23_CP40_P06","open water, floating chamber, ghost-forest mangrove site", "wet season 2022 (October)", "ABB/LGR GLA131", "floating chamber", "campaign ebullition outputs (no MDF)"),
-  list("emission_li7810_stem",    "santafe",   "SF19_DBH_r1",             "tree stem, Santa Fe 2026", "spring 2026 (May)", "LI-COR LI-7810", "rigid stem chamber", "santafe_2026_fluxes_with_mdf.csv (CH4_MDF)")))
+  list("emission_li7810_stem",    "santafe",   "SF2_DBH2_r1",             "tree stem, Santa Fe 2026", "spring 2026 (May)", "LI-COR LI-7810", "rigid stem chamber", "santafe_2026_fluxes_with_mdf.csv (CH4_MDF)")))
 setnames(sel, c("key", "src", "orig", "campaign_type", "season_year", "analyzer", "chamber_family", "class_source"))
 
 # ---- readers: return the obs.win segment for one UniqueID in goFlux columns --
@@ -56,6 +64,7 @@ read_src <- list(
   soil       = function(id) { m <- rbind(fread(file.path(YMF, "data/processed/flux/lgr_manual_identification_results_soil.csv")),
                                           fread(file.path(YMF, "data/processed/flux/lgr_manual_identification_results_december_soil.csv")), fill = TRUE); std(m[UniqueID == id]) },
   bf_picarro = function(id) { m <- fread(file.path(BF, "intermediate/results_trees/picarro_manual_identification_CH4_results.csv")); std(m[UniqueID == id]) },
+  bf_lgr3    = function(id) { m <- fread(file.path(BF, "intermediate/results_trees/lgr3_manual_identification_results.csv")); std(m[UniqueID == id]) },
   santafe    = function(id) { e <- new.env(); load(file.path(SF, "RData/manID.RData"), envir = e); x <- e$manID[e$manID$UniqueID == id, ]; std(x) },
   bf_ebull   = function(id) {
     # trace as segmented by the campaign's detect_ebullition.R (clock offset applied, 20 s trimmed each end); no clicked window
@@ -70,11 +79,13 @@ read_src <- list(
 # ---- MDF / class lookups --------------------------------------------------------
 fin <- fread(file.path(YMF, "outputs/data/flux_FINAL.csv")); t1 <- fread(file.path(YMF, "outputs/data/flux_after_tier1.csv"))
 bfp <- fread(file.path(BF, "intermediate/results_trees/CH4_best_flux_picarro_results.csv"))
+bfl <- fread(file.path(BF, "intermediate/results_trees/CH4_best_flux_lgr3_results.csv"))
 sfr <- fread(file.path(SF, "results/santafe_2026_fluxes_with_mdf.csv"))
 lookup <- function(src, id) switch(src,
   semirigid = fin[UniqueID == id, .(flux = best.flux, mdf = MDF, model = NA_character_)],
   height = , soil = t1[UniqueID == id, .(flux = best.flux, mdf = MDF95, model = model)],
   bf_picarro = bfp[UniqueID == id, .(flux = best.flux, mdf = MDF, model = model)],
+  bf_lgr3 = bfl[UniqueID == id, .(flux = best.flux, mdf = MDF, model = model)],
   santafe = sfr[UniqueID == id, .(flux = CH4_best.flux, mdf = CH4_MDF, model = CH4_model)],
   bf_ebull = data.table(flux = NA_real_, mdf = NA_real_, model = NA_character_))
 
@@ -98,8 +109,12 @@ for (i in seq_len(nrow(sel))) {
                          end.time_corr = format(x$end.time_corr[1] + shift, "%Y-%m-%d %H:%M:%S"),
                          kind = "real", campaign_type = s$campaign_type, season_year = s$season_year, analyzer = s$analyzer,
                          chamber_family = s$chamber_family)
+  # continuity of the flagged window: timestamp gaps and single-sample steps relative to the window's own noise
+  dtw <- diff(as.numeric(fl$POSIX.time)); dch <- abs(diff(fl$CH4dry_ppb)); dco <- abs(diff(fl$CO2dry_ppm))
   diag[[i]] <- data.frame(key = s$key, campaign_type = s$campaign_type, season_year = s$season_year, analyzer = s$analyzer,
                           chamber_family = s$chamber_family, sampling_interval_s = round(median(diff(et)), 1),
+                          max_gap_s = round(max(dtw), 2), max_dCH4_over_MAD = round(max(dch) / mad(dch), 1),
+                          max_dCO2_over_MAD = round(max(dco) / mad(dco), 1),
                           window_length_s = round(diff(range(et))), n_flagged = nrow(fl), n_segment = nrow(x),
                           co2_slope_ppm_s = signif(a[2, 1], 3), co2_p = signif(a[2, 4], 2), ch4_slope_ppb_s = signif(b$coefficients[2, 1], 3),
                           ch4_r2 = round(b$r.squared, 3), ch4_flux_nmol_m2_s = signif(lk$flux, 3), MDF95 = signif(lk$mdf, 3),
@@ -113,9 +128,9 @@ diag$verdict <- c("valid, detected: the worked-example closure (1 Hz, CH4 r2 0.9
                   "ambiguous: CH4 marginally detected (uptake just past MDF95) over a flat CO2 tracer; the only such closure in the archive",
                   "valid, detected uptake: strongest coherent negative stem closure, CO2 rising, headspace drawn ~70 ppb below start",
                   "valid, detected uptake: strong clean soil CH4 uptake",
-                  "valid, detected: large diffusive mangrove-stem emission, second analyzer format (Picarro, 3 s logging)",
+                  "valid, detected: large diffusive mangrove-stem emission (continuous 1 s timestamps, CH4 steps 3.2 x MAD). No Picarro G4301 stem closure of the campaign passes the continuity test (irregular 3-7 s logging, single-sample steps >= 11 x MAD), so that format is not represented",
                   "ebullition: one bubble burst (5 consecutive samples at 42-46 s, ~675 ppb) inside a sealed floating-chamber closure; no clicked window (campaign-segmented trace)",
-                  "valid, detected: clean LI-7810 stem emission, third analyzer format; Tcham is the campaign default (24 C) as no chamber temperature was logged")
+                  "valid, detected: clean LI-7810 stem emission, third analyzer format (continuous 1 s timestamps, CH4 steps 4.1 x MAD); Tcham is the campaign default (24 C) as no chamber temperature was logged")
 write.csv(do.call(rbind, data), file.path(OUT, "stemflux_examples.csv"), row.names = FALSE)
 write.csv(do.call(rbind, aux),  file.path(OUT, "stemflux_examples_aux.csv"), row.names = FALSE)
 write.csv(diag, file.path(OUT, "stemflux_examples_diagnostics.csv"), row.names = FALSE)

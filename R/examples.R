@@ -1,6 +1,7 @@
 #' Curated, anonymized example closures with real chamber geometry
 #'
-#' Ten real chamber closures from the author's campaigns, shipped in
+#' Ten real chamber closures from the author's campaigns (two analyzer
+#' families: ABB/LGR UGGA/GLA131 and LI-COR LI-7810), shipped in
 #' `inst/extdata/` and returned in goFlux shape (the structure of
 #' [goFlux::click.peak2()] output) together with an auxfile carrying the real
 #' geometry of each. Every closure is the campaign's own goFlux manID output:
@@ -27,17 +28,23 @@
 #' | `ambiguous_stem` | CH4 marginally detected (uptake just past MDF95) over a flat CO2 tracer | upland tree stem, monthly survey, winter 2020 | ABB/LGR UGGA, 1 s | 583, 587 | -0.0003, 0.69 | -0.0046, 0.0046, uptake |
 #' | `uptake_stem` | strongest coherent stem uptake, CO2 rising, headspace drawn ~70 ppb below start | upland tree stem, monthly survey, summer 2020 | ABB/LGR UGGA, 1 s | 291, 293 | 0.730, ~0 | -0.176, 0.0078, uptake |
 #' | `uptake_soil` | strong, clean soil CH4 uptake | forest soil collar, summer 2020 | ABB/LGR UGGA, 1 s | 387, 390 | 0.611, ~0 | -2.25, 0.060, uptake |
-#' | `high_flux_wetland_stem` | large diffusive mangrove-stem emission | coastal wetland tree stem, dry season 2022 | Picarro G4301, 3 s | 472, 149 | 0.242, 2e-135 | 23.1, 0.0006, emission |
+#' | `high_flux_wetland_stem` | large diffusive mangrove-stem emission | coastal wetland tree stem, wet season 2022 | ABB/LGR GLA131, 1 s | 220, 222 | 0.182, 2e-203 | 29.3, 0.021, emission |
 #' | `ebullition_floating` | one bubble burst (5 consecutive samples at 42-46 s, ~675 ppb) inside a sealed floating-chamber closure | open water, ghost-forest mangrove site, wet season 2022 | ABB/LGR GLA131, 1 s | 276, 278 | 0.114, ~0 | not processed for MDF |
-#' | `emission_li7810_stem` | clean emission, third analyzer format; `Tcham` is the campaign default (24 C) | tree stem, Santa Fe 2026, spring | LI-COR LI-7810, 1 s | 367, 368 | 0.565, ~0 | 0.414, 0.0031, emission |
+#' | `emission_li7810_stem` | clean emission, second analyzer format; `Tcham` is the campaign default (24 C) | tree stem, Santa Fe 2026, spring | LI-COR LI-7810, 1 s | 402, 403 | 0.607, ~0 | 0.653, 0.0028, emission |
 #'
 #' `MDF95` and `class` come from each campaign's own processed table
-#' (`flux_FINAL.csv`, `flux_after_tier1.csv`, the BlueFlux Picarro best-flux
+#' (`flux_FINAL.csv`, `flux_after_tier1.csv`, the BlueFlux LGR3 best-flux
 #' table, the Santa Fe flux table); the CO2 slope is a linear fit on the
-#' flagged rows made while building the set. The UGGA closures carry the
-#' campaign's water column (`H2O_ppm`); the Picarro, GLA131 (ebullition) and
-#' LI-7810 rows use the values present in their manID (0 where none was
-#' logged). The `*_prec` columns hold `prec` (`c(0.35, 0.9, 200)` by default).
+#' flagged rows made while building the set. **Continuity:** every clicked
+#' window was checked for timestamp gaps (none larger than the logging
+#' interval) and single-sample steps (`max |dCH4| / MAD(dCH4)`, shipped in
+#' the diagnostics: 3.2-5.9 for the closures, i.e. within what Gaussian noise
+#' produces over 200-800 differences; 61 for the ebullition burst by design).
+#' A Santa Fe closure with a 6.1x step and a BlueFlux Picarro G4301 closure
+#' with a 45x step and a timestamp gap were rejected; no Picarro stem closure
+#' of that campaign passes (irregular 3-7 s logging), so that format is not
+#' represented. The UGGA/GLA131 closures carry the campaign's water column
+#' (`H2O_ppm`); the LI-7810 rows likewise; 0 where none was logged. The `*_prec` columns hold `prec` (`c(0.35, 0.9, 200)` by default).
 #'
 #' @section Data release and citation:
 #' The closures are released with the package under its MIT license, with

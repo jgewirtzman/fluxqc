@@ -144,7 +144,10 @@ is the alias for `emission_stem_semirigid`. Identifiers, dates, tree tags and
 plot codes are removed (the time axis is a synthetic calendar preserving every
 interval); analyzer, chamber family, geometry, season and year are kept.
 `inst/extdata/build_examples.R` documents exactly how each was pulled, and
-`stemflux_examples_diagnostics.csv` holds the audit numbers.
+`stemflux_examples_diagnostics.csv` holds the audit numbers, including a
+continuity check of every clicked window (no timestamp gaps; single-sample
+CH4 steps within the noise; a Picarro G4301 closure was rejected on it, so
+that format is not represented).
 
 | key | shows | campaign / season | analyzer | CO2 slope (ppm/s) | CH4 flux, MDF95 (nmol m-2 s-1) |
 |---|---|---|---|---|---|
@@ -155,9 +158,9 @@ interval); analyzer, chamber family, geometry, season and year are kept.
 | `ambiguous_stem` | CH4 marginally detected over a flat CO2 tracer | upland stem, monthly survey, winter 2020 | UGGA 1 Hz | -0.0003 (p 0.69) | -0.0046, 0.0046 |
 | `uptake_stem` | strongest coherent stem uptake, CO2 rising | upland stem, monthly survey, summer 2020 | UGGA 1 Hz | 0.73 | -0.176, 0.0078 |
 | `uptake_soil` | strong clean soil uptake | forest soil collar, summer 2020 | UGGA 1 Hz | 0.61 | -2.25, 0.060 |
-| `high_flux_wetland_stem` | large diffusive mangrove-stem emission | coastal wetland stem, dry season 2022 | Picarro G4301 3 s | 0.24 | 23.1, 0.0006 |
+| `high_flux_wetland_stem` | large diffusive mangrove-stem emission | coastal wetland stem, wet season 2022 | GLA131 1 Hz | 0.18 | 29.3, 0.021 |
 | `ebullition_floating` | one bubble burst inside a sealed floating-chamber closure | open water, ghost-forest mangrove site, wet season 2022 | GLA131 1 Hz | 0.11 | -- |
-| `emission_li7810_stem` | clean emission, third analyzer format | tree stem, Santa Fe 2026, spring | LI-7810 1 Hz | 0.57 | 0.414, 0.0031 |
+| `emission_li7810_stem` | clean emission, second analyzer format | tree stem, Santa Fe 2026, spring | LI-7810 1 Hz | 0.61 | 0.653, 0.0028 |
 
 The real closures are released with the package under its MIT license with
 the data owner's permission. Upland stem and soil closures: Yale-Myers Forest
