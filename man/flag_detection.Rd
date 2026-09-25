@@ -2,66 +2,138 @@
 % Please edit documentation in R/mdf.R
 \name{flag_detection}
 \alias{flag_detection}
-\title{Append multi-method MDFs and below-detection flags to a best.flux output}
+\title{Append precision estimates, MDFs and detection flags to a best.flux table}
 \usage{
 flag_detection(
   flux.result,
+  traces = NULL,
+  gastype = NULL,
+  precision = c("allan", "mad", "rolling", "datasheet"),
+  mdf = c("goflux", "wassmann", "christiansen", "two_sigma"),
+  conf = c(0.9, 0.95, 0.99),
+  primary = list(precision = "allan", mdf = "christiansen", conf = 0.95),
   sigma = NULL,
   sigma.global = NULL,
   t = NULL,
-  prec = NULL,
   flux.col = "best.flux",
-  primary = NULL,
-  conf = c(0.9, 0.95, 0.99),
+  rolling.window = 30,
   chr.mult = 3
 )
 }
 \arguments{
 \item{flux.result}{data.frame from \code{\link[goFlux:best.flux]{goFlux::best.flux()}} or
-\code{\link[goFlux:goFlux]{goFlux::goFlux()}}; must contain \code{UniqueID}, \code{flux.term}, \code{nb.obs} and the
-flux column.}
+\code{\link[goFlux:goFlux]{goFlux::goFlux()}}; needs \code{UniqueID}, \code{flux.term}, \code{nb.obs} and the flux
+column.}
 
-\item{sigma}{per-measurement precision: either a data.frame with
-\code{UniqueID} and \code{sigma} (output of \code{\link[=precision_by_id]{precision_by_id()}}), a numeric vector
-aligned with the rows of \code{flux.result}, or the name of a column in
-\code{flux.result}. \code{NULL} disables the per-measurement methods.}
+\item{traces}{the flagged concentration data the fluxes were computed from
+(output of \code{\link[goFlux:click.peak2]{goFlux::click.peak2()}}, \code{\link[=click_peak2_stacked]{click_peak2_stacked()}},
+\code{\link[=auto_id_rise]{auto_id_rise()}} or \code{\link[=windows_from_table]{windows_from_table()}}); required for the
+\code{allan}, \code{mad} and \code{rolling} estimators.}
 
-\item{sigma.global}{scalar global precision for the Wassmann variants;
-default is the median of \code{sigma} when that is supplied.}
+\item{gastype}{gas column of \code{traces}; inferred when \code{traces} holds exactly
+one recognised gas column.}
+
+\item{precision}{character vector of estimators to compute (see Details).
+The default computes all four; when \code{traces} is missing and \code{precision}
+was not given explicitly, only \code{"datasheet"} is used.}
+
+\item{mdf}{character vector of MDF methods to compute (see Details).}
+
+\item{conf}{confidence levels for \code{wassmann} and \code{christiansen}.}
+
+\item{primary}{list with elements \code{precision}, \code{mdf} and (where relevant)
+\code{conf} naming the one combination reported in \code{MDF} / \code{below_MDF}.}
+
+\item{sigma}{optional custom per-closure precision: a data.frame with
+\code{UniqueID} and \code{sigma}, or a numeric vector aligned with \code{flux.result}.}
+
+\item{sigma.global}{optional global precision for the Wassmann method: a
+single number, or a named list/vector keyed by estimator name.}
 
 \item{t}{closure length in seconds; default \code{nb.obs} (1 Hz).}
 
-\item{prec}{manufacturer precision; default the \code{prec} column of
-\code{flux.result}.}
+\item{flux.col}{flux column to test.}
 
-\item{flux.col}{flux column to test (\code{"best.flux"}, or \code{"LM.flux"} /
-\code{"HM.flux"} on a raw \code{goFlux()} output).}
+\item{rolling.window}{window (samples) for \code{"rolling"}.}
 
-\item{primary}{method used for \code{detected} / \code{det_class}: one of
-\code{"2sigma"}, \code{"goflux"}, \code{"wass90"}, \code{"wass95"}, \code{"wass99"}, \code{"chr90"},
-\code{"chr95"}, \code{"chr99"}. Default \code{"2sigma"} when \code{sigma} is supplied,
-otherwise \code{"goflux"}.}
-
-\item{conf}{confidence levels for the Wassmann and Christiansen variants.}
-
-\item{chr.mult}{multiplier in the Christiansen variant (3).}
+\item{chr.mult}{multiplier in the Christiansen method (3).}
 }
 \value{
-\code{flux.result} with the added columns.
+\code{flux.result} with the added columns; the global precisions used
+are stored in the attribute \code{"sigma_global"}.
 }
 \description{
-Computes \code{\link[=mdf_multi]{mdf_multi()}} for every row of a \code{\link[goFlux:best.flux]{goFlux::best.flux()}} (or
-\code{\link[goFlux:goFlux]{goFlux::goFlux()}}) result and appends the MDF columns, a logical
-\verb{below_<method>} flag per method, and a summary classification based on
-one \code{primary} method: \code{detected} (logical) and \code{det_class}
-(\code{"emission"}, \code{"uptake"} or \code{"below detection"}).
+Computes every requested combination of a \emph{precision estimator} and an
+\emph{MDF method} (at every requested confidence level where the method has one)
+for each row of a \code{\link[goFlux:best.flux]{goFlux::best.flux()}} or \code{\link[goFlux:goFlux]{goFlux::goFlux()}} result,
+appends them as columns, and then sets the single reported \code{MDF},
+\code{below_MDF} and \code{MDF_method} from \code{primary}. Nothing is deleted: rows are
+flagged only. This is applied \emph{after} \code{best.flux()}; the \code{prec} argument
+given to goFlux's \verb{import.*()} functions only feeds goFlux's own \code{MDF}
+column (equal to the \code{goflux} / \code{datasheet} combination here).
 }
+\section{Precision estimators (\code{precision})}{
+
+\describe{
+\item{\code{"allan"}}{per closure, \eqn{\sigma = SD(\Delta x)/\sqrt{2}} on the
+flagged rows of \code{traces} (\code{\link[=precision_allan]{precision_allan()}}).}
+\item{\code{"mad"}}{per closure, \eqn{\sigma = MAD(\Delta x)/\sqrt{2}}
+(\code{\link[=precision_mad]{precision_mad()}}); robust to isolated jumps.}
+\item{\code{"rolling"}}{per closure, quietest-window scan of the flagged rows
+(\code{\link[=precision_rolling]{precision_rolling()}}).}
+\item{\code{"datasheet"}}{the manufacturer precision goFlux already carries in
+its \code{prec} column (set with the \code{prec} argument of \verb{import.*()}).}
+}
+A custom per-closure estimate (e.g. a bench sigma from a closed-loop test,
+Box 2 of the guidelines paper) can be supplied through \code{sigma} and is
+labelled \code{"custom"}.
+}
+
+\section{MDF methods (\code{mdf})}{
+
+\describe{
+\item{\code{"goflux"}}{\eqn{\sigma / t \cdot \mathrm{flux.term}}; with
+\code{precision = "datasheet"} this is goFlux's own \code{MDF} column.}
+\item{\code{"wassmann"}}{Wassmann et al. (2018):
+\eqn{z_{conf} \, \sigma_{global} / t \cdot \mathrm{flux.term}} where
+\eqn{\sigma_{global}} is \code{sigma.global} if given, else the median of the
+per-closure estimate across the table (for \code{"datasheet"}, the \code{prec}
+value itself).}
+\item{\code{"christiansen"}}{Christiansen et al. (2015):
+\eqn{3 \, \sigma_i \, t_{conf, n-2} / t \cdot \mathrm{flux.term}} with the
+per-closure \eqn{\sigma_i}.}
+\item{\code{"two_sigma"}}{\eqn{2 \sigma_i / t \cdot \mathrm{flux.term}}
+(guidelines paper, Table 2.5).}
+}
+}
+
+\section{Column naming}{
+
+\verb{sigma_<precision>} for each estimator; \verb{MDF_<mdf>_<precision>} for
+methods without a confidence level (\code{goflux}, \code{two_sigma}) and
+\verb{MDF_<mdf>_<precision>_<conf>} with \code{conf} as a two-digit percentage for
+\code{wassmann} and \code{christiansen}, e.g. \code{MDF_christiansen_allan_95}. Each MDF
+column has a matching \code{below_...} logical. goFlux's original \code{MDF} column
+is kept as \code{MDF_goflux_orig}; the new \code{MDF}, \code{below_MDF}, \code{MDF_method},
+\code{detected} and \code{det_class} (\code{"emission"}, \code{"uptake"}, \code{"below detection"})
+come from \code{primary}.
+}
+
 \examples{
 d <- example_closure()
-res <- goFlux::goFlux(d, "CH4dry_ppb")
+res  <- goFlux::goFlux(d, "CH4dry_ppb")
 best <- goFlux::best.flux(res)
-sig <- precision_by_id(d, "CH4dry_ppb")
-out <- flag_detection(best, sigma = sig)
-out[, c("UniqueID", "best.flux", "MDF_goflux", "MDF_2sigma", "MDF_chr95",
-        "below_2sigma", "det_class")]
+out <- flag_detection(best, traces = d, gastype = "CH4dry_ppb",
+                      precision = c("allan", "datasheet"),
+                      mdf = c("goflux", "christiansen", "two_sigma"), conf = 0.95,
+                      primary = list(precision = "allan", mdf = "christiansen", conf = 0.95))
+out[, c("sigma_allan", "sigma_datasheet", "MDF_goflux_datasheet",
+        "MDF_christiansen_allan_95", "MDF_two_sigma_allan", "MDF", "MDF_method", "det_class")]
+}
+\references{
+Christiansen, J. R., Outhwaite, J., & Smukler, S. M. (2015). Agricultural and
+Forest Meteorology, 211-212, 48-57. \doi{10.1016/j.agrformet.2015.06.004}
+
+Wassmann, R., et al. (2018). PLoS ONE, 13(2), e0191352.
+\doi{10.1371/journal.pone.0191352}
 }

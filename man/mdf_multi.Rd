@@ -2,7 +2,7 @@
 % Please edit documentation in R/mdf.R
 \name{mdf_multi}
 \alias{mdf_multi}
-\title{Minimum detectable flux by several published methods}
+\title{Minimum detectable flux by several published methods (vectorised core)}
 \usage{
 mdf_multi(
   flux.term,
@@ -70,12 +70,25 @@ paper (Table 2.5): \eqn{\mathrm{MDF} = (2\sigma_i / t)(V/A)(P/RT)}.}
 All these single-sample criteria are conservative: they ignore the averaging
 benefit of fitting a slope to \code{t} points. The regression standard error of
 the slope (\code{LM.SE} in goFlux) is typically several times smaller.
+\code{\link[=flag_detection]{flag_detection()}} is the user-facing wrapper that computes chosen
+combinations of precision estimator and MDF method for a \code{best.flux()}
+table.
 }
 \examples{
 ft <- flux_term(V_L = 7.08, P_kPa = 101.3, A_cm2 = 4254, T_C = 26)
 mdf_multi(flux.term = ft, t = 540, prec = 0.9, sigma = 1.1, sigma.global = 1.2)
 }
+\references{
+Christiansen, J. R., Outhwaite, J., & Smukler, S. M. (2015). Comparison of
+CO2, CH4 and N2O soil-atmosphere exchange measured in static chambers with
+cavity ring-down spectroscopy and gas chromatography. Agricultural and
+Forest Meteorology, 211-212, 48-57. \doi{10.1016/j.agrformet.2015.06.004}
+
+Wassmann, R., Alberto, M. C., Tirol-Padre, A., Hoang, N. T., Romasanta, R.,
+Centeno, C. A., & Sander, B. O. (2018). Increasing sensitivity of methane
+emission measurements in rice through deployment of 'closed chambers' at
+nighttime. PLoS ONE, 13(2), e0191352. \doi{10.1371/journal.pone.0191352}
+}
 \seealso{
-\code{\link[=flag_detection]{flag_detection()}} to append these and detection flags to a
-\code{best.flux} output.
+\code{\link[=flag_detection]{flag_detection()}}
 }
