@@ -14,6 +14,16 @@ Revision after author review.
   or `extra = "all"`. goFlux's columns (`MDF`, `best.flux`, ...) are never
   modified or duplicated; a test checks that `goFlux::flux.plot()` runs
   unchanged on `process_fluxes()$fluxes`.
+* `stemflux_examples()`: six bundled closures with real geometry (four
+  Yale-Myers teaching cases, one BlueFlux ebullition closure, one synthetic
+  uptake), released with the package; `example_closure()` is the alias for
+  `a`. Data files `inst/extdata/stemflux_examples*.csv` replace
+  `example_closure.csv`.
+* `detect_clock_streams()` un-exported (moved to `inst/rescue/`): it depends
+  on the raw LGR file layout and a one-campaign failure mode.
+* `import_li7810_subset()` is now a shim: forwards to `import.LI7810(dates=)`
+  when the installed goFlux has that argument (upstream patch in
+  `inst/upstream/patches/import.LI7810-dates.patch`), else subsets locally.
 * Provenance statement for the ebullition add-on (no code copied from the
   Hoffmann et al. 2017 script or fluxCH4) in the vignette and `inst/CITATION`;
   "Analyzer independence" section in the README.

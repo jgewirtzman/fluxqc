@@ -103,10 +103,10 @@ any goFlux importer: UGGA/LGR, LI-7810/7820/8x00, Picarro G2xxx/G4301, GAIA,
 and the rest. Gas columns are always named through the `gastype` / `gases` /
 `detect.gas` arguments; the only goFlux column name used implicitly is
 `CO2dry_ppm` in the `co2_tracer` screen, because that screen *is* about CO2.
-The analyzer-specific pieces are `detect_clock_streams()` (raw LGR/UGGA text
-file layout), `import_li7810_subset()` (LI-7810 `.data` files) and the
-shipped example closure (UGGA). This was verified by grepping the core
-sources for gas-column and file-format literals.
+The analyzer-specific pieces are `import_li7810_subset()` (LI-7810 `.data`
+files), the shipped example closures (UGGA / GLA131) and the unexported
+rescue scripts (raw LGR text-file layout). This was verified by grepping the
+core sources for gas-column and file-format literals.
 
 ## Function map
 
@@ -123,13 +123,37 @@ sources for gas-column and file-format literals.
 | (V/A)(P/RT) with goFlux unit conventions | `flux_term()` | `flux.term()` (unexported) |
 | Toggleable physical QC screens (C0, CO2 tracer, convex, min window, ambient start, leak), flags only | `qc_screens()` (`qc_c0_screen()` wrapper) | -- |
 | Multi-page PDF of `flux.plot()` output, ggplot2 >= 3.5 safe | `flux_pdf()` | `flux2pdf()` |
-| awk/date subset of huge LI-7810 `.data` files before import | `import_li7810_subset()` | `import.LI7810()` |
+| Date subset of huge LI-7810 `.data` files (shim: forwards to `import.LI7810(dates=)` once the upstream patch in `inst/upstream/patches/` is merged) | `import_li7810_subset()` | `import.LI7810()` |
 | Recursive per-file import without the `muffleError` wrapper or `getwd()/RData` writes | `import2RData_flat()` | `import2RData()` |
-| Utility: analyzer clock resets from raw write order | `detect_clock_streams()` | -- |
 | Utility: notebook-to-analyzer clock offset by cross-correlating notebook starts with rise onsets | `find_clock_offset()` | -- |
 | **Ebullition add-on (opt-in)**: IQR (Hoffmann 2017) / threshold / running-variance event detection, de-ebulliated goFlux input, ebullitive flux | `detect_ebullition()`, `split_ebullition()`, `merge_ebullition()`; `process_fluxes(ebullition = "flag"|"split")` | -- (goFlux has none) |
-| One real closure with auxfile geometry | `example_closure()` | `manID.UGGA` (example data) |
-| One-off rescue scripts for interleaved LGR clock streams (unexported) | `system.file("rescue", package = "stemflux")` | -- |
+| Six bundled closures with real geometry (see Data) | `stemflux_examples()`, `example_closure()` | `manID.UGGA` (example data) |
+| One-off rescue scripts for LGR clock resets and interleaved streams (unexported: `detect_clock_streams()`, `write_stream_files()`, `separate_window_streams()`, `obs_win_deinterleave()`, `click_flux_2d()`) | `system.file("rescue", package = "stemflux")` | -- |
+
+## Data
+
+`stemflux_examples()` returns six bundled closures in goFlux shape with an
+auxfile holding the real geometry of each (`example_closure()` is the alias
+for `a`):
+
+| id | UniqueID | shows | kind | geometry source |
+|---|---|---|---|---|
+| a | `2021-05-18_5086_I_7.0` | high-signal valid closure (CO2 and CH4 rise) | real | Yale-Myers campaign auxfile |
+| b | `2020-09-23_5092_I_6` | valid closure, CH4 below detection | real | same |
+| c | `2021-02-25_1641_WD_5` | failed closure (flat CO2 and CH4) | real | same |
+| d | `2020-09-21_3589_U_6` | ambiguous: CH4 rise over flat CO2 | real | same |
+| e | `BF_CP40_2022-10-23_P06` | floating chamber on water with 5 ebullition events | real | BlueFlux chamber parameters (Area 324.3 cm2, Vtot 4.318 L); Tcham = site-day mean air temperature |
+| f | `SYN_uptake_from_a` | synthetic CH4 uptake built from the measured noise of a | synthetic | copied from a |
+
+The real closures are released with the package under its MIT license with
+the data owner's permission. `a`-`d`: Yale-Myers Forest (CT, USA) tree-stem
+record 2020-2021, ABB/LGR UGGA, semi-rigid sleeve chambers; cite as
+"Gewirtzman et al., Yale-Myers Forest stem-flux record 2020-2021, distributed
+with the stemflux R package". `e`: NASA Carbon Monitoring System BlueFlux
+field campaign, ground component, site CP40 (Christian Point, ghost-forest
+mangrove, south Florida), ABB/LGR GLA131; cite Poulter et al. (2023),
+*Environmental Research Letters* 18, 075009,
+https://doi.org/10.1088/1748-9326/acdae6 (blueflux-ground repository, MIT).
 
 ## Contributing upstream
 

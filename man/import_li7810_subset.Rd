@@ -2,7 +2,7 @@
 % Please edit documentation in R/import.R
 \name{import_li7810_subset}
 \alias{import_li7810_subset}
-\title{Subset a huge LI-7810 .data file to selected dates before importing it}
+\title{Import a date subset of a huge LI-7810 .data file}
 \usage{
 import_li7810_subset(
   inputfile,
@@ -22,7 +22,8 @@ import_li7810_subset(
 \item{dates}{character or Date vector of dates to keep, formatted as they
 appear in the file's \code{DATE} column (\code{YYYY-MM-DD} by default).}
 
-\item{outfile}{path of the subset file; default a temporary file.}
+\item{outfile}{path of the subset file (fallback path only); default a
+temporary file.}
 
 \item{header.lines}{number of header lines copied verbatim (the LI-7810
 format has 7: five metadata lines, \code{DATAH} and \code{DATAU}).}
@@ -30,11 +31,10 @@ format has 7: five metadata lines, \code{DATAH} and \code{DATAU}).}
 \item{date.col}{1-based index of the \code{DATE} column in \code{DATA} rows (7 in
 the standard format).}
 
-\item{import}{if \code{TRUE} (default) the subset is imported with
-\code{\link[goFlux:LI7810_import]{goFlux::import.LI7810()}} and the data frame returned; if \code{FALSE} the path
-of the subset file is returned.}
+\item{import}{if \code{TRUE} (default) the data frame is returned; if \code{FALSE}
+the path of the subset file (fallback path only).}
 
-\item{use.awk}{use \code{awk} if found on the PATH.}
+\item{use.awk}{use \code{awk} if found on the PATH (fallback path only).}
 
 \item{chunk.size}{lines per chunk for the R fallback.}
 
@@ -42,25 +42,28 @@ of the subset file is returned.}
 \code{timezone}, \code{prec}, \code{keep_all}, ...).}
 }
 \value{
-the imported data frame (with attribute \code{"subset.file"}), or the
-subset file path when \code{import = FALSE}.
+the imported data frame (with attribute \code{"subset.file"} on the
+fallback path), or the subset file path when \code{import = FALSE}.
 }
 \description{
 LI-COR LI-7810 analyzers write one continuous tab-delimited \code{.data} file
 that can grow to hundreds of megabytes over a campaign; reading all of it
 into R with \code{\link[goFlux:LI7810_import]{goFlux::import.LI7810()}} is slow and memory-hungry when only a
-few field days are needed. This function keeps the header lines and only
-the \code{DATA} rows whose \code{DATE} column is in \code{dates}, writes them to a smaller
-file, and (optionally) imports that file with \code{import.LI7810()}.
+few field days are needed.
 }
 \details{
-It uses \code{awk} when available (fast, no R memory) and otherwise streams the
-file through R in chunks.
+This function is a thin shim over the proposed upstream change (see
+\code{inst/upstream/patches/import.LI7810-dates.patch}): if the installed
+goFlux \code{import.LI7810()} has a \code{dates} argument, the call is forwarded to
+it. Otherwise the file is subset here (header lines plus the \code{DATA} rows
+whose \code{DATE} column is in \code{dates}; \code{awk} when available, an R stream
+otherwise), written to \code{outfile}, and \code{import.LI7810()} is run on the
+subset.
 }
 \examples{
 f <- system.file("extdata", "LI7810", "LI7810.data", package = "goFlux")
 if (nzchar(f)) {
-  sub <- import_li7810_subset(f, dates = "2022-12-05", import = FALSE)
-  length(readLines(sub))
+  imp <- import_li7810_subset(f, dates = "2022-12-05", timezone = "UTC")
+  nrow(imp)
 }
 }

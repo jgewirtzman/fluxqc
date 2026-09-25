@@ -17,11 +17,13 @@ source(system.file("rescue", "rescue_tools.R", package = "stemflux"))
 
 | Function | Purpose |
 |---|---|
-| `write_stream_files(streams, filename, dir)` | write the "ahead" and "behind" streams found by `stemflux::detect_clock_streams()` to separate files so each can be imported with `goFlux::import.UGGA()` |
+| `detect_clock_streams(filepath, tolerance)` | read a raw LGR `.txt` file in write order and label each data line "ahead" or "behind" (rows more than `tolerance` s behind the running-maximum time stamp belong to the reset stream) |
+| `write_stream_files(streams, filename, dir)` | write the "ahead" and "behind" streams found by `detect_clock_streams()` to separate files so each can be imported with `goFlux::import.UGGA()` |
 | `separate_window_streams(window_data, gas_col, threshold)` | label two interleaved streams within one short window by switching on jumps larger than `threshold` |
 | `obs_win_deinterleave(raw_data, auxfile, ...)` | `obs.win()` replacement that keeps the smoother stream per window and adds `Etime` and chamber columns |
 | `click_flux_2d(raw_data, auxfile, ...)` | interactive: draw a time x concentration box around the good points and run `goFlux::goFlux()` on them at once |
 
-The exported `stemflux::detect_clock_streams()` (reset detection from raw
-write order) and `stemflux::find_clock_offset()` (notebook-to-analyzer clock
-offset) are the general-purpose parts of this work.
+The exported `stemflux::find_clock_offset()` (notebook-to-analyzer clock
+offset, any analyzer) is the general-purpose part of this work;
+`detect_clock_streams()` was demoted here in 0.2.0 because it depends on the
+raw LGR text-file layout and a failure mode seen in one campaign.

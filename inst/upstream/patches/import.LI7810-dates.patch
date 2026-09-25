@@ -1,0 +1,58 @@
+--- a/R/import.LI7810.R	2026-01-08 22:44:37
++++ b/R/import.LI7810.R	2026-09-24 19:26:49
+@@ -15,6 +15,11 @@
+ #'                 POSIXct format. Default is "UTC". Note about time zone: it is
+ #'                 recommended to use the time zone "UTC" to avoid any issue
+ #'                 related to summer time and winter time changes.
++#' @param dates optional character vector of dates (as written in the
++#'              \code{DATE} column of the file, e.g. "2022-12-05") to keep. When
++#'              given, only \code{DATA} rows with a matching date are parsed, so a
++#'              campaign-long file of hundreds of MB imports in seconds. Default
++#'              \code{NULL} keeps every row.
+ #' @param save logical; if \code{save = TRUE}, saves the file as an .RData file
+ #'             in a RData folder in the current working directory. If
+ #'             \code{save = FALSE}, returns the file in the Console, or load in
+@@ -97,7 +102,8 @@
+ #' @export
+ 
+ import.LI7810 <- function(inputfile, date.format = "ymd", timezone = "UTC",
+-                          save = FALSE, keep_all = FALSE, prec = c(3.5, 0.6, 45)){
++                          dates = NULL, save = FALSE, keep_all = FALSE,
++                          prec = c(3.5, 0.6, 45)){
+ 
+   # Check arguments
+   if (missing(inputfile)) stop("'inputfile' is required")
+@@ -107,6 +113,7 @@
+   if (!any(grepl(date.format, c("ymd", "dmy", "mdy")))) {
+     stop("'date.format' must be one of the following: 'ymd', 'dmy' or 'mdy'")}
+   if (!is.character(timezone)) stop("'timezone' must be of class character")
++  if (!is.null(dates) & !is.character(dates)) stop("'dates' must be NULL or a character vector")
+   if (save != TRUE & save != FALSE) stop("'save' must be TRUE or FALSE")
+   if (keep_all != TRUE & keep_all != FALSE) stop("'keep_all' must be TRUE or FALSE")
+   if(is.null(prec)) stop("'prec' is required") else{
+@@ -134,8 +141,23 @@
+     # Find how many rows need to be skipped
+     skip.rows <- as.numeric(which(try.import == "DATAH", arr.ind = TRUE)[1])
+ 
+-    # Import raw data file from LI7810 (.data or .txt)
+-    data.raw <- read.delim(inputfile, skip = skip.rows) %>%
++    # Import raw data file from LI7810 (.data or .txt).
++    # With 'dates', stream the file and keep the header plus only the DATA
++    # rows whose DATE field matches, before any parsing (R only, no awk).
++    if(!is.null(dates)){
++      all.lines <- readLines(inputfile, warn = FALSE)
++      head.line <- all.lines[skip.rows + 1]                 # the DATAH column-name row
++      body.lines <- all.lines[-seq_len(skip.rows + 1)]
++      fields <- strsplit(body.lines, "\t", fixed = TRUE)
++      date.col <- match("DATE", strsplit(head.line, "\t", fixed = TRUE)[[1]])
++      keep <- vapply(fields, function(v) length(v) >= date.col && v[date.col] %in% dates, logical(1))
++      if(!any(keep)) stop("no DATA rows match 'dates' in file ", inputfile.name)
++      text.in <- paste(c(head.line, body.lines[keep]), collapse = "\n")
++      data.raw <- read.delim(text = text.in)
++    } else {
++      data.raw <- read.delim(inputfile, skip = skip.rows)
++    }
++    data.raw <- data.raw %>%
+       # Remove the row "DATAU"
+       filter(!DATAH == 'DATAU') %>% select(!DATAH) %>%
+       # Convert column class automatically

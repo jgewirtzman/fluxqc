@@ -66,13 +66,18 @@ the chamber was not flushed to ambient at closure or carried over a
 previous sample. The default \code{k} sits in the middle of a wide gap in the
 source campaigns' C0 distributions; check the sensitivity line printed
 with \code{verbose = TRUE}.}
-\item{\code{co2_tracer} (\code{min_slope = 0})}{on live tissue the sealed chamber
-must accumulate CO2 from respiration; a CO2 slope at or below
-\code{min_slope} (ppm s-1) means the chamber leaked, was not sealed, or was
-on dead/dormant tissue. The CO2 slope comes from, in order: the \code{co2}
-table (\code{LM.slope} by \code{UniqueID}), \code{traces} (linear fit of \code{CO2dry_ppm}
-on flagged rows), or \code{fluxes$LM.slope} when \code{fluxes} is itself the CO2
-table. Rows whose \code{tissue} is in \code{exempt} get \code{NA}.}
+\item{\code{co2_tracer} (\verb{min_slope = 0, require_detection = TRUE})}{on live
+tissue the sealed chamber must accumulate CO2 from respiration; the
+screen fires when the CO2 slope is at or below \code{min_slope} (ppm s-1)
+\emph{or}, with \code{require_detection}, when the CO2 rise is not distinguishable
+from noise: \code{best.flux <= MDF_emp} (or goFlux's \code{MDF}) in the \code{co2}
+table, or, from \code{traces}, a rise over the window (\verb{slope x span}) of
+less than 2 sigma of the closure's Allan noise. Either way the chamber
+leaked, was not sealed, or was on dead/dormant tissue. The CO2 slope
+comes from, in order: the \code{co2} table (\code{LM.slope} by \code{UniqueID}),
+\code{traces} (linear fit of \code{CO2dry_ppm} on flagged rows), or
+\code{fluxes$LM.slope} when \code{fluxes} is itself the CO2 table. Rows whose
+\code{tissue} is in \code{exempt} get \code{NA}.}
 \item{\code{convex} (\code{p = 0.05})}{accelerating (convex) concentration change,
 which no chamber mechanism produces and which points at a leak, a
 disturbance or a delayed seal. With \code{traces}: a quadratic fit on the

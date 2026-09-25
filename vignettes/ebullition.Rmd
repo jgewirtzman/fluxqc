@@ -26,21 +26,23 @@ number that is neither. This add-on is switched on with a single argument,
 `process_fluxes(ebullition = "flag" | "split")`, or used directly through
 `detect_ebullition()`, `split_ebullition()` and `merge_ebullition()`.
 
-## A synthetic closure with two bubbles
+## A real closure with bubbles
 
-We start from the real example closure and inject two step changes into the
-CH4 trace (a 60 ppb bubble at 200 s and a 120 ppb bubble at 420 s), keeping a
-copy without bubbles for comparison.
+Example `e` of `stemflux_examples()` is a real 276 s floating-chamber closure
+on open water at site CP40 (Christian Point, a ghost-forest mangrove site) of
+the NASA BlueFlux campaign (ABB/LGR GLA131, "LGR2"), in which the campaign's
+processing found five bubble events. Geometry: Area 324.3 cm2, Vtot 4.318 L,
+Tcham 28.7 C (site-day mean air temperature), Pcham 101.325 kPa. We put it
+next to the clean tree-stem closure `a` for comparison.
 
 ```{r make}
 library(stemflux)
-clean <- example_closure(dead.band = 60)
-bub <- clean; bub$UniqueID <- "flooded_stem"
-bub$CH4dry_ppb[bub$t_s >= 200] <- bub$CH4dry_ppb[bub$t_s >= 200] + 60
-bub$CH4dry_ppb[bub$t_s >= 420] <- bub$CH4dry_ppb[bub$t_s >= 420] + 120
-both <- rbind(clean, bub)
-plot(bub$t_s, bub$CH4dry_ppb, pch = 16, cex = 0.4, col = ifelse(bub$flag == 1, "grey20", "grey70"),
-     xlab = "seconds since closure", ylab = "CH4 (ppb)", main = "diffusive rise with two injected bubbles")
+ex <- stemflux_examples(c("a", "e"))
+both <- ex$data
+ex$aux[, c("example", "UniqueID", "obs.length", "Area", "Vtot", "Tcham")]
+e <- both[both$UniqueID == "BF_CP40_2022-10-23_P06", ]
+plot(e$Etime, e$CH4dry_ppb, pch = 16, cex = 0.5, type = "b",
+     xlab = "seconds since closure", ylab = "CH4 (ppb)", main = "BlueFlux CP40, 2022-10-23: diffusive rise with bubbles")
 ```
 
 ## Step 1: detect events
@@ -82,7 +84,8 @@ points(sp$diffusive$Etime, sp$diffusive$CH4dry_ppb, pch = 16, cex = 0.4,
 
 `sp$diffusive` has goFlux's shape: the gas column now holds the de-ebulliated
 trace, the raw values are kept in `CH4dry_ppb_raw`, and the equilibration
-buffer around each event has `flag = 0`, so goFlux ignores it.
+buffer around each event has `flag = 0`, so goFlux ignores it. (The clean
+closure `a` is untouched: no events, all rows keep `flag = 1`.)
 
 ## Step 3: diffusive term with goFlux, then merge
 
@@ -95,10 +98,12 @@ out <- merge_ebullition(diff_best, sp$ebullitive)
 out[, c("UniqueID", "best.flux", "model", "flux_ebullitive", "flux_total", "n_events", "ebullitive_fraction")]
 ```
 
-The diffusive term of the bubbly closure recovers the clean closure's flux
-(same underlying trace), and the ebullitive term is the summed bubble mass
-(180 ppb) divided by the closure duration, converted with the same
-`flux.term`.
+For the BlueFlux closure the ebullitive term is the summed bubble mass
+divided by the closure duration, converted with that chamber's `flux.term`;
+`ebullitive_fraction` says how much of the total came from bubbles. (The
+campaign's own threshold-based processing found 5 events totalling 676 ppb in
+this closure; the IQR fences find a similar set, and `method = "threshold",
+jump.thresh = 100` reproduces the campaign criterion.)
 
 ## The same through `process_fluxes()`
 
@@ -109,7 +114,7 @@ logical `ebullition` column in the auxfile, so flooded stems can be split
 while upland stems in the same call run the core path.
 
 ```{r process}
-aux <- data.frame(UniqueID = c("2021-05-18_5086_I_7.0", "flooded_stem"), ebullition = c(FALSE, TRUE))
+aux <- data.frame(UniqueID = c("2021-05-18_5086_I_7.0", "BF_CP40_2022-10-23_P06"), ebullition = c(FALSE, TRUE))
 invisible(capture.output(       # goFlux's progress bar is captured
   res <- suppressWarnings(process_fluxes(both, aux = aux, gastype = "CH4dry_ppb",
                        qc = list(c0 = TRUE, convex = TRUE),

@@ -207,7 +207,7 @@ cmp <- flag_detection(best_ch4, traces = d, gastype = "CH4dry_ppb",
                       extra = list(precision = c("allan", "mad", "datasheet"),
                                    mdf = c("goflux", "wassmann", "christiansen", "two_sigma"),
                                    conf = c(0.90, 0.95, 0.99)))
-mdf_cols <- grep("^MDF_[a-z]+_[a-z]", names(cmp), value = TRUE)
+mdf_cols <- setdiff(grep("^MDF_[a-z]+_[a-z]", names(cmp), value = TRUE), "MDF_emp_method")
 t(round(as.data.frame(cmp[, mdf_cols]), 6))
 ```
 

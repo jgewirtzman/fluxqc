@@ -91,7 +91,8 @@ rest run the core path.
 d <- example_closure()
 res <- process_fluxes(d, gastype = "CH4dry_ppb", qc = list(c0 = TRUE, convex = TRUE))
 res
-res$fluxes[, c("UniqueID", "best.flux", "MDF", "MDF_emp", "MDF_emp_method", "det_class_emp", "qc_any")]
+res$fluxes[, c("UniqueID", "best.flux", "MDF", "MDF_emp", "MDF_emp_method",
+               "det_class_emp", "qc_any")]
 }
 \seealso{
 \code{\link[=write_outputs]{write_outputs()}}

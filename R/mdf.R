@@ -170,10 +170,12 @@ mdf_multi <- function(flux.term, t, prec = NULL, sigma = NULL, sigma.global = NU
 #' d <- example_closure()
 #' best <- goFlux::best.flux(goFlux::goFlux(d, "CH4dry_ppb"))
 #' out <- flag_detection(best, traces = d, gastype = "CH4dry_ppb")
-#' out[, c("best.flux", "MDF", "sigma_emp", "MDF_emp", "below_MDF_emp", "MDF_emp_method", "det_class_emp")]
+#' out[, c("best.flux", "MDF", "sigma_emp", "MDF_emp", "below_MDF_emp",
+#'         "MDF_emp_method", "det_class_emp")]
 #' # comparison columns
 #' cmp <- flag_detection(best, traces = d, gastype = "CH4dry_ppb",
-#'                       extra = list(precision = c("mad", "datasheet"), mdf = c("goflux", "two_sigma")))
+#'                       extra = list(precision = c("mad", "datasheet"),
+#'                                    mdf = c("goflux", "two_sigma")))
 #' grep("^MDF_", names(cmp), value = TRUE)
 #' @export
 flag_detection <- function(flux.result, traces = NULL, gastype = NULL,

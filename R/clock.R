@@ -1,66 +1,3 @@
-#' Detect analyzer clock resets from the raw write order of an LGR/UGGA file
-#'
-#' Some ABB/LGR (UGGA, GLA131) files contain two interleaved time streams: the
-#' analyzer clock reset mid-file (typically after a power loss or GPS sync) and
-#' rows written later carry *earlier* time stamps. goFlux's import sorts by
-#' time, so the two streams become interleaved and the true write order is
-#' lost. This function reads the raw text file in write order and labels every
-#' data line as `"ahead"` (at or advancing the running maximum time stamp) or
-#' `"behind"` (more than `tolerance` seconds behind the running maximum, i.e.
-#' from the reset stream). It works whether the streams are sequential blocks
-#' or interspersed row by row.
-#'
-#' Scripts that split such files and de-interleave the streams per window
-#' (one-off rescue tools from the BlueFlux campaign) are shipped, unexported,
-#' in `system.file("rescue", package = "stemflux")`.
-#'
-#' @param filepath path to a raw LGR `.txt` data file (`_f` file).
-#' @param tolerance seconds behind the running maximum that mark a row as
-#'   belonging to the reset stream.
-#' @param date.pattern regular expression identifying data lines (default:
-#'   lines starting with `M/D/YYYY H:MM:SS`).
-#' @param time.format format string for [as.POSIXct()] applied to the first
-#'   comma-separated field.
-#' @return list with `has_reset` (logical), `streams` (character vector, one
-#'   per data line), `stream_labels`, `header_lines`, `data_lines` and
-#'   `timestamps` (POSIXct).
-#' @seealso [find_clock_offset()]
-#' @examples
-#' f <- tempfile(fileext = ".txt")
-#' hdr <- c("SN: 123", "SysTime, [CH4]d_ppm, [CO2]d_ppm")
-#' t0 <- as.POSIXct("2023-03-15 10:00:00", tz = "UTC")
-#' good <- sprintf("%s, 2.0, 400", format(t0 + 0:9, "%m/%d/%Y %H:%M:%S"))
-#' reset <- sprintf("%s, 2.1, 401", format(t0 - 600 + 0:9, "%m/%d/%Y %H:%M:%S"))
-#' writeLines(c(hdr, good, reset), f)
-#' cs <- detect_clock_streams(f)
-#' cs$has_reset; table(cs$streams)
-#' @export
-detect_clock_streams <- function(filepath, tolerance = 30,
-                                 date.pattern = "^\\s*\\d{1,2}/\\d{1,2}/\\d{4}\\s+\\d{1,2}:\\d{2}:\\d{2}",
-                                 time.format = "%m/%d/%Y %H:%M:%OS") {
-  raw_lines <- readLines(filepath, warn = FALSE)
-  is_data <- grepl(date.pattern, raw_lines)
-  empty <- function(header, data) list(has_reset = FALSE, streams = rep("ahead", length(data)),
-                                       stream_labels = "ahead", header_lines = header,
-                                       data_lines = data, timestamps = as.POSIXct(character(0), tz = "UTC"))
-  if (sum(is_data) < 2) return(empty(raw_lines[!is_data], raw_lines[is_data]))
-  first_data <- min(which(is_data))
-  header_lines <- raw_lines[seq_len(first_data - 1)]
-  data_lines <- raw_lines[is_data]
-  ts <- suppressWarnings(as.POSIXct(trimws(sub(",.*", "", data_lines)),
-                                    format = time.format, tz = "UTC"))
-  valid <- !is.na(ts)
-  if (sum(valid) < 2) return(empty(header_lines, data_lines))
-  streams <- rep("ahead", length(data_lines))
-  vts <- as.numeric(ts[valid])
-  behind <- vts < (cummax(vts) - tolerance)
-  streams[which(valid)[behind]] <- "behind"
-  has_reset <- any(behind)
-  list(has_reset = has_reset, streams = streams,
-       stream_labels = if (has_reset) c("ahead", "behind") else "ahead",
-       header_lines = header_lines, data_lines = data_lines, timestamps = ts)
-}
-
 #' Estimate the constant offset between notebook closure times and analyzer time
 #'
 #' Field notebooks record closure start times on a watch or phone; the
@@ -76,12 +13,15 @@ detect_clock_streams <- function(filepath, tolerance = 30,
 #' negative at the drop when the chamber is lifted), and scores the offset by
 #' the median across closures (a cross-correlation of the notebook start
 #' impulses with the rise onsets). A sealed chamber always makes CO2 start
-#' rising at closure, so the score peaks at the true offset.
-#' The score curve is returned so a flat or multi-modal curve can be
-#' recognised. This is a
+#' rising at closure, so the score peaks at the true offset. The score curve
+#' is returned so a flat or multi-modal curve can be recognised. This is a
 #' non-interactive replacement for the slider-based Shiny alignment app used
 #' in the BlueFlux rescue (`offset_finder_app.R`), which relied on visual
-#' alignment.
+#' alignment. It works with any goFlux importer's output.
+#'
+#' Tools for a rarer problem, analyzer clock *resets* that interleave two
+#' time streams in one raw LGR file, are shipped as unexported scripts in
+#' `system.file("rescue", package = "stemflux")`.
 #'
 #' @param traces data.frame with `POSIX.time` and the `gas` column (a whole
 #'   imported record, e.g. from [goFlux::import.UGGA()]).
@@ -96,9 +36,9 @@ detect_clock_streams <- function(filepath, tolerance = 30,
 #' @param auxfile optional auxfile whose `start.time` column is shifted by the
 #'   best offset (original kept as `start.time_notebook`).
 #' @return list with `offset` (seconds to *add* to notebook times), `score`
-#'   (onset score at the best offset, gas units), `scores` (data.frame of `offset`,
-#'   `score` for the whole curve), `n_closures` used, and, if `auxfile` was
-#'   given, `auxfile` with corrected `start.time`.
+#'   (onset score at the best offset, gas units), `scores` (data.frame of
+#'   `offset`, `score` for the whole curve), `n_closures` used, and, if
+#'   `auxfile` was given, `auxfile` with corrected `start.time`.
 #' @examples
 #' set.seed(7)
 #' t0 <- as.POSIXct("2023-03-15 10:00:00", tz = "UTC")

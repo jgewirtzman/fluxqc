@@ -38,9 +38,9 @@ best offset (original kept as \code{start.time_notebook}).}
 }
 \value{
 list with \code{offset} (seconds to \emph{add} to notebook times), \code{score}
-(onset score at the best offset, gas units), \code{scores} (data.frame of \code{offset},
-\code{score} for the whole curve), \code{n_closures} used, and, if \code{auxfile} was
-given, \code{auxfile} with corrected \code{start.time}.
+(onset score at the best offset, gas units), \code{scores} (data.frame of
+\code{offset}, \code{score} for the whole curve), \code{n_closures} used, and, if
+\code{auxfile} was given, \code{auxfile} with corrected \code{start.time}.
 }
 \description{
 Field notebooks record closure start times on a watch or phone; the
@@ -56,12 +56,16 @@ a flat baseline; near zero in the middle of a steady rise; strongly
 negative at the drop when the chamber is lifted), and scores the offset by
 the median across closures (a cross-correlation of the notebook start
 impulses with the rise onsets). A sealed chamber always makes CO2 start
-rising at closure, so the score peaks at the true offset.
-The score curve is returned so a flat or multi-modal curve can be
-recognised. This is a
+rising at closure, so the score peaks at the true offset. The score curve
+is returned so a flat or multi-modal curve can be recognised. This is a
 non-interactive replacement for the slider-based Shiny alignment app used
 in the BlueFlux rescue (\code{offset_finder_app.R}), which relied on visual
-alignment.
+alignment. It works with any goFlux importer's output.
+}
+\details{
+Tools for a rarer problem, analyzer clock \emph{resets} that interleave two
+time streams in one raw LGR file, are shipped as unexported scripts in
+\code{system.file("rescue", package = "stemflux")}.
 }
 \examples{
 set.seed(7)

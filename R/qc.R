@@ -15,13 +15,18 @@
 #'     previous sample. The default `k` sits in the middle of a wide gap in the
 #'     source campaigns' C0 distributions; check the sensitivity line printed
 #'     with `verbose = TRUE`.}
-#'   \item{`co2_tracer` (`min_slope = 0`)}{on live tissue the sealed chamber
-#'     must accumulate CO2 from respiration; a CO2 slope at or below
-#'     `min_slope` (ppm s-1) means the chamber leaked, was not sealed, or was
-#'     on dead/dormant tissue. The CO2 slope comes from, in order: the `co2`
-#'     table (`LM.slope` by `UniqueID`), `traces` (linear fit of `CO2dry_ppm`
-#'     on flagged rows), or `fluxes$LM.slope` when `fluxes` is itself the CO2
-#'     table. Rows whose `tissue` is in `exempt` get `NA`.}
+#'   \item{`co2_tracer` (`min_slope = 0, require_detection = TRUE`)}{on live
+#'     tissue the sealed chamber must accumulate CO2 from respiration; the
+#'     screen fires when the CO2 slope is at or below `min_slope` (ppm s-1)
+#'     *or*, with `require_detection`, when the CO2 rise is not distinguishable
+#'     from noise: `best.flux <= MDF_emp` (or goFlux's `MDF`) in the `co2`
+#'     table, or, from `traces`, a rise over the window (`slope x span`) of
+#'     less than 2 sigma of the closure's Allan noise. Either way the chamber
+#'     leaked, was not sealed, or was on dead/dormant tissue. The CO2 slope
+#'     comes from, in order: the `co2` table (`LM.slope` by `UniqueID`),
+#'     `traces` (linear fit of `CO2dry_ppm` on flagged rows), or
+#'     `fluxes$LM.slope` when `fluxes` is itself the CO2 table. Rows whose
+#'     `tissue` is in `exempt` get `NA`.}
 #'   \item{`convex` (`p = 0.05`)}{accelerating (convex) concentration change,
 #'     which no chamber mechanism produces and which points at a leak, a
 #'     disturbance or a delayed seal. With `traces`: a quadratic fit on the
@@ -86,7 +91,8 @@ qc_screens <- function(fluxes, traces = NULL,
                        exempt = c("dead", "dormant"), verbose = TRUE) {
   fx <- as.data.frame(fluxes)
   if (!"UniqueID" %in% names(fx)) stop("'fluxes' needs a 'UniqueID' column")
-  defaults <- list(c0 = list(k = 1.5), co2_tracer = list(min_slope = 0), convex = list(p = 0.05),
+  defaults <- list(c0 = list(k = 1.5), co2_tracer = list(min_slope = 0, require_detection = TRUE),
+                   convex = list(p = 0.05),
                    min_window = list(secs = 60), ambient_start = list(sigma = 3, secs = 10),
                    leak = list(rate = NULL))
   unknown <- setdiff(names(screens), names(defaults))
@@ -148,6 +154,24 @@ qc_screens <- function(fluxes, traces = NULL,
     else if (identical(gastype, "CO2dry_ppm") && "LM.slope" %in% names(fx)) slope <- fx$LM.slope
     fx$qc_co2_slope <- slope
     flag <- ifelse(is.na(slope), NA, slope <= cfg$co2_tracer$min_slope)
+    # noise-aware part: the CO2 rise must also exceed its own noise
+    if (isTRUE(cfg$co2_tracer$require_detection)) {
+      undetected <- rep(NA, n)
+      if (!is.null(co2) && "UniqueID" %in% names(co2)) {
+        j <- match(uid, co2$UniqueID)
+        mdfc <- if ("MDF_emp" %in% names(co2)) co2$MDF_emp[j] else if ("MDF" %in% names(co2)) co2$MDF[j] else NA
+        fl <- if ("best.flux" %in% names(co2)) co2$best.flux[j] else co2$LM.flux[j]
+        undetected <- ifelse(is.na(mdfc) | is.na(fl), NA, fl <= mdfc)
+      } else if (!is.null(tr_flag) && "CO2dry_ppm" %in% names(tr_flag)) {
+        undetected <- per_uid(function(d) {
+          if (nrow(d) < 3) return(NA_real_)
+          s <- precision_allan(d$CO2dry_ppm); tt <- diff(range(d$Etime))
+          sl <- unname(stats::coef(stats::lm(d$CO2dry_ppm ~ d$Etime))[2])
+          as.numeric(sl * tt <= 2 * s)          # rise over the window below 2 sigma of the noise
+        }) == 1
+      }
+      flag <- ifelse(is.na(flag), NA, flag | (!is.na(undetected) & undetected))
+    }
     if (!is.null(tissue)) {
       tv <- if (length(tissue) == 1 && tissue %in% names(fx)) as.character(fx[[tissue]]) else as.character(tissue)
       flag[!is.na(tv) & tv %in% exempt] <- NA

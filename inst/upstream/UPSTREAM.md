@@ -220,6 +220,42 @@ library(goFlux); import.LI7810(f, timezone = "UTC")   # works
 **Proposed fix:** `if (identical(deparse(match.call()[[1]]), "LI7810_import"))`
 or, since the old names were removed a version ago, drop the shim.
 
+
+### Ready-made patch for Issue 4: `import.LI7810(dates = NULL)`
+
+`patches/import.LI7810-dates.patch` is a unified diff against
+`R/import.LI7810.R` of the goFlux snapshot (v0.2.0, `~/Downloads/goFlux-master`,
+RemoteSha 9c0b316 of the installed copy); `patches/import.LI7810.R` is the
+whole modified file. R only, no `awk`. Apply with
+`git apply inst/upstream/patches/import.LI7810-dates.patch` in a goFlux clone.
+
+**PR title:** import.LI7810(): add `dates` argument to subset campaign-long
+.data files before parsing (Fixes #<Issue 4>)
+
+**PR description:**
+
+> LI-7810 `.data` files grow to 100-200 MB over a campaign. `import.LI7810()`
+> reads and time-parses every row even when only a few field days are needed.
+> This PR adds `dates = NULL`: when a character vector of dates (as written in
+> the file's `DATE` column) is given, the file is read with `readLines()`, the
+> `DATAH` header row is kept and only the `DATA` rows whose `DATE` field is in
+> `dates` are passed to `read.delim(text = ...)`; everything after that is
+> unchanged. With `dates = NULL` the behaviour is byte-for-byte the current one
+> (verified: `all.equal()` on the bundled `LI7810.data` is `TRUE`). A
+> non-matching `dates` stops with a clear message. Roxygen `@param` added.
+> Tested on the bundled example (330 rows) and on a 163 MB campaign file
+> (six field days out of ~1.5 million rows) through the stemflux shim
+> `import_li7810_subset()`, which forwards to this argument when present.
+
+Issue 5 (namespace-qualified calls) is a one-line change per importer
+(`identical(deparse(match.call()[[1]]), "LI7810_import")` or dropping the
+shim) and is best sent as its own tiny PR touching every `import.*.R`; it is
+not bundled here to keep the `dates` PR single-purpose. Issue 3
+(`muffleError`) needs the same restructuring in each of the ~20
+`withCallingHandlers()` blocks of `import2RData.R` (wrap in `tryCatch()`,
+keep `withCallingHandlers()` for warnings and messages), which is mechanical
+but not small; the sketch in Issue 3 is the intended shape.
+
 ## (b) What belongs upstream and what stays in stemflux
 
 | stemflux function | Upstream candidate? | Proposal |
@@ -234,10 +270,10 @@ or, since the old names were removed a version ago, drop the shim.
 | `auto_id_rise()`, `find_rise()`, `windows_from_table()`, `flag_window()` | Maybe later | goFlux has `autoID()` for LI-8200 only; a generic rise-based window finder could sit beside it. Propose after it has been used on more campaigns; keep in stemflux for now. |
 | `qc_screens()`, `qc_c0_screen()` | Stay | Campaign-level QC policy, not a flux-calculation step. |
 | `process_fluxes()`, `write_outputs()` | Stay | Opinionated wrapper around goFlux; goFlux keeps its modular design. |
-| `detect_clock_streams()`, `find_clock_offset()` | Stay | Data-rescue utilities; could be linked from goFlux's documentation. |
-| Rescue scripts in `inst/rescue/` (`separate_window_streams()`, `obs_win_deinterleave()`, `click_flux_2d()`, `write_stream_files()`) | **No** | One-off tools for a specific data-damage problem; no longer exported from stemflux and not upstream candidates. |
+| `find_clock_offset()` | Stay | Analyzer-independent utility; could be linked from goFlux's documentation. |
+| Rescue scripts in `inst/rescue/` (`detect_clock_streams()`, `separate_window_streams()`, `obs_win_deinterleave()`, `click_flux_2d()`, `write_stream_files()`) | **No** | One-off tools for a specific data-damage problem; no longer exported from stemflux and not upstream candidates. |
 | Ebullition add-on (`detect_ebullition()`, `split_ebullition()`, `merge_ebullition()`) | Stay | Out of goFlux's scope (it fits one smooth model per closure, and its source has no ebullition handling); the add-on produces a goFlux-shaped input so no goFlux change is needed. |
-| `example_closure()` | Stay | goFlux has its own example data. |
+| `stemflux_examples()`, `example_closure()` | Stay (data offer) | goFlux has its own example data; the four Yale-Myers teaching closures could be offered to goFlux as additional example data if wanted. |
 
 ## (c) Practical steps
 
@@ -250,7 +286,7 @@ or, since the old names were removed a version ago, drop the shim.
    - `fix/import2RData-error-handling` (Issue 3; `R/import2RData.R`)
    - `fix/import-namespace-call` (Issue 5; one line per importer)
    - `feat/import2RData-outdir-recursive` (Issue 2)
-   - `feat/import-LI7810-dates` (Issue 4)
+   - `feat/import-LI7810-dates` (Issue 4; patch ready in `inst/upstream/patches/`)
 3. Feature PRs, each after the corresponding issue/discussion:
    - `feat/click-peak2-stacked` porting `click_peak2_stacked()` into
      `click.peak2()` behind a `gases` argument;

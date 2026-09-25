@@ -145,6 +145,33 @@ manID$CH4_prec <- sig$sigma[match(manID$UniqueID, sig$UniqueID)]
 CH4_flux <- goFlux(manID, "CH4dry_ppb")     # goFlux reads the *_prec columns
 ```
 
+## 4b. The four teaching cases (evaluated)
+
+This is the logic of Figure 4 of the guidelines paper: four real closures
+that look alike in a flux table until the detection flag and the QC screens
+are applied. `stemflux_examples()` ships them with their real geometry
+(plus a synthetic uptake, `f`).
+
+```{r figure4, eval = TRUE}
+library(stemflux)
+ex <- stemflux_examples(c("a", "b", "c", "d", "f"))
+ex$aux[, c("example", "UniqueID", "what")]
+invisible(capture.output(
+  res <- suppressWarnings(process_fluxes(ex$data, gastype = "CH4dry_ppb",
+                          qc = list(c0 = TRUE, co2_tracer = TRUE, convex = TRUE, min_window = list(secs = 120))))))
+out <- merge(ex$aux[, c("UniqueID", "example")], res$fluxes, by = "UniqueID")
+out <- out[order(out$example), ]
+out[, c("example", "best.flux", "sigma_emp", "MDF_emp", "det_class_emp", "qc_co2_slope", "qc_co2_tracer",
+        "qc_convex", "qc_any")]
+```
+
+Reading the rows: `a` is detected and passes; `b` is a good closure whose CH4
+flux is below the detection limit (kept, flagged); `c` fails the CO2 tracer
+screen because the chamber never sealed, so its CH4 number is meaningless
+whatever its size; `d` has a clear CH4 rise but no CO2 rise, which the tracer
+screen flags for a look (a leak-free chamber on live tissue should
+accumulate CO2); `f` is an uptake. No row was removed.
+
 ## 5. Where the outputs go
 
 ```{r outputs}

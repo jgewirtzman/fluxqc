@@ -3,12 +3,12 @@
 # streams (BlueFlux ground campaign, 2022-2023). NOT part of the stemflux
 # namespace; see README.md in this folder. Source with:
 #   source(system.file("rescue", "rescue_tools.R", package = "stemflux"))
-# Requires stemflux (for detect_clock_streams()) and goFlux.
+# Requires goFlux only.
 # =============================================================================
 
 # Write the "ahead" and "behind" streams of a clock-reset file to separate files
 # so each can be imported independently with goFlux::import.UGGA().
-#   streams: output of stemflux::detect_clock_streams()
+#   streams: output of detect_clock_streams() (below)
 write_stream_files <- function(streams, filename, dir = tempfile("streams_")) {
   dir.create(dir, recursive = TRUE, showWarnings = FALSE)
   out <- character(0)
@@ -171,4 +171,35 @@ click_flux_2d <- function(raw_data, auxfile, gas_col = "CO2dry_ppm", H2O_col = "
   out <- do.call(rbind, results); rownames(out) <- NULL
   attr(out, "selected") <- do.call(rbind, lapply(selected_all, as.data.frame))
   out
+}
+
+# Detect analyzer clock resets from the raw write order of an LGR/UGGA .txt file.
+# Rows more than `tolerance` s behind the running maximum time stamp belong to
+# the reset ("behind") stream. Works for sequential blocks or row-by-row
+# interspersion. Returns list(has_reset, streams, stream_labels, header_lines,
+# data_lines, timestamps). Pass the result to write_stream_files().
+detect_clock_streams <- function(filepath, tolerance = 30,
+                                 date.pattern = "^\\s*\\d{1,2}/\\d{1,2}/\\d{4}\\s+\\d{1,2}:\\d{2}:\\d{2}",
+                                 time.format = "%m/%d/%Y %H:%M:%OS") {
+  raw_lines <- readLines(filepath, warn = FALSE)
+  is_data <- grepl(date.pattern, raw_lines)
+  empty <- function(header, data) list(has_reset = FALSE, streams = rep("ahead", length(data)),
+                                       stream_labels = "ahead", header_lines = header,
+                                       data_lines = data, timestamps = as.POSIXct(character(0), tz = "UTC"))
+  if (sum(is_data) < 2) return(empty(raw_lines[!is_data], raw_lines[is_data]))
+  first_data <- min(which(is_data))
+  header_lines <- raw_lines[seq_len(first_data - 1)]
+  data_lines <- raw_lines[is_data]
+  ts <- suppressWarnings(as.POSIXct(trimws(sub(",.*", "", data_lines)),
+                                    format = time.format, tz = "UTC"))
+  valid <- !is.na(ts)
+  if (sum(valid) < 2) return(empty(header_lines, data_lines))
+  streams <- rep("ahead", length(data_lines))
+  vts <- as.numeric(ts[valid])
+  behind <- vts < (cummax(vts) - tolerance)
+  streams[which(valid)[behind]] <- "behind"
+  has_reset <- any(behind)
+  list(has_reset = has_reset, streams = streams,
+       stream_labels = if (has_reset) c("ahead", "behind") else "ahead",
+       header_lines = header_lines, data_lines = data_lines, timestamps = ts)
 }

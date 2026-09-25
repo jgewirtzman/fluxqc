@@ -8,7 +8,8 @@
 #' All functions keep goFlux's column conventions (`UniqueID`, `POSIX.time`,
 #' `start.time`, `obs.length`, `Vtot`, `Area`, `Pcham`, `Tcham`, `flag`,
 #' `Etime`, `start.time_corr`, `end.time_corr`, `obs.length_corr`,
-#' `flux.term`, `nb.obs`, `MDF`, `prec`, `best.flux`, ...).
+#' `flux.term`, `nb.obs`, `MDF`, `prec`, `best.flux`, ...) and never modify a
+#' goFlux column: stemflux only appends.
 #'
 #' @section Core path:
 #' `goFlux::goFlux()` -> `goFlux::best.flux()` -> [flag_detection()] ->
@@ -25,12 +26,12 @@
 #'   \item{Quality screens}{[qc_screens()], [qc_c0_screen()]}
 #'   \item{Pipeline and outputs}{[process_fluxes()], [write_outputs()], [flux_pdf()]}
 #'   \item{Import helpers}{[import_li7810_subset()], [import2RData_flat()]}
-#'   \item{Utilities (not on the default path)}{[detect_clock_streams()],
-#'     [find_clock_offset()]; rescue scripts in
-#'     `system.file("rescue", package = "stemflux")`}
+#'   \item{Utility (not on the default path)}{[find_clock_offset()]}
 #'   \item{Ebullition add-on (opt-in)}{[detect_ebullition()],
 #'     [split_ebullition()], [merge_ebullition()]; `vignette("ebullition")`}
-#'   \item{Example data}{[example_closure()]}
+#'   \item{Example data}{[stemflux_examples()], [example_closure()]}
+#'   \item{Unexported one-off rescue scripts}{`system.file("rescue", package = "stemflux")`
+#'     (LGR clock-reset detection and interleaved-stream tools)}
 #' }
 #'
 #' @references

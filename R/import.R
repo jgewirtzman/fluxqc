@@ -1,37 +1,40 @@
-#' Subset a huge LI-7810 .data file to selected dates before importing it
+#' Import a date subset of a huge LI-7810 .data file
 #'
 #' LI-COR LI-7810 analyzers write one continuous tab-delimited `.data` file
 #' that can grow to hundreds of megabytes over a campaign; reading all of it
 #' into R with [goFlux::import.LI7810()] is slow and memory-hungry when only a
-#' few field days are needed. This function keeps the header lines and only
-#' the `DATA` rows whose `DATE` column is in `dates`, writes them to a smaller
-#' file, and (optionally) imports that file with `import.LI7810()`.
+#' few field days are needed.
 #'
-#' It uses `awk` when available (fast, no R memory) and otherwise streams the
-#' file through R in chunks.
+#' This function is a thin shim over the proposed upstream change (see
+#' `inst/upstream/patches/import.LI7810-dates.patch`): if the installed
+#' goFlux `import.LI7810()` has a `dates` argument, the call is forwarded to
+#' it. Otherwise the file is subset here (header lines plus the `DATA` rows
+#' whose `DATE` column is in `dates`; `awk` when available, an R stream
+#' otherwise), written to `outfile`, and `import.LI7810()` is run on the
+#' subset.
 #'
 #' @param inputfile path to the raw `.data` file.
 #' @param dates character or Date vector of dates to keep, formatted as they
 #'   appear in the file's `DATE` column (`YYYY-MM-DD` by default).
-#' @param outfile path of the subset file; default a temporary file.
+#' @param outfile path of the subset file (fallback path only); default a
+#'   temporary file.
 #' @param header.lines number of header lines copied verbatim (the LI-7810
 #'   format has 7: five metadata lines, `DATAH` and `DATAU`).
 #' @param date.col 1-based index of the `DATE` column in `DATA` rows (7 in
 #'   the standard format).
-#' @param import if `TRUE` (default) the subset is imported with
-#'   [goFlux::import.LI7810()] and the data frame returned; if `FALSE` the path
-#'   of the subset file is returned.
-#' @param use.awk use `awk` if found on the PATH.
+#' @param import if `TRUE` (default) the data frame is returned; if `FALSE`
+#'   the path of the subset file (fallback path only).
+#' @param use.awk use `awk` if found on the PATH (fallback path only).
 #' @param chunk.size lines per chunk for the R fallback.
 #' @param ... arguments passed to [goFlux::import.LI7810()] (`date.format`,
 #'   `timezone`, `prec`, `keep_all`, ...).
-#' @return the imported data frame (with attribute `"subset.file"`), or the
-#'   subset file path when `import = FALSE`.
+#' @return the imported data frame (with attribute `"subset.file"` on the
+#'   fallback path), or the subset file path when `import = FALSE`.
 #' @examples
 #' f <- system.file("extdata", "LI7810", "LI7810.data", package = "goFlux")
 #' if (nzchar(f)) {
-#'   sub <- import_li7810_subset(f, dates = "2022-12-05", import = FALSE)
-#'   length(readLines(sub))
+#'   imp <- import_li7810_subset(f, dates = "2022-12-05", timezone = "UTC")
+#'   nrow(imp)
 #' }
 #' @export
 import_li7810_subset <- function(inputfile, dates, outfile = tempfile(fileext = ".data"),
@@ -39,6 +42,12 @@ import_li7810_subset <- function(inputfile, dates, outfile = tempfile(fileext = 
                                  use.awk = TRUE, chunk.size = 200000, ...) {
   if (!file.exists(inputfile)) stop("file not found: ", inputfile)
   dates <- as.character(dates)
+  # goFlux's importers inspect match.call()[[1]] and fail when called as
+  # goFlux::import.LI7810(); bind locally so the call head is a plain symbol.
+  importer <- get("import.LI7810", envir = asNamespace("goFlux"))
+  if ("dates" %in% names(formals(importer)) && import) {
+    return(importer(inputfile = inputfile, dates = dates, ...))
+  }
   awk <- if (use.awk) Sys.which("awk") else ""
   if (nzchar(awk)) {
     prog <- sprintf('NR<=%d {print; next} $1=="DATA" && $%d ~ /^(%s)$/ {print}',
@@ -64,9 +73,6 @@ import_li7810_subset <- function(inputfile, dates, outfile = tempfile(fileext = 
   if (n <= 0) warning("no DATA rows matched dates: ", paste(dates, collapse = ", "))
   message("Subset written: ", n, " data rows -> ", outfile)
   if (!import) return(outfile)
-  # goFlux's importers inspect match.call()[[1]] and fail when called as
-  # goFlux::import.LI7810(); bind locally so the call head is a plain symbol.
-  importer <- get("import.LI7810", envir = asNamespace("goFlux"))
   res <- importer(inputfile = outfile, ...)
   attr(res, "subset.file") <- outfile
   res

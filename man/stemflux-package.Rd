@@ -15,7 +15,8 @@ packages them so they slot into a standard goFlux pipeline
 All functions keep goFlux's column conventions (\code{UniqueID}, \code{POSIX.time},
 \code{start.time}, \code{obs.length}, \code{Vtot}, \code{Area}, \code{Pcham}, \code{Tcham}, \code{flag},
 \code{Etime}, \code{start.time_corr}, \code{end.time_corr}, \code{obs.length_corr},
-\code{flux.term}, \code{nb.obs}, \code{MDF}, \code{prec}, \code{best.flux}, ...).
+\code{flux.term}, \code{nb.obs}, \code{MDF}, \code{prec}, \code{best.flux}, ...) and never modify a
+goFlux column: stemflux only appends.
 }
 \section{Core path}{
 
@@ -35,12 +36,12 @@ All functions keep goFlux's column conventions (\code{UniqueID}, \code{POSIX.tim
 \item{Quality screens}{\code{\link[=qc_screens]{qc_screens()}}, \code{\link[=qc_c0_screen]{qc_c0_screen()}}}
 \item{Pipeline and outputs}{\code{\link[=process_fluxes]{process_fluxes()}}, \code{\link[=write_outputs]{write_outputs()}}, \code{\link[=flux_pdf]{flux_pdf()}}}
 \item{Import helpers}{\code{\link[=import_li7810_subset]{import_li7810_subset()}}, \code{\link[=import2RData_flat]{import2RData_flat()}}}
-\item{Utilities (not on the default path)}{\code{\link[=detect_clock_streams]{detect_clock_streams()}},
-\code{\link[=find_clock_offset]{find_clock_offset()}}; rescue scripts in
-\code{system.file("rescue", package = "stemflux")}}
+\item{Utility (not on the default path)}{\code{\link[=find_clock_offset]{find_clock_offset()}}}
 \item{Ebullition add-on (opt-in)}{\code{\link[=detect_ebullition]{detect_ebullition()}},
 \code{\link[=split_ebullition]{split_ebullition()}}, \code{\link[=merge_ebullition]{merge_ebullition()}}; \code{vignette("ebullition")}}
-\item{Example data}{\code{\link[=example_closure]{example_closure()}}}
+\item{Example data}{\code{\link[=stemflux_examples]{stemflux_examples()}}, \code{\link[=example_closure]{example_closure()}}}
+\item{Unexported one-off rescue scripts}{\code{system.file("rescue", package = "stemflux")}
+(LGR clock-reset detection and interleaved-stream tools)}
 }
 }
 

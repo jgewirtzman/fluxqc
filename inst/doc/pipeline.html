@@ -352,6 +352,8 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 selection</a></li>
 <li><a href="#flux-detection-limits-and-qc-in-one-call" id="toc-flux-detection-limits-and-qc-in-one-call">4. Flux, detection
 limits and QC in one call</a></li>
+<li><a href="#b.-the-four-teaching-cases-evaluated" id="toc-b.-the-four-teaching-cases-evaluated">4b. The four teaching
+cases (evaluated)</a></li>
 <li><a href="#where-the-outputs-go" id="toc-where-the-outputs-go">5.
 Where the outputs go</a></li>
 <li><a href="#plots-by-hand" id="toc-plots-by-hand">6. Plots by
@@ -445,25 +447,22 @@ first (a utility, not part of the default path):</p>
 <h2>4. Flux, detection limits and QC in one call</h2>
 <div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>CH4 <span class="ot">&lt;-</span> <span class="fu">process_fluxes</span>(</span>
 <span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>  manID, <span class="at">aux =</span> aux, <span class="at">gastype =</span> <span class="st">&quot;CH4dry_ppb&quot;</span>,</span>
-<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>  <span class="at">precision =</span> <span class="fu">c</span>(<span class="st">&quot;allan&quot;</span>, <span class="st">&quot;mad&quot;</span>, <span class="st">&quot;datasheet&quot;</span>),               <span class="co"># sigma_* columns</span></span>
-<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>  <span class="at">mdf       =</span> <span class="fu">c</span>(<span class="st">&quot;goflux&quot;</span>, <span class="st">&quot;wassmann&quot;</span>, <span class="st">&quot;christiansen&quot;</span>, <span class="st">&quot;two_sigma&quot;</span>),</span>
-<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>  <span class="at">conf      =</span> <span class="fu">c</span>(<span class="fl">0.90</span>, <span class="fl">0.95</span>, <span class="fl">0.99</span>),</span>
-<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>  <span class="at">primary   =</span> <span class="fu">list</span>(<span class="at">precision =</span> <span class="st">&quot;allan&quot;</span>, <span class="at">mdf =</span> <span class="st">&quot;christiansen&quot;</span>, <span class="at">conf =</span> <span class="fl">0.95</span>),  <span class="co"># -&gt; MDF, below_MDF</span></span>
-<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>  <span class="at">qc        =</span> <span class="fu">list</span>(<span class="at">c0 =</span> <span class="fu">list</span>(<span class="at">k =</span> <span class="fl">1.5</span>), <span class="at">co2_tracer =</span> <span class="fu">list</span>(<span class="at">min_slope =</span> <span class="dv">0</span>), <span class="at">convex =</span> <span class="cn">TRUE</span>,</span>
-<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>                   <span class="at">min_window =</span> <span class="fu">list</span>(<span class="at">secs =</span> <span class="dv">120</span>), <span class="at">ambient_start =</span> <span class="fu">list</span>(<span class="at">sigma =</span> <span class="dv">3</span>, <span class="at">secs =</span> <span class="dv">10</span>),</span>
-<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>                   <span class="at">leak =</span> <span class="fu">list</span>(<span class="at">rate =</span> <span class="fl">2e-5</span>)),               <span class="co"># bench leak rate, s-1; omit to skip</span></span>
-<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a>  <span class="at">group =</span> <span class="st">&quot;campaign&quot;</span>, <span class="at">tissue =</span> <span class="st">&quot;tissue&quot;</span>)</span>
-<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a>CO2 <span class="ot">&lt;-</span> <span class="fu">process_fluxes</span>(manID, <span class="at">aux =</span> aux, <span class="at">gastype =</span> <span class="st">&quot;CO2dry_ppm&quot;</span>, <span class="at">primary =</span> <span class="fu">list</span>(<span class="at">precision =</span> <span class="st">&quot;allan&quot;</span>, <span class="at">mdf =</span> <span class="st">&quot;two_sigma&quot;</span>))</span>
-<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a>CH4</span>
-<span id="cb6-13"><a href="#cb6-13" tabindex="-1"></a><span class="fu">table</span>(CH4<span class="sc">$</span>fluxes<span class="sc">$</span>det_class); <span class="fu">table</span>(CH4<span class="sc">$</span>fluxes<span class="sc">$</span>qc_any)</span></code></pre></div>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>  <span class="at">precision =</span> <span class="st">&quot;allan&quot;</span>, <span class="at">mdf =</span> <span class="st">&quot;christiansen&quot;</span>, <span class="at">conf =</span> <span class="fl">0.95</span>,   <span class="co"># -&gt; sigma_emp, MDF_emp, below_MDF_emp, MDF_emp_method</span></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>  <span class="at">extra     =</span> <span class="cn">NULL</span>,                                         <span class="co"># or list(precision=..., mdf=..., conf=...) / &quot;all&quot;</span></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>  <span class="at">qc        =</span> <span class="fu">list</span>(<span class="at">c0 =</span> <span class="fu">list</span>(<span class="at">k =</span> <span class="fl">1.5</span>), <span class="at">co2_tracer =</span> <span class="fu">list</span>(<span class="at">min_slope =</span> <span class="dv">0</span>), <span class="at">convex =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>                   <span class="at">min_window =</span> <span class="fu">list</span>(<span class="at">secs =</span> <span class="dv">120</span>), <span class="at">ambient_start =</span> <span class="fu">list</span>(<span class="at">sigma =</span> <span class="dv">3</span>, <span class="at">secs =</span> <span class="dv">10</span>),</span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>                   <span class="at">leak =</span> <span class="fu">list</span>(<span class="at">rate =</span> <span class="fl">2e-5</span>)),               <span class="co"># bench leak rate, s-1; omit to skip</span></span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>  <span class="at">group =</span> <span class="st">&quot;campaign&quot;</span>, <span class="at">tissue =</span> <span class="st">&quot;tissue&quot;</span>)</span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>CO2 <span class="ot">&lt;-</span> <span class="fu">process_fluxes</span>(manID, <span class="at">aux =</span> aux, <span class="at">gastype =</span> <span class="st">&quot;CO2dry_ppm&quot;</span>, <span class="at">mdf =</span> <span class="st">&quot;two_sigma&quot;</span>)</span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a>CH4</span>
+<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a><span class="fu">table</span>(CH4<span class="sc">$</span>fluxes<span class="sc">$</span>det_class_emp); <span class="fu">table</span>(CH4<span class="sc">$</span>fluxes<span class="sc">$</span>qc_any)</span></code></pre></div>
 <p>The same steps by hand, if you want them one at a time:</p>
 <div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>CH4_flux <span class="ot">&lt;-</span> <span class="fu">goFlux</span>(manID, <span class="st">&quot;CH4dry_ppb&quot;</span>)</span>
 <span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>CH4_best <span class="ot">&lt;-</span> <span class="fu">best.flux</span>(CH4_flux)</span>
 <span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>CH4_best <span class="ot">&lt;-</span> <span class="fu">flag_detection</span>(CH4_best, <span class="at">traces =</span> manID, <span class="at">gastype =</span> <span class="st">&quot;CH4dry_ppb&quot;</span>,</span>
-<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>                           <span class="at">precision =</span> <span class="fu">c</span>(<span class="st">&quot;allan&quot;</span>, <span class="st">&quot;datasheet&quot;</span>), <span class="at">mdf =</span> <span class="fu">c</span>(<span class="st">&quot;goflux&quot;</span>, <span class="st">&quot;christiansen&quot;</span>),</span>
-<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>                           <span class="at">conf =</span> <span class="fl">0.95</span>, <span class="at">primary =</span> <span class="fu">list</span>(<span class="at">precision =</span> <span class="st">&quot;allan&quot;</span>, <span class="at">mdf =</span> <span class="st">&quot;christiansen&quot;</span>, <span class="at">conf =</span> <span class="fl">0.95</span>))</span>
-<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>CH4_best <span class="ot">&lt;-</span> <span class="fu">qc_screens</span>(CH4_best, <span class="at">traces =</span> manID, <span class="at">gastype =</span> <span class="st">&quot;CH4dry_ppb&quot;</span>, <span class="at">co2 =</span> CO2<span class="sc">$</span>fluxes,</span>
-<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>                       <span class="at">screens =</span> <span class="fu">list</span>(<span class="at">c0 =</span> <span class="cn">TRUE</span>, <span class="at">co2_tracer =</span> <span class="cn">TRUE</span>, <span class="at">convex =</span> <span class="cn">TRUE</span>))</span></code></pre></div>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>                           <span class="at">precision =</span> <span class="st">&quot;allan&quot;</span>, <span class="at">mdf =</span> <span class="st">&quot;christiansen&quot;</span>, <span class="at">conf =</span> <span class="fl">0.95</span>)</span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>CH4_best <span class="ot">&lt;-</span> <span class="fu">qc_screens</span>(CH4_best, <span class="at">traces =</span> manID, <span class="at">gastype =</span> <span class="st">&quot;CH4dry_ppb&quot;</span>, <span class="at">co2 =</span> CO2<span class="sc">$</span>fluxes,</span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>                       <span class="at">screens =</span> <span class="fu">list</span>(<span class="at">c0 =</span> <span class="cn">TRUE</span>, <span class="at">co2_tracer =</span> <span class="cn">TRUE</span>, <span class="at">convex =</span> <span class="cn">TRUE</span>))</span></code></pre></div>
 <p>Optionally feed the empirical precision back into goFlux so its own
 <code>MDF</code> column and <code>flux.plot()</code> annotations use
 it:</p>
@@ -471,27 +470,87 @@ it:</p>
 <span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>manID<span class="sc">$</span>CH4_prec <span class="ot">&lt;-</span> sig<span class="sc">$</span>sigma[<span class="fu">match</span>(manID<span class="sc">$</span>UniqueID, sig<span class="sc">$</span>UniqueID)]</span>
 <span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>CH4_flux <span class="ot">&lt;-</span> <span class="fu">goFlux</span>(manID, <span class="st">&quot;CH4dry_ppb&quot;</span>)     <span class="co"># goFlux reads the *_prec columns</span></span></code></pre></div>
 </div>
+<div id="b.-the-four-teaching-cases-evaluated" class="section level2">
+<h2>4b. The four teaching cases (evaluated)</h2>
+<p>This is the logic of Figure 4 of the guidelines paper: four real
+closures that look alike in a flux table until the detection flag and
+the QC screens are applied. <code>stemflux_examples()</code> ships them
+with their real geometry (plus a synthetic uptake, <code>f</code>).</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">library</span>(stemflux)</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>ex <span class="ot">&lt;-</span> <span class="fu">stemflux_examples</span>(<span class="fu">c</span>(<span class="st">&quot;a&quot;</span>, <span class="st">&quot;b&quot;</span>, <span class="st">&quot;c&quot;</span>, <span class="st">&quot;d&quot;</span>, <span class="st">&quot;f&quot;</span>))</span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>ex<span class="sc">$</span>aux[, <span class="fu">c</span>(<span class="st">&quot;example&quot;</span>, <span class="st">&quot;UniqueID&quot;</span>, <span class="st">&quot;what&quot;</span>)]</span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="co">#&gt;   example              UniqueID</span></span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a><span class="co">#&gt; 1       a 2021-05-18_5086_I_7.0</span></span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a><span class="co">#&gt; 2       b   2020-09-23_5092_I_6</span></span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a><span class="co">#&gt; 3       c  2021-02-25_1641_WD_5</span></span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a><span class="co">#&gt; 4       d   2020-09-21_3589_U_6</span></span>
+<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a><span class="co">#&gt; 5       f     SYN_uptake_from_a</span></span>
+<span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a><span class="co">#&gt;                                                                                                      what</span></span>
+<span id="cb9-11"><a href="#cb9-11" tabindex="-1"></a><span class="co">#&gt; 1                                                            high-signal valid closure (CO2 and CH4 rise)</span></span>
+<span id="cb9-12"><a href="#cb9-12" tabindex="-1"></a><span class="co">#&gt; 2                                                                      valid closure, CH4 below detection</span></span>
+<span id="cb9-13"><a href="#cb9-13" tabindex="-1"></a><span class="co">#&gt; 3                                                                       failed closure (flat CO2 and CH4)</span></span>
+<span id="cb9-14"><a href="#cb9-14" tabindex="-1"></a><span class="co">#&gt; 4                                                                       ambiguous: CH4 rise over flat CO2</span></span>
+<span id="cb9-15"><a href="#cb9-15" tabindex="-1"></a><span class="co">#&gt; 5 synthetic CH4 uptake (-0.08 ppb/s) with positive CO2; Gaussian noise at the measured Allan sigma of (a)</span></span>
+<span id="cb9-16"><a href="#cb9-16" tabindex="-1"></a><span class="fu">invisible</span>(<span class="fu">capture.output</span>(</span>
+<span id="cb9-17"><a href="#cb9-17" tabindex="-1"></a>  res <span class="ot">&lt;-</span> <span class="fu">suppressWarnings</span>(<span class="fu">process_fluxes</span>(ex<span class="sc">$</span>data, <span class="at">gastype =</span> <span class="st">&quot;CH4dry_ppb&quot;</span>,</span>
+<span id="cb9-18"><a href="#cb9-18" tabindex="-1"></a>                          <span class="at">qc =</span> <span class="fu">list</span>(<span class="at">c0 =</span> <span class="cn">TRUE</span>, <span class="at">co2_tracer =</span> <span class="cn">TRUE</span>, <span class="at">convex =</span> <span class="cn">TRUE</span>, <span class="at">min_window =</span> <span class="fu">list</span>(<span class="at">secs =</span> <span class="dv">120</span>))))))</span>
+<span id="cb9-19"><a href="#cb9-19" tabindex="-1"></a>out <span class="ot">&lt;-</span> <span class="fu">merge</span>(ex<span class="sc">$</span>aux[, <span class="fu">c</span>(<span class="st">&quot;UniqueID&quot;</span>, <span class="st">&quot;example&quot;</span>)], res<span class="sc">$</span>fluxes, <span class="at">by =</span> <span class="st">&quot;UniqueID&quot;</span>)</span>
+<span id="cb9-20"><a href="#cb9-20" tabindex="-1"></a>out <span class="ot">&lt;-</span> out[<span class="fu">order</span>(out<span class="sc">$</span>example), ]</span>
+<span id="cb9-21"><a href="#cb9-21" tabindex="-1"></a>out[, <span class="fu">c</span>(<span class="st">&quot;example&quot;</span>, <span class="st">&quot;best.flux&quot;</span>, <span class="st">&quot;sigma_emp&quot;</span>, <span class="st">&quot;MDF_emp&quot;</span>, <span class="st">&quot;det_class_emp&quot;</span>, <span class="st">&quot;qc_co2_slope&quot;</span>, <span class="st">&quot;qc_co2_tracer&quot;</span>,</span>
+<span id="cb9-22"><a href="#cb9-22" tabindex="-1"></a>        <span class="st">&quot;qc_convex&quot;</span>, <span class="st">&quot;qc_any&quot;</span>)]</span>
+<span id="cb9-23"><a href="#cb9-23" tabindex="-1"></a><span class="co">#&gt;   example    best.flux sigma_emp   MDF_emp   det_class_emp qc_co2_slope qc_co2_tracer</span></span>
+<span id="cb9-24"><a href="#cb9-24" tabindex="-1"></a><span class="co">#&gt; 4       a  0.255675983   2.22532 0.0137646        emission   0.89418753         FALSE</span></span>
+<span id="cb9-25"><a href="#cb9-25" tabindex="-1"></a><span class="co">#&gt; 2       b -0.000180131   1.72061 0.0108030 below detection   0.72158795         FALSE</span></span>
+<span id="cb9-26"><a href="#cb9-26" tabindex="-1"></a><span class="co">#&gt; 3       c -0.000112764   2.87148 0.0254475 below detection   0.00022949          TRUE</span></span>
+<span id="cb9-27"><a href="#cb9-27" tabindex="-1"></a><span class="co">#&gt; 1       d  0.013659305   2.10148 0.0132230        emission  -0.00396495          TRUE</span></span>
+<span id="cb9-28"><a href="#cb9-28" tabindex="-1"></a><span class="co">#&gt; 5       f -0.055206054   2.17009 0.0134230          uptake   0.60033660         FALSE</span></span>
+<span id="cb9-29"><a href="#cb9-29" tabindex="-1"></a><span class="co">#&gt;   qc_convex qc_any</span></span>
+<span id="cb9-30"><a href="#cb9-30" tabindex="-1"></a><span class="co">#&gt; 4     FALSE  FALSE</span></span>
+<span id="cb9-31"><a href="#cb9-31" tabindex="-1"></a><span class="co">#&gt; 2      TRUE   TRUE</span></span>
+<span id="cb9-32"><a href="#cb9-32" tabindex="-1"></a><span class="co">#&gt; 3      TRUE   TRUE</span></span>
+<span id="cb9-33"><a href="#cb9-33" tabindex="-1"></a><span class="co">#&gt; 1      TRUE   TRUE</span></span>
+<span id="cb9-34"><a href="#cb9-34" tabindex="-1"></a><span class="co">#&gt; 5     FALSE  FALSE</span></span></code></pre></div>
+<p>Reading the rows: <code>a</code> is detected and passes;
+<code>b</code> is a good closure whose CH4 flux is below the detection
+limit (kept, flagged); <code>c</code> fails the CO2 tracer screen
+because the chamber never sealed, so its CH4 number is meaningless
+whatever its size; <code>d</code> has a clear CH4 rise but no CO2 rise,
+which the tracer screen flags for a look (a leak-free chamber on live
+tissue should accumulate CO2); <code>f</code> is an uptake. No row was
+removed.</p>
+</div>
 <div id="where-the-outputs-go" class="section level2">
 <h2>5. Where the outputs go</h2>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">write_outputs</span>(CH4, <span class="st">&quot;results/CH4&quot;</span>)</span>
-<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a><span class="co">#&gt; results/CH4/fluxes.csv        one row per UniqueID</span></span>
-<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a><span class="co">#&gt; results/CH4/settings.json     every option used (methods section)</span></span>
-<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="co">#&gt; results/CH4/flux_plots.pdf    one page per closure (goFlux::flux.plot via flux_pdf)</span></span>
-<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a><span class="co">#&gt; results/CH4/ebullition_events.csv   only when the ebullition add-on ran</span></span></code></pre></div>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="fu">write_outputs</span>(CH4, <span class="st">&quot;results/CH4&quot;</span>)</span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a><span class="co">#&gt; results/CH4/fluxes.csv        one row per UniqueID</span></span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a><span class="co">#&gt; results/CH4/settings.json     every option used (methods section)</span></span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a><span class="co">#&gt; results/CH4/flux_plots.pdf    one page per closure (goFlux::flux.plot via flux_pdf)</span></span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a><span class="co">#&gt; results/CH4/ebullition_events.csv   only when the ebullition add-on ran</span></span></code></pre></div>
 <p><code>process_fluxes()</code> returns a list: <code>fluxes</code>,
 <code>events</code> (<code>NULL</code> unless the ebullition add-on
 ran), <code>traces</code> (the concentration data actually fitted),
-<code>gastype</code>, <code>settings</code>. Every column of
-<code>fluxes</code> and where it comes from:</p>
+<code>gastype</code>, <code>settings</code>.</p>
+<p><strong>goFlux columns are never modified; stemflux adds columns;
+nothing is removed.</strong> <code>fluxes</code> starts as the exact
+<code>best.flux()</code> table (same names, same values) and stemflux
+appends columns with distinguishable names (<code>*_emp</code>,
+<code>qc_*</code>, <code>flux_ebullitive</code>, …), so
+<code>goFlux::flux.plot()</code> and any other goFlux function run on it
+unchanged. <code>flux_pdf()</code> replaces <code>flux2pdf()</code> only
+because the latter fails with ggplot2 &gt;= 3.5; it writes the same
+plots produced by <code>flux.plot()</code>. Every column of
+<code>fluxes</code>, with its origin:</p>
 <table>
 <colgroup>
-<col width="33%" />
-<col width="33%" />
-<col width="33%" />
+<col width="25%" />
+<col width="25%" />
+<col width="25%" />
+<col width="25%" />
 </colgroup>
 <thead>
 <tr class="header">
 <th>column(s)</th>
+<th>origin</th>
 <th>produced by</th>
 <th>meaning</th>
 </tr>
@@ -499,6 +558,7 @@ ran), <code>traces</code> (the concentration data actually fitted),
 <tbody>
 <tr class="odd">
 <td><code>UniqueID</code></td>
+<td>goFlux (unchanged)</td>
 <td>auxfile / <code>obs.win()</code></td>
 <td>closure identifier</td>
 </tr>
@@ -507,6 +567,7 @@ ran), <code>traces</code> (the concentration data actually fitted),
 <code>LM.slope</code>, <code>LM.MAE</code>, <code>LM.RMSE</code>,
 <code>LM.AICc</code>, <code>LM.SE</code>, <code>LM.se.rel</code>,
 <code>LM.r2</code>, <code>LM.p.val</code></td>
+<td>goFlux (unchanged)</td>
 <td><code>goFlux::goFlux()</code></td>
 <td>linear model fit</td>
 </tr>
@@ -515,6 +576,7 @@ ran), <code>traces</code> (the concentration data actually fitted),
 <code>HM.slope</code>, <code>HM.MAE</code>, <code>HM.RMSE</code>,
 <code>HM.AICc</code>, <code>HM.SE</code>, <code>HM.se.rel</code>,
 <code>HM.r2</code>, <code>HM.k</code></td>
+<td>goFlux (unchanged)</td>
 <td><code>goFlux::goFlux()</code></td>
 <td>Hutchinson-Mosier fit</td>
 </tr>
@@ -522,6 +584,7 @@ ran), <code>traces</code> (the concentration data actually fitted),
 <td><code>C0</code>, <code>Ct</code>, <code>MDF</code>,
 <code>prec</code>, <code>flux.term</code>, <code>nb.obs</code>,
 <code>k.max</code>, <code>k.mult</code>, <code>g.fact</code></td>
+<td>goFlux (unchanged)</td>
 <td><code>goFlux::goFlux()</code></td>
 <td>start/end concentration, goFlux’s MDF (datasheet <code>prec</code>),
 (V/A)(P/RT), n, kappa bounds, g-factor</td>
@@ -531,85 +594,100 @@ ran), <code>traces</code> (the concentration data actually fitted),
 <code>quality.check</code>, <code>HM.diagnose</code>,
 <code>LM.diagnose</code>, <code>HM.score</code>, <code>LM.score</code>,
 <code>*.lim</code>, <code>warn.nb.obs</code></td>
+<td>goFlux (unchanged)</td>
 <td><code>goFlux::best.flux()</code></td>
 <td>selected flux and why</td>
 </tr>
 <tr class="even">
-<td><code>sigma_&lt;precision&gt;</code></td>
-<td><code>flag_detection()</code></td>
-<td>per-closure precision by estimator (<code>allan</code>,
-<code>mad</code>, <code>rolling</code>, <code>datasheet</code>,
-<code>custom</code>)</td>
+<td><code>&lt;group&gt;</code>, <code>&lt;tissue&gt;</code></td>
+<td>stemflux (added)</td>
+<td>auxfile via <code>process_fluxes()</code></td>
+<td>grouping / tissue columns merged for the screens</td>
 </tr>
 <tr class="odd">
-<td><code>MDF_&lt;mdf&gt;_&lt;precision&gt;[_&lt;conf&gt;]</code>,
-<code>below_&lt;mdf&gt;_&lt;precision&gt;[_&lt;conf&gt;]</code></td>
+<td><code>sigma_emp</code></td>
+<td>stemflux (added)</td>
 <td><code>flag_detection()</code></td>
-<td>every requested MDF and its below-detection flag</td>
+<td>per-closure precision by the chosen estimator</td>
 </tr>
 <tr class="even">
-<td><code>MDF_goflux_orig</code></td>
+<td><code>MDF_emp</code>, <code>below_MDF_emp</code>,
+<code>MDF_emp_method</code></td>
+<td>stemflux (added)</td>
 <td><code>flag_detection()</code></td>
-<td>goFlux’s original <code>MDF</code> column, preserved</td>
+<td>the reported MDF, its flag, and
+<code>&quot;&lt;mdf&gt; | &lt;precision&gt; | &lt;conf&gt;&quot;</code></td>
 </tr>
 <tr class="odd">
-<td><code>MDF</code>, <code>below_MDF</code>, <code>MDF_method</code>,
-<code>detected</code>, <code>det_class</code></td>
-<td><code>flag_detection()</code> (<code>primary</code>)</td>
-<td>the one reported MDF and classification (<code>emission</code> /
-<code>uptake</code> / <code>below detection</code>)</td>
+<td><code>detected_emp</code>, <code>det_class_emp</code></td>
+<td>stemflux (added)</td>
+<td><code>flag_detection()</code></td>
+<td><code>emission</code> / <code>uptake</code> /
+<code>below detection</code> by <code>MDF_emp</code></td>
 </tr>
 <tr class="even">
+<td><code>sigma_&lt;precision&gt;</code>,
+<code>MDF_&lt;mdf&gt;_&lt;precision&gt;[_&lt;conf&gt;]</code></td>
+<td>stemflux (added, only with <code>extra</code>)</td>
+<td><code>flag_detection()</code></td>
+<td>comparison columns</td>
+</tr>
+<tr class="odd">
 <td><code>qc_c0</code>, <code>qc_c0_ratio</code></td>
+<td>stemflux (added)</td>
 <td><code>qc_screens()</code></td>
 <td>C0 &gt; k x group median</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>qc_co2_tracer</code>, <code>qc_co2_slope</code></td>
+<td>stemflux (added)</td>
 <td><code>qc_screens()</code></td>
 <td>CO2 slope &lt;= min_slope (NA for exempt tissue)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>qc_convex</code></td>
+<td>stemflux (added)</td>
 <td><code>qc_screens()</code></td>
 <td>accelerating trace</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>qc_min_window</code></td>
+<td>stemflux (added)</td>
 <td><code>qc_screens()</code></td>
 <td>window shorter than <code>secs</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>qc_ambient_start</code>,
 <code>qc_ambient_dev_sigma</code></td>
+<td>stemflux (added)</td>
 <td><code>qc_screens()</code></td>
 <td>start already enriched vs pre-closure ambient</td>
 </tr>
-<tr class="odd">
-<td><code>qc_leak</code>, <code>qc_leak_apparent_flux</code></td>
-<td><code>qc_screens()</code></td>
-<td>leak-equivalent flux &gt;= MDF</td>
-</tr>
 <tr class="even">
+<td><code>qc_leak</code>, <code>qc_leak_apparent_flux</code></td>
+<td>stemflux (added)</td>
+<td><code>qc_screens()</code></td>
+<td>leak-equivalent flux &gt;= <code>MDF_emp</code></td>
+</tr>
+<tr class="odd">
 <td><code>qc_any</code>, <code>qc_note</code></td>
+<td>stemflux (added)</td>
 <td><code>qc_screens()</code></td>
 <td>any screen fired; which</td>
-</tr>
-<tr class="odd">
-<td><code>&lt;group&gt;</code>, <code>&lt;tissue&gt;</code></td>
-<td>auxfile via <code>process_fluxes()</code></td>
-<td>grouping / tissue columns merged for the screens</td>
 </tr>
 <tr class="even">
 <td><code>ebullition_handling</code>, <code>n_ebullition_events</code>,
 <code>ebullition_flag</code></td>
-<td>ebullition add-on (<code>&quot;flag&quot;</code> or <code>&quot;split&quot;</code>)</td>
-<td>present only when the add-on ran</td>
+<td>stemflux add-on (added only with
+<code>ebullition = &quot;flag&quot;</code>/<code>&quot;split&quot;</code>)</td>
+<td><code>detect_ebullition()</code></td>
+<td>events per closure</td>
 </tr>
 <tr class="odd">
 <td><code>flux_diffusive</code>, <code>flux_ebullitive</code>,
 <code>flux_total</code>, <code>ebullition_method</code></td>
-<td>ebullition add-on (<code>&quot;split&quot;</code>)</td>
+<td>stemflux add-on (added only with <code>&quot;split&quot;</code>)</td>
+<td><code>split_ebullition()</code></td>
 <td>diffusive term (= <code>best.flux</code> on the de-ebulliated
 trace), bubble term, sum</td>
 </tr>
@@ -620,7 +698,7 @@ trace), bubble term, sum</td>
 size, gas units), <code>threshold</code>. <code>settings</code>:
 <code>stemflux_version</code>, <code>goFlux_version</code>,
 <code>gastype</code>, <code>precision</code>, <code>mdf</code>,
-<code>conf</code>, <code>primary</code>, <code>sigma_global</code>,
+<code>conf</code>, <code>extra</code>, <code>sigma_global</code>,
 <code>qc</code> (parameters of each screen), <code>group</code>,
 <code>tissue</code>, <code>ebullition*</code>, <code>goFlux_args</code>,
 <code>best.flux_args</code>, <code>n_closures</code>,
@@ -628,10 +706,10 @@ size, gas units), <code>threshold</code>. <code>settings</code>:
 </div>
 <div id="plots-by-hand" class="section level2">
 <h2>6. Plots by hand</h2>
-<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>CH4_plots <span class="ot">&lt;-</span> <span class="fu">flux.plot</span>(CH4<span class="sc">$</span>fluxes, CH4<span class="sc">$</span>traces, <span class="st">&quot;CH4dry_ppb&quot;</span>, <span class="at">shoulder =</span> <span class="dv">20</span>,</span>
-<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>                       <span class="at">plot.display =</span> <span class="fu">c</span>(<span class="st">&quot;MDF&quot;</span>, <span class="st">&quot;prec&quot;</span>, <span class="st">&quot;nb.obs&quot;</span>, <span class="st">&quot;flux.term&quot;</span>))</span>
-<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a>CO2_plots <span class="ot">&lt;-</span> <span class="fu">flux.plot</span>(CO2<span class="sc">$</span>fluxes, CO2<span class="sc">$</span>traces, <span class="st">&quot;CO2dry_ppm&quot;</span>, <span class="at">shoulder =</span> <span class="dv">20</span>)</span>
-<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a><span class="fu">flux_pdf</span>(<span class="fu">c</span>(CO2_plots, CH4_plots), <span class="st">&quot;plots/flux_results.pdf&quot;</span>)   <span class="co"># ggplot2 &gt;= 3.5 safe</span></span></code></pre></div>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>CH4_plots <span class="ot">&lt;-</span> <span class="fu">flux.plot</span>(CH4<span class="sc">$</span>fluxes, CH4<span class="sc">$</span>traces, <span class="st">&quot;CH4dry_ppb&quot;</span>, <span class="at">shoulder =</span> <span class="dv">20</span>,</span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a>                       <span class="at">plot.display =</span> <span class="fu">c</span>(<span class="st">&quot;MDF&quot;</span>, <span class="st">&quot;prec&quot;</span>, <span class="st">&quot;nb.obs&quot;</span>, <span class="st">&quot;flux.term&quot;</span>))</span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a>CO2_plots <span class="ot">&lt;-</span> <span class="fu">flux.plot</span>(CO2<span class="sc">$</span>fluxes, CO2<span class="sc">$</span>traces, <span class="st">&quot;CO2dry_ppm&quot;</span>, <span class="at">shoulder =</span> <span class="dv">20</span>)</span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a><span class="fu">flux_pdf</span>(<span class="fu">c</span>(CO2_plots, CH4_plots), <span class="st">&quot;plots/flux_results.pdf&quot;</span>)   <span class="co"># ggplot2 &gt;= 3.5 safe</span></span></code></pre></div>
 </div>
 
 
