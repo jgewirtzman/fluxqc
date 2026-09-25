@@ -144,14 +144,15 @@ for `a`):
 |---|---|---|---|---|
 | a | `2021-05-18_5086_I_7.0` | high-signal valid closure (CO2 and CH4 rise) | real | Yale-Myers campaign auxfile |
 | b | `2020-09-23_5092_I_6` | valid closure, CH4 below detection | real | same |
-| c | `2021-02-25_1641_WD_5` | failed closure (flat CO2 and CH4) | real | same |
-| d | `2020-09-21_3589_U_6` | ambiguous: CH4 rise over flat CO2 | real | same |
+| c | `2021-02-25_1885_I_5_1` | failed closure: CO2 not rising (slope -0.025 ppm/s), CH4 below detection | real | same |
+| d | `2020-12-09_5091_I_5` | ambiguous: CH4 detected (marginal uptake) over a flat CO2 tracer (slope -0.0003 ppm/s, p 0.69) | real | same |
 | e | `BF_CP40_2022-10-23_P06` | floating chamber on water with 5 ebullition events | real | BlueFlux chamber parameters (Area 324.3 cm2, Vtot 4.318 L); Tcham = site-day mean air temperature |
 | f | `SYN_uptake_from_a` | synthetic CH4 uptake built from the measured noise of a | synthetic | copied from a |
 
 The real closures are released with the package under its MIT license with
 the data owner's permission. `a`-`d`: Yale-Myers Forest (CT, USA) tree-stem
-record 2020-2021, ABB/LGR UGGA, semi-rigid sleeve chambers; cite as
+record 2020-2021, ABB/LGR UGGA, semi-rigid sleeve chambers, shipped as the
+campaign's clicked goFlux windows with their obs.win context; cite as
 "Gewirtzman et al., Yale-Myers Forest stem-flux record 2020-2021, distributed
 with the stemflux R package". `e`: NASA Carbon Monitoring System BlueFlux
 field campaign, ground component, site CP40 (Christian Point, ghost-forest

@@ -13,7 +13,7 @@ test_that("qc_screens runs every screen on the example closure and never drops r
   expect_false(out$qc_c0); expect_false(out$qc_co2_tracer); expect_false(out$qc_min_window)
   expect_equal(out$qc_co2_slope, co2$LM.slope)
   expect_true(is.logical(out$qc_convex))
-  expect_true(is.na(out$qc_ambient_start))      # example closure has no rows before start.time
+  expect_false(is.na(out$qc_ambient_start))     # the obs.win context supplies pre-closure rows
   expect_false(out$qc_leak)                     # 1e-6 x range x flux.term << goFlux MDF
   expect_equal(names(attr(out, "qc_screens")), c("c0", "co2_tracer", "convex", "min_window", "ambient_start", "leak"))
 })

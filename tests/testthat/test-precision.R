@@ -33,10 +33,10 @@ test_that("precision_by_id summarises per UniqueID", {
   d2 <- d; d2$UniqueID <- "second"
   s <- precision_by_id(rbind(d, d2), "CH4dry_ppb")
   expect_equal(nrow(s), 2)
-  expect_equal(s$n, c(542, 542))
+  expect_equal(s$n, c(770, 770))
   expect_equal(s$sigma[1], precision_allan(d$CH4dry_ppb[d$flag == 1]))
   sm <- precision_by_id(d, "CH4dry_ppb", method = "mad", flag.only = FALSE)
-  expect_equal(sm$n, 603)
+  expect_equal(sm$n, 1207)
   expect_equal(sm$method, "mad")
   expect_error(precision_by_id(d, "nope"), "not found")
 })

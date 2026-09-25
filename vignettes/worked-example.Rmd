@@ -35,37 +35,42 @@ from the campaign auxfile and is stored by `example_closure()`:
 | `Tcham` | 26.02 C | chamber air temperature |
 | `Pcham` | 101.325 kPa | pressure |
 
-The archived trace holds dry mole fractions only (no H2O column), so the flux
-term is computed with `H2O_ppm = 0`, i.e. no water-vapour correction. That is
-the one assumption in this example.
+The rows carry the campaign's water column, so goFlux applies its water-vapour
+correction to the flux term exactly as in the campaign processing.
 
 ```{r load}
 library(stemflux)
-d <- example_closure(dead.band = 60)
+d <- example_closure()
 str(d[, c("UniqueID", "POSIX.time", "t_s", "CO2dry_ppm", "CH4dry_ppb", "flag", "Etime")])
 ```
 
+The data frame is the campaign's `obs.win()` segment (the recorded
+`start.time` plus a shoulder on each side) with the operator's clicked window
+marked `flag = 1`, exactly as `goFlux::click.peak2()` left it.
+
 ```{r raw-plot, fig.height = 5}
+w0 <- as.numeric(difftime(d$start.time_corr[1], d$start.time[1], units = "secs"))
 op <- par(mfrow = c(2, 1), mar = c(3, 4.5, 1.5, 1))
 plot(d$t_s, d$CO2dry_ppm, pch = 16, cex = 0.4, col = ifelse(d$flag == 1, "grey20", "grey70"),
-     xlab = "", ylab = "CO2 (ppm)", main = "raw closure; grey = dead band")
-abline(v = 60, col = "red", lty = 2)
+     xlab = "", ylab = "CO2 (ppm)", main = "obs.win segment; dark = clicked window, grey = context / dead band")
+abline(v = c(0, w0, w0 + d$obs.length_corr[1]), col = c("blue", "red", "red"), lty = c(1, 2, 2))
 plot(d$t_s, d$CH4dry_ppb, pch = 16, cex = 0.4, col = ifelse(d$flag == 1, "grey20", "grey70"),
-     xlab = "seconds since closure", ylab = "CH4 (ppb)")
-abline(v = 60, col = "red", lty = 2)
+     xlab = "seconds since recorded start.time", ylab = "CH4 (ppb)")
+abline(v = c(0, w0, w0 + d$obs.length_corr[1]), col = c("blue", "red", "red"), lty = c(1, 2, 2))
 par(op)
 ```
 
-## Step 1: dead band
+## Step 1: dead band (the clicked window)
 
-The first 60 s after closure are discarded (chamber mixing, operator
-disturbance). `example_closure()` already applied this through `flag_window()`;
-the rows with `flag == 1` are what every fit below uses.
+The operator started the fitting window `r w0` s after the recorded closure
+time (chamber mixing, operator disturbance) and ended it after
+`r d$obs.length_corr[1]` s; that is the dead band as actually applied in the
+campaign. The rows with `flag == 1` are what every fit below uses.
 
 ```{r deadband}
 n_total <- nrow(d); n_used <- sum(d$flag == 1)
 t_span  <- max(d$Etime[d$flag == 1]) - min(d$Etime[d$flag == 1])
-c(n_total = n_total, n_used = n_used, t_span_s = t_span)
+c(n_total = n_total, n_used = n_used, window_start_s = w0, t_span_s = t_span)
 ```
 
 ## Step 2: fitted dC/dt
@@ -127,19 +132,24 @@ c(V_over_A_m = VA, P_over_RT_mol_m3 = PRT, product_mol_m2 = VA * PRT)
 ```
 
 `flux_term()` is the same product written with goFlux's unit conventions
-(litres, kPa, cm2, Celsius):
+(litres, kPa, cm2, Celsius). goFlux also multiplies by `(1 - H2O_mol)`, the
+mean water-vapour mole fraction of the window, to express the flux per mole
+of *dry* air; that is why its `flux.term` is slightly smaller than the dry
+product:
 
 ```{r fluxterm}
-ft <- flux_term(V_L = 7.082698, P_kPa = 101.325, A_cm2 = 4254.121, T_C = 26.02)
-c(flux_term = ft, goFlux_flux.term = best_ch4$flux.term)
+h2o <- mean(w$H2O_ppm) / 1e6                          # mol mol-1
+ft0 <- flux_term(V_L = 7.082698, P_kPa = 101.325, A_cm2 = 4254.121, T_C = 26.02)
+ft  <- flux_term(V_L = 7.082698, P_kPa = 101.325, A_cm2 = 4254.121, T_C = 26.02, H2O_mol = h2o)
+c(flux_term_dry = ft0, H2O_mol = h2o, flux_term_with_H2O = ft, goFlux_flux.term = best_ch4$flux.term)
 ```
 
 ## Step 5: flux
 
 ```{r flux}
-flux_ch4_mol   <- slope_ch4_molfrac * VA * PRT        # mol m-2 s-1
-flux_ch4_nmol  <- flux_ch4_mol * 1e9                  # nmol m-2 s-1
-flux_co2_umol  <- slope_co2_molfrac * VA * PRT * 1e6  # umol m-2 s-1
+flux_ch4_mol   <- slope_ch4_molfrac * VA * PRT * (1 - h2o)        # mol m-2 s-1, dry-air basis
+flux_ch4_nmol  <- flux_ch4_mol * 1e9                              # nmol m-2 s-1
+flux_co2_umol  <- slope_co2_molfrac * VA * PRT * (1 - h2o) * 1e6  # umol m-2 s-1
 c(CH4_flux_nmol_m2_s = flux_ch4_nmol, CO2_flux_umol_m2_s = flux_co2_umol)
 # the shortcut used by goFlux: slope in ppb/s times flux.term gives nmol m-2 s-1 directly
 c(shortcut = slope_ch4 * ft, goFlux_LM = best_ch4$LM.flux, goFlux_HM = best_ch4$HM.flux,
@@ -173,7 +183,7 @@ mdf <- mdf_multi(flux.term = ft, t = t_used,
                  sigma.global = sigma_ch4) # a campaign median would go here (Wassmann)
 t(round(mdf, 6))
 # by hand, Table 2.5 criterion: (2 sigma / t) (V/A) (P/RT)
-c(MDF_2sigma_by_hand = (2 * sigma_ch4 * 1e-9 / t_used) * VA * PRT * 1e9)
+c(MDF_2sigma_by_hand = (2 * sigma_ch4 * 1e-9 / t_used) * VA * PRT * (1 - h2o) * 1e9)
 ```
 
 All MDFs are in nmol m-2 s-1. The regression standard error of the slope

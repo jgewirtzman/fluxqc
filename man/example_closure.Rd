@@ -4,13 +4,13 @@
 \alias{example_closure}
 \title{One real chamber closure, ready for goFlux}
 \usage{
-example_closure(dead.band = 60, prec = c(0.35, 0.9, 200))
+example_closure(dead.band = NULL, prec = c(0.35, 0.9, 200))
 }
 \arguments{
-\item{dead.band}{seconds discarded at the start of every closure
-(\code{flag = 0}); for \code{e} the 20 s trim was already applied by the source
-script, so the default dead band is reduced to 0 for that closure unless
-\code{dead.band} is given explicitly as a named vector.}
+\item{dead.band}{\code{NULL} (default) keeps the shipped \code{flag} column (the
+clicked window for \code{a}-\code{d}, the whole trimmed trace for \code{e}, 60 s for
+\code{f}). A number re-flags every closure as \code{start.time + dead.band} to the
+end of its segment, ignoring the clicked windows.}
 
 \item{prec}{manufacturer precision \verb{c(CO2 ppm, CH4 ppb, H2O ppm)}.}
 }
@@ -19,9 +19,10 @@ goFlux-shaped data.frame for the one closure.
 }
 \description{
 Alias for \code{stemflux_examples("a")$data}: closure \verb{2021-05-18_5086_I_7.0},
-a clean high-signal 600 s tree-stem closure (Yale-Myers Forest, ABB/LGR
-UGGA). See \code{\link[=stemflux_examples]{stemflux_examples()}} for the geometry and the other bundled
-closures.
+a clean high-signal tree-stem closure (Yale-Myers Forest, ABB/LGR UGGA)
+with the campaign's clicked window (765 s starting 91 s after the
+recorded \code{start.time}, 770 flagged rows) and its obs.win context. See
+\code{\link[=stemflux_examples]{stemflux_examples()}} for the geometry and the other bundled closures.
 }
 \examples{
 d <- example_closure()
