@@ -6,8 +6,8 @@
 \usage{
 auto_id_rise(
   ow.list,
-  gastype = "CO2dry_ppm",
-  gastype2 = "CH4dry_ppb",
+  detect.gas = "CO2dry_ppm",
+  gases = "auto",
   end.times = NULL,
   trim.secs = 30,
   max.secs = 600,
@@ -23,10 +23,10 @@ auto_id_rise(
 \arguments{
 \item{ow.list}{list of data.frames from \code{\link[goFlux:obs.win]{goFlux::obs.win()}}.}
 
-\item{gastype}{column used to find the rise (default \code{"CO2dry_ppm"}).}
+\item{detect.gas}{column used to find the rise (default \code{"CO2dry_ppm"}).}
 
-\item{gastype2}{second gas shown in the diagnostic plot (default
-\code{"CH4dry_ppb"}); ignored if absent.}
+\item{gases}{gas columns drawn in the diagnostic plot, one stacked panel
+each; \code{"auto"} (default) uses every recognised goFlux gas column present.}
 
 \item{end.times}{optional notebook end times: a data.frame with columns
 \code{UniqueID} and \code{end.time} (POSIXct or character in \code{tz}), or a named
@@ -59,14 +59,15 @@ an attribute \code{"log"} holding a data.frame (\code{UniqueID}, \code{method},
 }
 \description{
 A stand-in for \code{\link[goFlux:click.peak2]{goFlux::click.peak2()}} that can run under \code{Rscript}. For
-every observation window it (1) finds the longest sustained CO2 rise with
-\code{\link[=find_rise]{find_rise()}} (the chamber is closed, so CO2 accumulates from respiration),
-(2) trims the first \code{trim.secs} (mixing) and caps the window at the notebook
-end time plus \code{slack.secs} or at \code{max.secs}, whichever is shorter, and
-(3) falls back to notebook start + \code{trim.secs} .. notebook end (or
-\code{fallback.secs}) when no rise is found. It writes one diagnostic PNG per
-measurement so the automatic windows can be reviewed and redone
-interactively where needed.
+every observation window it (1) finds the longest sustained rise of
+\code{detect.gas} with \code{\link[=find_rise]{find_rise()}} (the chamber is closed, so CO2 accumulates
+from respiration), (2) trims the first \code{trim.secs} (mixing) and caps the
+window at the notebook end time plus \code{slack.secs} or at \code{max.secs},
+whichever is shorter, and (3) falls back to notebook start + \code{trim.secs}
+.. notebook end (or \code{fallback.secs}) when no rise is found. It writes one
+diagnostic PNG per measurement, with one stacked panel per gas in \code{gases},
+so the automatic windows can be reviewed and redone interactively where
+needed.
 }
 \examples{
 t0 <- as.POSIXct("2024-06-01 10:00:00", tz = "UTC")

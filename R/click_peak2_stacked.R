@@ -1,11 +1,12 @@
-#' Manual window selection with stacked CO2 and CH4 panels
+#' Manual window selection with any number of stacked gas panels
 #'
-#' A drop-in variant of [goFlux::click.peak2()] that shows two stacked panels,
-#' `gastype` (top, clicked) and `gastype2` (bottom, shown), sharing one time
-#' axis, so each window can be judged with both gas traces in view. You click
-#' the start and the end of the measurement on the top panel; the same window
-#' is applied to both gases and goFlux is then run per gas on the shared
-#' `flag`. The output has exactly the structure of `click.peak2()`.
+#' A drop-in variant of [goFlux::click.peak2()] that shows one panel per gas
+#' column in `gases`, stacked on a shared time axis, so each window can be
+#' judged with every trace in view (CO2, CH4, N2O, H2O, ... in any order). You
+#' click the start and the end of the measurement on the *top* panel (the
+#' first gas listed); the same window is applied to all gases and goFlux is
+#' then run per gas on the shared `flag`. The output has exactly the structure
+#' of `click.peak2()`.
 #'
 #' Like `click.peak2()`, this uses [graphics::identify()] in a pop-up device
 #' opened with [grDevices::dev.new()], so it must be run in an interactive
@@ -13,14 +14,18 @@
 #' plot pane). Under `Rscript` use [auto_id_rise()] or [windows_from_table()].
 #'
 #' @param ow.list list of data.frames from [goFlux::obs.win()].
-#' @param gastype gas shown in the top panel and used for clicking.
-#' @param gastype2 gas shown in the bottom panel.
+#' @param gases character vector of gas columns to stack, top to bottom; the
+#'   first is the one clicked. `"auto"` uses every recognised goFlux gas
+#'   column present (`CO2dry_ppm`, `CH4dry_ppb`, `N2Odry_ppb`, `NH3dry_ppb`,
+#'   `COdry_ppb`, `H2O_ppm`, ...), in that order.
 #' @param seq integer vector; which elements of `ow.list` to process
 #'   (default all).
 #' @param ref.secs optional typical closure length; a dashed guide line is
 #'   drawn at `start.time + ref.secs`.
 #' @param sleep seconds the validation plot stays open (0 to skip it).
-#' @param plot.lim,plot.lim2 y-axis clipping limits for the top and bottom panel.
+#' @param plot.lim y-axis clipping limits: `NULL` (data range + 5 percent), a
+#'   numeric `c(lo, hi)` applied to every panel, or a named list of such
+#'   vectors keyed by gas column (unnamed gases are unclipped).
 #' @param warn.length windows with fewer flagged observations trigger a warning.
 #' @param save.plots optional path of a PDF that receives all validation panels.
 #' @param width,height size of the pop-up window in inches.
@@ -34,14 +39,13 @@
 #' @examples
 #' \dontrun{
 #' ow <- goFlux::obs.win(inputfile = imp, auxfile = aux, obs.length = 600, shoulder = 120)
-#' manID <- click_peak2_stacked(ow, ref.secs = 600, save.plots = "windows.pdf")
-#' CO2_flux <- goFlux::goFlux(manID, "CO2dry_ppm")
-#' CH4_flux <- goFlux::goFlux(manID, "CH4dry_ppb")
+#' manID <- click_peak2_stacked(ow, gases = c("CO2dry_ppm", "CH4dry_ppb", "N2Odry_ppb"),
+#'                              ref.secs = 600, save.plots = "windows.pdf")
+#' manID <- click_peak2_stacked(ow, gases = "auto")
 #' }
 #' @export
-click_peak2_stacked <- function(ow.list, gastype = "CO2dry_ppm", gastype2 = "CH4dry_ppb",
-                                seq = NULL, ref.secs = NULL, sleep = 3,
-                                plot.lim = c(300, 5000), plot.lim2 = c(1500, 100000),
+click_peak2_stacked <- function(ow.list, gases = c("CO2dry_ppm", "CH4dry_ppb"),
+                                seq = NULL, ref.secs = NULL, sleep = 3, plot.lim = NULL,
                                 warn.length = 60, save.plots = NULL,
                                 width = 7, height = 6, abline = TRUE, abline_corr = TRUE) {
   if (is.data.frame(ow.list)) ow.list <- split(ow.list, ow.list$UniqueID)
@@ -54,23 +58,24 @@ click_peak2_stacked <- function(ow.list, gastype = "CO2dry_ppm", gastype2 = "CH4
 
   for (ow in seq) {
     d0 <- ow.list[[ow]]
-    g1 <- d0[[gastype]]; g2 <- d0[[gastype2]]
+    g <- resolve_gases(gases, d0)
+    ys <- lapply(g, function(x) d0[[x]])
     time.meas <- d0$POSIX.time
     uid <- unique(d0$UniqueID)[1]
     start.time <- unique(d0$start.time)[1]
-    yl1 <- stacked_ylim(g1, plot.lim); yl2 <- stacked_ylim(g2, plot.lim2)
+    yl <- stacked_ylims(ys, g, plot.lim)
     Sys.setenv(TZ = attr(time.meas, "tzone"))
 
     rownum <- NULL; identify.error <- NULL
     tryCatch({
       dev.new(noRStudioGD = TRUE, width = width, height = height)
-      scr <- draw_stacked(time.meas, g1, g2, yl1, yl2, gastype, gastype2,
-                          paste0(uid, "  -  click START then END here (", gastype, ")"),
+      scr <- draw_stacked(time.meas, ys, g, yl,
+                          paste0(uid, "  -  click START then END here (", g[1], ")"),
                           v_blue = if (abline) start.time else NULL,
                           v_guide = if (!is.null(ref.secs)) start.time + ref.secs else NULL,
                           time.axis = TRUE)
       screen(scr[1], new = FALSE)
-      rownum <- identify(time.meas, g1, pos = FALSE, n = 2, plot = TRUE,
+      rownum <- identify(time.meas, ys[[1]], pos = FALSE, n = 2, plot = TRUE,
                          atpen = FALSE, offset = 0.5, tolerance = 0.25)
     }, error = function(e) identify.error <<- e)
     try(close.screen(all.screens = TRUE), silent = TRUE)
@@ -95,8 +100,7 @@ click_peak2_stacked <- function(ow.list, gastype = "CO2dry_ppm", gastype2 = "CH4
 
     if (!is.null(sleep) && sleep > 0) {
       dev.new(noRStudioGD = TRUE, width = width, height = height)
-      draw_stacked(d$Etime, g1, g2, yl1, yl2, gastype, gastype2,
-                   paste0(uid, "   (red = selected window)"),
+      draw_stacked(d$Etime, ys, g, yl, paste0(uid, "   (red = selected window)"),
                    v_red = c(0, max(d$Etime[d$flag == 1])), col = d$flag + 1)
       sleeploop(sleep)
       try(close.screen(all.screens = TRUE), silent = TRUE)
@@ -108,9 +112,8 @@ click_peak2_stacked <- function(ow.list, gastype = "CO2dry_ppm", gastype2 = "CH4
   if (!is.null(save.plots) && length(done) > 0) {
     pdf(file = save.plots, width = width, height = height)
     for (d in done) {
-      draw_stacked(d$Etime, d[[gastype]], d[[gastype2]],
-                   stacked_ylim(d[[gastype]], plot.lim), stacked_ylim(d[[gastype2]], plot.lim2),
-                   gastype, gastype2,
+      g <- resolve_gases(gases, d); ys <- lapply(g, function(x) d[[x]])
+      draw_stacked(d$Etime, ys, g, stacked_ylims(ys, g, plot.lim),
                    paste0(unique(d$UniqueID)[1], "   (red = selected window)"),
                    v_red = c(0, max(d$Etime[d$flag == 1])), col = d$flag + 1)
       close.screen(all.screens = TRUE)
@@ -122,33 +125,60 @@ click_peak2_stacked <- function(ow.list, gastype = "CO2dry_ppm", gastype2 = "CH4
   res
 }
 
-# y-limits like click.peak2: data range + 5% pad, clipped to lim
-stacked_ylim <- function(v, lim) {
-  ymax <- max(v, na.rm = TRUE); ymin <- min(v, na.rm = TRUE)
-  yd <- ymax - ymin; lo <- ymin - yd * 0.05; hi <- ymax + yd * 0.05
-  c(max(lo, lim[1]), min(hi, lim[2]))
+# gas columns goFlux knows about, in display order
+goflux_gas_columns <- function() {
+  c("CO2dry_ppm", "CH4dry_ppb", "N2Odry_ppb", "NH3dry_ppb", "COdry_ppb",
+    "CO2_ppm", "CH4_ppb", "N2O_ppb", "H2O_ppm")
 }
 
-# Draw the two stacked panels on the current device using split.screen();
+# Resolve gases = "auto" or a character vector against the columns of d
+resolve_gases <- function(gases, d) {
+  if (identical(gases, "auto")) {
+    g <- intersect(goflux_gas_columns(), names(d))
+    if (!length(g)) stop("no recognised gas column found in the data; give 'gases' explicitly")
+    return(g)
+  }
+  miss <- setdiff(gases, names(d))
+  if (length(miss)) stop("gas column(s) not found: ", paste(miss, collapse = ", "))
+  gases
+}
+
+# y-limits like click.peak2: data range + 5% pad, clipped to lim (NULL = no clip)
+stacked_ylim <- function(v, lim = NULL) {
+  ymax <- max(v, na.rm = TRUE); ymin <- min(v, na.rm = TRUE)
+  yd <- ymax - ymin; if (yd == 0) yd <- 1
+  lo <- ymin - yd * 0.05; hi <- ymax + yd * 0.05
+  if (is.null(lim)) c(lo, hi) else c(max(lo, lim[1]), min(hi, lim[2]))
+}
+
+stacked_ylims <- function(ys, gases, plot.lim) {
+  lapply(seq_along(ys), function(i) {
+    lim <- if (is.null(plot.lim)) NULL
+           else if (is.list(plot.lim)) plot.lim[[gases[i]]]
+           else plot.lim
+    stacked_ylim(ys[[i]], lim)
+  })
+}
+
+# Draw one panel per gas on the current device using split.screen();
 # returns the screen numbers so the caller can re-activate the top screen.
-draw_stacked <- function(x, y1, y2, yl1, yl2, lab1, lab2, top.title,
-                         v_blue = NULL, v_red = NULL, v_guide = NULL,
-                         time.axis = FALSE, col = "grey30") {
+draw_stacked <- function(x, ys, labs, ylims, top.title, v_blue = NULL, v_red = NULL,
+                         v_guide = NULL, time.axis = FALSE, col = "grey30") {
+  n <- length(ys)
   vlines <- function() {
     if (!is.null(v_blue))  abline(v = v_blue,  col = "blue")
     if (!is.null(v_guide)) abline(v = v_guide, col = "grey55", lty = 2)
     if (!is.null(v_red))   abline(v = v_red,   col = "red")
   }
-  scr <- split.screen(c(2, 1))
-  screen(scr[1]); par(mar = c(2.2, 4.6, 3.0, 1))
-  plot(x, y1, col = col, xlab = "", ylab = lab1, xaxt = "n", ylim = yl1)
-  vlines()
-  if (time.axis) axis.POSIXct(1, at = pretty(x, 12), format = "%H:%M:%S") else axis(1)
-  title(main = top.title, font.main = 2)
-  screen(scr[2]); par(mar = c(3.2, 4.6, 1.6, 1))
-  plot(x, y2, col = col, xlab = if (time.axis) "Time" else "Etime (s)",
-       ylab = lab2, xaxt = "n", ylim = yl2)
-  vlines()
-  if (time.axis) axis.POSIXct(1, at = pretty(x, 12), format = "%H:%M:%S") else axis(1)
+  scr <- split.screen(c(n, 1))
+  for (i in seq_len(n)) {
+    screen(scr[i])
+    par(mar = c(if (i == n) 3.2 else 2.2, 4.6, if (i == 1) 3.0 else 1.2, 1))
+    plot(x, ys[[i]], col = col, xlab = "", ylab = labs[i], xaxt = "n", ylim = ylims[[i]])
+    vlines()
+    if (time.axis) axis.POSIXct(1, at = pretty(x, 12), format = "%H:%M:%S") else axis(1)
+    if (i == 1) title(main = top.title, font.main = 2)
+    if (i == n) title(xlab = if (time.axis) "Time" else "Etime (s)")
+  }
   invisible(scr)
 }

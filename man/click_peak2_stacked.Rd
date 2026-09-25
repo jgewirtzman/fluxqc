@@ -2,17 +2,15 @@
 % Please edit documentation in R/click_peak2_stacked.R
 \name{click_peak2_stacked}
 \alias{click_peak2_stacked}
-\title{Manual window selection with stacked CO2 and CH4 panels}
+\title{Manual window selection with any number of stacked gas panels}
 \usage{
 click_peak2_stacked(
   ow.list,
-  gastype = "CO2dry_ppm",
-  gastype2 = "CH4dry_ppb",
+  gases = c("CO2dry_ppm", "CH4dry_ppb"),
   seq = NULL,
   ref.secs = NULL,
   sleep = 3,
-  plot.lim = c(300, 5000),
-  plot.lim2 = c(1500, 1e+05),
+  plot.lim = NULL,
   warn.length = 60,
   save.plots = NULL,
   width = 7,
@@ -24,9 +22,10 @@ click_peak2_stacked(
 \arguments{
 \item{ow.list}{list of data.frames from \code{\link[goFlux:obs.win]{goFlux::obs.win()}}.}
 
-\item{gastype}{gas shown in the top panel and used for clicking.}
-
-\item{gastype2}{gas shown in the bottom panel.}
+\item{gases}{character vector of gas columns to stack, top to bottom; the
+first is the one clicked. \code{"auto"} uses every recognised goFlux gas
+column present (\code{CO2dry_ppm}, \code{CH4dry_ppb}, \code{N2Odry_ppb}, \code{NH3dry_ppb},
+\code{COdry_ppb}, \code{H2O_ppm}, ...), in that order.}
 
 \item{seq}{integer vector; which elements of \code{ow.list} to process
 (default all).}
@@ -36,7 +35,9 @@ drawn at \code{start.time + ref.secs}.}
 
 \item{sleep}{seconds the validation plot stays open (0 to skip it).}
 
-\item{plot.lim, plot.lim2}{y-axis clipping limits for the top and bottom panel.}
+\item{plot.lim}{y-axis clipping limits: \code{NULL} (data range + 5 percent), a
+numeric \code{c(lo, hi)} applied to every panel, or a named list of such
+vectors keyed by gas column (unnamed gases are unclipped).}
 
 \item{warn.length}{windows with fewer flagged observations trigger a warning.}
 
@@ -55,12 +56,13 @@ data.frame; all processed windows bound together, with the columns
 identification failed are dropped with a warning.
 }
 \description{
-A drop-in variant of \code{\link[goFlux:click.peak2]{goFlux::click.peak2()}} that shows two stacked panels,
-\code{gastype} (top, clicked) and \code{gastype2} (bottom, shown), sharing one time
-axis, so each window can be judged with both gas traces in view. You click
-the start and the end of the measurement on the top panel; the same window
-is applied to both gases and goFlux is then run per gas on the shared
-\code{flag}. The output has exactly the structure of \code{click.peak2()}.
+A drop-in variant of \code{\link[goFlux:click.peak2]{goFlux::click.peak2()}} that shows one panel per gas
+column in \code{gases}, stacked on a shared time axis, so each window can be
+judged with every trace in view (CO2, CH4, N2O, H2O, ... in any order). You
+click the start and the end of the measurement on the \emph{top} panel (the
+first gas listed); the same window is applied to all gases and goFlux is
+then run per gas on the shared \code{flag}. The output has exactly the structure
+of \code{click.peak2()}.
 }
 \details{
 Like \code{click.peak2()}, this uses \code{\link[graphics:identify]{graphics::identify()}} in a pop-up device
@@ -71,9 +73,9 @@ plot pane). Under \code{Rscript} use \code{\link[=auto_id_rise]{auto_id_rise()}}
 \examples{
 \dontrun{
 ow <- goFlux::obs.win(inputfile = imp, auxfile = aux, obs.length = 600, shoulder = 120)
-manID <- click_peak2_stacked(ow, ref.secs = 600, save.plots = "windows.pdf")
-CO2_flux <- goFlux::goFlux(manID, "CO2dry_ppm")
-CH4_flux <- goFlux::goFlux(manID, "CH4dry_ppb")
+manID <- click_peak2_stacked(ow, gases = c("CO2dry_ppm", "CH4dry_ppb", "N2Odry_ppb"),
+                             ref.secs = 600, save.plots = "windows.pdf")
+manID <- click_peak2_stacked(ow, gases = "auto")
 }
 }
 \seealso{

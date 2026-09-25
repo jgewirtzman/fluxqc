@@ -144,19 +144,20 @@ find_rise <- function(t, conc, rise.ppm = 6, rise.secs = 60, drop.ppm = 8,
 #' Non-interactive window selection from the sustained CO2 rise
 #'
 #' A stand-in for [goFlux::click.peak2()] that can run under `Rscript`. For
-#' every observation window it (1) finds the longest sustained CO2 rise with
-#' [find_rise()] (the chamber is closed, so CO2 accumulates from respiration),
-#' (2) trims the first `trim.secs` (mixing) and caps the window at the notebook
-#' end time plus `slack.secs` or at `max.secs`, whichever is shorter, and
-#' (3) falls back to notebook start + `trim.secs` .. notebook end (or
-#' `fallback.secs`) when no rise is found. It writes one diagnostic PNG per
-#' measurement so the automatic windows can be reviewed and redone
-#' interactively where needed.
+#' every observation window it (1) finds the longest sustained rise of
+#' `detect.gas` with [find_rise()] (the chamber is closed, so CO2 accumulates
+#' from respiration), (2) trims the first `trim.secs` (mixing) and caps the
+#' window at the notebook end time plus `slack.secs` or at `max.secs`,
+#' whichever is shorter, and (3) falls back to notebook start + `trim.secs`
+#' .. notebook end (or `fallback.secs`) when no rise is found. It writes one
+#' diagnostic PNG per measurement, with one stacked panel per gas in `gases`,
+#' so the automatic windows can be reviewed and redone interactively where
+#' needed.
 #'
 #' @inheritParams windows_from_table
-#' @param gastype column used to find the rise (default `"CO2dry_ppm"`).
-#' @param gastype2 second gas shown in the diagnostic plot (default
-#'   `"CH4dry_ppb"`); ignored if absent.
+#' @param detect.gas column used to find the rise (default `"CO2dry_ppm"`).
+#' @param gases gas columns drawn in the diagnostic plot, one stacked panel
+#'   each; `"auto"` (default) uses every recognised goFlux gas column present.
 #' @param end.times optional notebook end times: a data.frame with columns
 #'   `UniqueID` and `end.time` (POSIXct or character in `tz`), or a named
 #'   POSIXct vector. Missing entries are allowed.
@@ -184,12 +185,11 @@ find_rise <- function(t, conc, rise.ppm = 6, rise.secs = 60, drop.ppm = 8,
 #' manID <- auto_id_rise(ow, plot.dir = NULL)
 #' attr(manID, "log")
 #' @export
-auto_id_rise <- function(ow.list, gastype = "CO2dry_ppm", gastype2 = "CH4dry_ppb",
+auto_id_rise <- function(ow.list, detect.gas = "CO2dry_ppm", gases = "auto",
                          end.times = NULL, trim.secs = 30, max.secs = 600,
                          min.secs = 60, slack.secs = 60, fallback.secs = 300,
                          plot.dir = NULL, tz = "UTC", warn.length = 60, ...) {
   if (is.data.frame(ow.list)) ow.list <- split(ow.list, ow.list$UniqueID)
-  # normalise end.times to a named POSIXct vector
   en <- NULL
   if (!is.null(end.times)) {
     if (is.data.frame(end.times)) {
@@ -208,8 +208,9 @@ auto_id_rise <- function(ow.list, gastype = "CO2dry_ppm", gastype2 = "CH4dry_ppb
     d <- ow.list[[k]]; uid <- unique(d$UniqueID)[1]
     st <- unique(d$start.time)[1]
     if (is.null(st) || is.na(st)) stop(uid, ": no 'start.time' column in window")
+    if (!detect.gas %in% names(d)) stop("'detect.gas' column '", detect.gas, "' not found")
     en_uid <- if (!is.null(en) && uid %in% names(en) && !is.na(en[[uid]])) en[[uid]] else NA
-    r <- find_rise(d$POSIX.time, d[[gastype]], ...)
+    r <- find_rise(d$POSIX.time, d[[detect.gas]], ...)
     method <- "auto_rise"
     if (is.null(r)) {
       s0 <- st + trim.secs
@@ -238,21 +239,17 @@ auto_id_rise <- function(ow.list, gastype = "CO2dry_ppm", gastype2 = "CH4dry_ppb
                            stringsAsFactors = FALSE)
     if (!is.null(plot.dir)) {
       fl <- d2$flag == 1
-      png(file.path(plot.dir, paste0(sprintf("%03d", k), "_", uid, ".png")), 900, 700)
-      on.exit(dev.off(), add = TRUE)
-      has2 <- gastype2 %in% names(d)
-      op <- par(mfrow = c(if (has2) 2 else 1, 1), mar = c(3, 4.5, 2.5, 1))
-      plot(d$POSIX.time, d[[gastype]], col = ifelse(fl, "red", "grey40"), pch = 16,
-           cex = 0.5, ylab = gastype, xlab = "", main = paste(uid, "-", method))
-      abline(v = st, col = "blue")
-      if (!is.na(en_uid)) abline(v = en_uid, col = "blue", lty = 2)
-      if (has2) {
-        plot(d$POSIX.time, d[[gastype2]], col = ifelse(fl, "red", "grey40"), pch = 16,
-             cex = 0.5, ylab = gastype2, xlab = "")
+      g <- resolve_gases(gases, d)
+      png(file.path(plot.dir, paste0(sprintf("%03d", k), "_", uid, ".png")), 900, 350 * length(g))
+      op <- par(mfrow = c(length(g), 1), mar = c(3, 4.5, 2.5, 1))
+      for (i in seq_along(g)) {
+        plot(d$POSIX.time, d[[g[i]]], col = ifelse(fl, "red", "grey40"), pch = 16,
+             cex = 0.5, ylab = g[i], xlab = "",
+             main = if (i == 1) paste(uid, "-", method) else "")
         abline(v = st, col = "blue")
         if (!is.na(en_uid)) abline(v = en_uid, col = "blue", lty = 2)
       }
-      par(op); dev.off(); on.exit()
+      par(op); dev.off()
     }
   }
   res <- do.call(rbind, lapply(out, as.data.frame)); rownames(res) <- NULL
