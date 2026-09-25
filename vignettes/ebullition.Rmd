@@ -110,11 +110,13 @@ while upland stems in the same call run the core path.
 
 ```{r process}
 aux <- data.frame(UniqueID = c("2021-05-18_5086_I_7.0", "flooded_stem"), ebullition = c(FALSE, TRUE))
-res <- suppressWarnings(process_fluxes(both, aux = aux, gastype = "CH4dry_ppb",
+invisible(capture.output(       # goFlux's progress bar is captured
+  res <- suppressWarnings(process_fluxes(both, aux = aux, gastype = "CH4dry_ppb",
                        precision = "allan", mdf = "christiansen", conf = 0.95,
                        qc = list(c0 = TRUE, convex = TRUE),
-                       ebullition = "split", ebullition_method = "iqr"))
+                       ebullition = "split", ebullition_method = "iqr"))))
 res
+res$fluxes[, c("UniqueID", "qc_c0", "qc_convex", "qc_note")]
 res$fluxes[, c("UniqueID", "ebullition_handling", "flux_diffusive", "flux_ebullitive", "flux_total",
                "n_ebullition_events", "MDF", "det_class")]
 res$events

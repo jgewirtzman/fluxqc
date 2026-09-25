@@ -276,13 +276,14 @@ t(report)
 The same row comes out of the one-call wrapper:
 
 ```{r wrapper}
-res <- suppressWarnings(process_fluxes(d, gastype = "CH4dry_ppb",
+invisible(capture.output(       # goFlux's progress bar is captured
+  res <- suppressWarnings(process_fluxes(d, gastype = "CH4dry_ppb",
                        precision = c("allan", "mad", "datasheet"),
                        mdf = c("goflux", "wassmann", "christiansen", "two_sigma"),
                        conf = c(0.90, 0.95, 0.99),
                        primary = list(precision = "allan", mdf = "christiansen", conf = 0.95),
                        qc = list(c0 = TRUE, co2_tracer = TRUE, convex = TRUE, min_window = list(secs = 120)),
-                       co2 = best_co2))
+                       co2 = best_co2))))
 res
 c(best.flux = res$fluxes$best.flux, MDF = res$fluxes$MDF, method = res$fluxes$MDF_method)
 ```

@@ -471,27 +471,31 @@ Per-closure control comes from <code>ebullition_ids</code> or a logical
 <code>ebullition</code> column in the auxfile, so flooded stems can be
 split while upland stems in the same call run the core path.</p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>aux <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">UniqueID =</span> <span class="fu">c</span>(<span class="st">&quot;2021-05-18_5086_I_7.0&quot;</span>, <span class="st">&quot;flooded_stem&quot;</span>), <span class="at">ebullition =</span> <span class="fu">c</span>(<span class="cn">FALSE</span>, <span class="cn">TRUE</span>))</span>
-<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>res <span class="ot">&lt;-</span> <span class="fu">suppressWarnings</span>(<span class="fu">process_fluxes</span>(both, <span class="at">aux =</span> aux, <span class="at">gastype =</span> <span class="st">&quot;CH4dry_ppb&quot;</span>,</span>
-<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>                       <span class="at">precision =</span> <span class="st">&quot;allan&quot;</span>, <span class="at">mdf =</span> <span class="st">&quot;christiansen&quot;</span>, <span class="at">conf =</span> <span class="fl">0.95</span>,</span>
-<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>                       <span class="at">qc =</span> <span class="fu">list</span>(<span class="at">c0 =</span> <span class="cn">TRUE</span>, <span class="at">convex =</span> <span class="cn">TRUE</span>),</span>
-<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>                       <span class="at">ebullition =</span> <span class="st">&quot;split&quot;</span>, <span class="at">ebullition_method =</span> <span class="st">&quot;iqr&quot;</span>))</span>
-<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="co">#&gt;   |                                                                                             |                                                                                     |   0%  |                                                                                             |==========================================                                           |  50%  |                                                                                             |=====================================================================================| 100%</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="fu">invisible</span>(<span class="fu">capture.output</span>(       <span class="co"># goFlux&#39;s progress bar is captured</span></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>  res <span class="ot">&lt;-</span> <span class="fu">suppressWarnings</span>(<span class="fu">process_fluxes</span>(both, <span class="at">aux =</span> aux, <span class="at">gastype =</span> <span class="st">&quot;CH4dry_ppb&quot;</span>,</span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>                       <span class="at">precision =</span> <span class="st">&quot;allan&quot;</span>, <span class="at">mdf =</span> <span class="st">&quot;christiansen&quot;</span>, <span class="at">conf =</span> <span class="fl">0.95</span>,</span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>                       <span class="at">qc =</span> <span class="fu">list</span>(<span class="at">c0 =</span> <span class="cn">TRUE</span>, <span class="at">convex =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>                       <span class="at">ebullition =</span> <span class="st">&quot;split&quot;</span>, <span class="at">ebullition_method =</span> <span class="st">&quot;iqr&quot;</span>))))</span>
 <span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>res</span>
 <span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a><span class="co">#&gt; stemflux result: 2 closures, CH4dry_ppb </span></span>
 <span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a><span class="co">#&gt;   MDF: christiansen_allan_95 | detected: 2 | qc_any: 1 </span></span>
 <span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a><span class="co">#&gt;   ebullition add-on: split ( iqr , 2 events )</span></span>
-<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a>res<span class="sc">$</span>fluxes[, <span class="fu">c</span>(<span class="st">&quot;UniqueID&quot;</span>, <span class="st">&quot;ebullition_handling&quot;</span>, <span class="st">&quot;flux_diffusive&quot;</span>, <span class="st">&quot;flux_ebullitive&quot;</span>, <span class="st">&quot;flux_total&quot;</span>,</span>
-<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a>               <span class="st">&quot;n_ebullition_events&quot;</span>, <span class="st">&quot;MDF&quot;</span>, <span class="st">&quot;det_class&quot;</span>)]</span>
-<span id="cb6-13"><a href="#cb6-13" tabindex="-1"></a><span class="co">#&gt;                UniqueID ebullition_handling flux_diffusive flux_ebullitive flux_total</span></span>
-<span id="cb6-14"><a href="#cb6-14" tabindex="-1"></a><span class="co">#&gt; 1 2021-05-18_5086_I_7.0                none        0.25568         0.00000    0.25568</span></span>
-<span id="cb6-15"><a href="#cb6-15" tabindex="-1"></a><span class="co">#&gt; 2          flooded_stem               split        0.23325         0.23536    0.46861</span></span>
-<span id="cb6-16"><a href="#cb6-16" tabindex="-1"></a><span class="co">#&gt;   n_ebullition_events      MDF det_class</span></span>
-<span id="cb6-17"><a href="#cb6-17" tabindex="-1"></a><span class="co">#&gt; 1                   0 0.013765  emission</span></span>
-<span id="cb6-18"><a href="#cb6-18" tabindex="-1"></a><span class="co">#&gt; 2                   2 0.015389  emission</span></span>
-<span id="cb6-19"><a href="#cb6-19" tabindex="-1"></a>res<span class="sc">$</span>events</span>
-<span id="cb6-20"><a href="#cb6-20" tabindex="-1"></a><span class="co">#&gt;       UniqueID          POSIX.time  Etime     dC threshold</span></span>
-<span id="cb6-21"><a href="#cb6-21" tabindex="-1"></a><span class="co">#&gt; 1 flooded_stem 2021-05-18 13:39:20 140.25  66.52     15.07</span></span>
-<span id="cb6-22"><a href="#cb6-22" tabindex="-1"></a><span class="co">#&gt; 2 flooded_stem 2021-05-18 13:43:00 360.06 120.21     15.07</span></span></code></pre></div>
+<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a>res<span class="sc">$</span>fluxes[, <span class="fu">c</span>(<span class="st">&quot;UniqueID&quot;</span>, <span class="st">&quot;qc_c0&quot;</span>, <span class="st">&quot;qc_convex&quot;</span>, <span class="st">&quot;qc_note&quot;</span>)]</span>
+<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a><span class="co">#&gt;                UniqueID qc_c0 qc_convex                     qc_note</span></span>
+<span id="cb6-13"><a href="#cb6-13" tabindex="-1"></a><span class="co">#&gt; 1 2021-05-18_5086_I_7.0 FALSE     FALSE                        &lt;NA&gt;</span></span>
+<span id="cb6-14"><a href="#cb6-14" tabindex="-1"></a><span class="co">#&gt; 2          flooded_stem FALSE      TRUE convex (accelerating) trace</span></span>
+<span id="cb6-15"><a href="#cb6-15" tabindex="-1"></a>res<span class="sc">$</span>fluxes[, <span class="fu">c</span>(<span class="st">&quot;UniqueID&quot;</span>, <span class="st">&quot;ebullition_handling&quot;</span>, <span class="st">&quot;flux_diffusive&quot;</span>, <span class="st">&quot;flux_ebullitive&quot;</span>, <span class="st">&quot;flux_total&quot;</span>,</span>
+<span id="cb6-16"><a href="#cb6-16" tabindex="-1"></a>               <span class="st">&quot;n_ebullition_events&quot;</span>, <span class="st">&quot;MDF&quot;</span>, <span class="st">&quot;det_class&quot;</span>)]</span>
+<span id="cb6-17"><a href="#cb6-17" tabindex="-1"></a><span class="co">#&gt;                UniqueID ebullition_handling flux_diffusive flux_ebullitive flux_total</span></span>
+<span id="cb6-18"><a href="#cb6-18" tabindex="-1"></a><span class="co">#&gt; 1 2021-05-18_5086_I_7.0                none        0.25568         0.00000    0.25568</span></span>
+<span id="cb6-19"><a href="#cb6-19" tabindex="-1"></a><span class="co">#&gt; 2          flooded_stem               split        0.23325         0.23536    0.46861</span></span>
+<span id="cb6-20"><a href="#cb6-20" tabindex="-1"></a><span class="co">#&gt;   n_ebullition_events      MDF det_class</span></span>
+<span id="cb6-21"><a href="#cb6-21" tabindex="-1"></a><span class="co">#&gt; 1                   0 0.013765  emission</span></span>
+<span id="cb6-22"><a href="#cb6-22" tabindex="-1"></a><span class="co">#&gt; 2                   2 0.015389  emission</span></span>
+<span id="cb6-23"><a href="#cb6-23" tabindex="-1"></a>res<span class="sc">$</span>events</span>
+<span id="cb6-24"><a href="#cb6-24" tabindex="-1"></a><span class="co">#&gt;       UniqueID          POSIX.time  Etime     dC threshold</span></span>
+<span id="cb6-25"><a href="#cb6-25" tabindex="-1"></a><span class="co">#&gt; 1 flooded_stem 2021-05-18 13:39:20 140.25  66.52     15.07</span></span>
+<span id="cb6-26"><a href="#cb6-26" tabindex="-1"></a><span class="co">#&gt; 2 flooded_stem 2021-05-18 13:43:00 360.06 120.21     15.07</span></span></code></pre></div>
 <p><code>write_outputs(res, dir)</code> then adds
 <code>ebullition_events.csv</code> next to <code>fluxes.csv</code> and
 <code>settings.json</code>, and <code>settings.json</code> records
