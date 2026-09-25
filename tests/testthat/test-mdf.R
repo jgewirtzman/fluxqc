@@ -28,9 +28,9 @@ test_that("mad is computed per group over the whole record", {
   d2 <- d; d2$UniqueID <- "second"; d2$CH4dry_ppb <- d2$CH4dry_ppb + rnorm(nrow(d2), 0, 5)
   both <- rbind(d, d2)
   b2 <- suppressWarnings(goFlux::best.flux(suppressWarnings(goFlux::goFlux(both, "CH4dry_ppb"))))
-  b2$camp <- c("x", "y")[match(b2$UniqueID, c("2021-05-18_5086_I_7.0", "second"))]
+  b2$camp <- c("x", "y")[match(b2$UniqueID, c("emission_stem_semirigid", "second"))]
   g <- flag_detection(b2, traces = both, gastype = "CH4dry_ppb", group = "camp")
-  expect_equal(g$sigma_emp[g$UniqueID == "2021-05-18_5086_I_7.0"], precision_mad(d$CH4dry_ppb))
+  expect_equal(g$sigma_emp[g$UniqueID == "emission_stem_semirigid"], precision_mad(d$CH4dry_ppb))
   expect_equal(g$sigma_emp[g$UniqueID == "second"], precision_mad(d2$CH4dry_ppb))
   expect_gt(g$sigma_emp[g$UniqueID == "second"], g$sigma_emp[g$UniqueID != "second"])
   u <- flag_detection(b2, traces = both, gastype = "CH4dry_ppb")     # no group: one record

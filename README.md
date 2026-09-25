@@ -137,29 +137,37 @@ core sources for gas-column and file-format literals.
 
 ## Data
 
-`stemflux_examples()` returns six bundled closures in goFlux shape with an
-auxfile holding the real geometry of each (`example_closure()` is the alias
-for `a`):
+`stemflux_examples()` returns a curated, anonymized, cross-campaign set of
+ten real closures in goFlux shape (the campaign's clicked window with its
+obs.win context) plus an auxfile with the real geometry; `example_closure()`
+is the alias for `emission_stem_semirigid`. Identifiers, dates, tree tags and
+plot codes are removed (the time axis is a synthetic calendar preserving every
+interval); analyzer, chamber family, geometry, season and year are kept.
+`inst/extdata/build_examples.R` documents exactly how each was pulled, and
+`stemflux_examples_diagnostics.csv` holds the audit numbers.
 
-| id | UniqueID | shows | kind | geometry source |
-|---|---|---|---|---|
-| a | `2021-05-18_5086_I_7.0` | high-signal valid closure (CO2 and CH4 rise) | real | Yale-Myers campaign auxfile |
-| b | `2020-09-23_5092_I_6` | valid closure, CH4 below detection | real | same |
-| c | `2021-02-25_1885_I_5_1` | failed closure: CO2 not rising (slope -0.025 ppm/s), CH4 below detection | real | same |
-| d | `2020-12-09_5091_I_5` | ambiguous: CH4 detected (marginal uptake) over a flat CO2 tracer (slope -0.0003 ppm/s, p 0.69) | real | same |
-| e | `BF_CP40_2022-10-23_P06` | floating chamber on water with 5 ebullition events | real | BlueFlux chamber parameters (Area 324.3 cm2, Vtot 4.318 L); Tcham = site-day mean air temperature |
-| f | `SYN_uptake_from_a` | synthetic CH4 uptake built from the measured noise of a | synthetic | copied from a |
+| key | shows | campaign / season | analyzer | CO2 slope (ppm/s) | CH4 flux, MDF95 (nmol m-2 s-1) |
+|---|---|---|---|---|---|
+| `emission_stem_semirigid` | clean emission, the worked-example closure | upland stem, monthly survey, spring 2021 | UGGA 1 Hz | 0.82 | 0.254, 0.0031 |
+| `emission_upland_stem` | clean mid-range upland emission | upland stem, height campaign, summer 2021 | UGGA 5 s | 0.68 | 0.171, 0.018 |
+| `below_detection_stem` | CO2 rising, CH4 below detection | upland stem, height campaign, summer 2021 | UGGA 5 s | 0.63 | 0.0018, 0.019 |
+| `failed_closure_stem` | CO2 not rising, CH4 below detection | upland stem, monthly survey, winter 2021 | UGGA 1 Hz | -0.025 | 0.0018, 0.0075 |
+| `ambiguous_stem` | CH4 marginally detected over a flat CO2 tracer | upland stem, monthly survey, winter 2020 | UGGA 1 Hz | -0.0003 (p 0.69) | -0.0046, 0.0046 |
+| `uptake_stem` | strongest coherent stem uptake, CO2 rising | upland stem, monthly survey, summer 2020 | UGGA 1 Hz | 0.73 | -0.176, 0.0078 |
+| `uptake_soil` | strong clean soil uptake | forest soil collar, summer 2020 | UGGA 1 Hz | 0.61 | -2.25, 0.060 |
+| `high_flux_wetland_stem` | large diffusive mangrove-stem emission | coastal wetland stem, dry season 2022 | Picarro G4301 3 s | 0.24 | 23.1, 0.0006 |
+| `ebullition_floating` | one bubble burst inside a sealed floating-chamber closure | open water, ghost-forest mangrove site, wet season 2022 | GLA131 1 Hz | 0.11 | -- |
+| `emission_li7810_stem` | clean emission, third analyzer format | tree stem, Santa Fe 2026, spring | LI-7810 1 Hz | 0.57 | 0.414, 0.0031 |
 
 The real closures are released with the package under its MIT license with
-the data owner's permission. `a`-`d`: Yale-Myers Forest (CT, USA) tree-stem
-record 2020-2021, ABB/LGR UGGA, semi-rigid sleeve chambers, shipped as the
-campaign's clicked goFlux windows with their obs.win context; cite as
-"Gewirtzman et al., Yale-Myers Forest stem-flux record 2020-2021, distributed
-with the stemflux R package". `e`: NASA Carbon Monitoring System BlueFlux
-field campaign, ground component, site CP40 (Christian Point, ghost-forest
-mangrove, south Florida), ABB/LGR GLA131; cite Poulter et al. (2023),
-*Environmental Research Letters* 18, 075009,
-https://doi.org/10.1088/1748-9326/acdae6 (blueflux-ground repository, MIT).
+the data owner's permission. Upland stem and soil closures: Yale-Myers Forest
+(CT, USA) record 2020-2021 (Gewirtzman et al.; cite as "Gewirtzman et al.,
+Yale-Myers Forest chamber-flux record 2020-2021, distributed with the
+stemflux R package"). Wetland closures: NASA Carbon Monitoring System BlueFlux
+field campaign, ground component (Poulter et al. 2023, *Environmental Research
+Letters* 18, 075009, https://doi.org/10.1088/1748-9326/acdae6;
+blueflux-ground repository, MIT). LI-7810 closure: the author's Santa Fe 2026
+campaign.
 
 ## Contributing upstream
 

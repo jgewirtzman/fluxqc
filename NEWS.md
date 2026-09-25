@@ -19,9 +19,10 @@ Revision after author review.
   unchanged on `process_fluxes()$fluxes`.
 * `detect_ebullition(merge.consecutive = TRUE)`: a run of consecutive flagged
   samples is one event (bubble bursts span several 1 Hz samples).
-* `stemflux_examples()`: six bundled closures with real geometry (four
-  Yale-Myers teaching cases cut from the campaign's clicked goFlux windows,
-  chosen by audited CO2-slope / flux_FINAL criteria, one BlueFlux ebullition closure, one synthetic
+* `stemflux_examples()`: ten anonymized real closures across campaigns and
+  three analyzer formats (UGGA/GLA131, Picarro G4301, LI-7810), each the
+  campaign's clicked goFlux window with obs.win context and real geometry,
+  chosen by audited criteria (`inst/extdata/build_examples.R`, one BlueFlux ebullition closure, one synthetic
   uptake), released with the package; `example_closure()` is the alias for
   `a`. Data files `inst/extdata/stemflux_examples*.csv` replace
   `example_closure.csv`.

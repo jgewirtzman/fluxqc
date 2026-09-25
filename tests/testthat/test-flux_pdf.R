@@ -25,7 +25,7 @@ test_that("flux_pdf accepts real goFlux flux.plot output", {
   res <- suppressWarnings(goFlux::goFlux(d, "CH4dry_ppb"))
   best <- suppressWarnings(goFlux::best.flux(res))
   pl <- suppressWarnings(goFlux::flux.plot(best, d, "CH4dry_ppb"))
-  expect_equal(stemflux:::plot_uid(pl[[1]], 1), "2021-05-18_5086_I_7.0")
+  expect_equal(stemflux:::plot_uid(pl[[1]], 1), "emission_stem_semirigid")
   out <- tempfile(fileext = ".pdf")
   flux_pdf(pl, out)
   expect_true(file.exists(out))

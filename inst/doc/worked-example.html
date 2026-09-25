@@ -382,12 +382,13 @@ so the document can be rebuilt with
 <code>rmarkdown::render()</code>.</p>
 <div id="the-closure" class="section level2">
 <h2>The closure</h2>
-<p><code>stemflux</code> ships one closure,
-<code>2021-05-18_5086_I_7.0</code>: a 600 s tree-stem measurement at
-Yale-Myers Forest (Connecticut) with a semi-rigid sleeve chamber and an
-ABB/LGR micro-portable UGGA logging at 1 Hz. The chamber geometry comes
-from the campaign auxfile and is stored by
-<code>example_closure()</code>:</p>
+<p><code>example_closure()</code> returns
+<code>emission_stem_semirigid</code> from the bundled set
+(<code>?stemflux_examples</code>): a tree-stem closure from the
+Yale-Myers Forest (Connecticut) monthly survey, spring 2021, semi-rigid
+sleeve chamber, ABB/LGR micro-portable UGGA logging at 1 Hz, shipped
+anonymized (synthetic calendar, no tree or plot identifiers) with the
+campaign’s clicked window and geometry:</p>
 <table>
 <thead>
 <tr class="header">
@@ -427,8 +428,8 @@ processing.</p>
 <span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>d <span class="ot">&lt;-</span> <span class="fu">example_closure</span>()</span>
 <span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="fu">str</span>(d[, <span class="fu">c</span>(<span class="st">&quot;UniqueID&quot;</span>, <span class="st">&quot;POSIX.time&quot;</span>, <span class="st">&quot;t_s&quot;</span>, <span class="st">&quot;CO2dry_ppm&quot;</span>, <span class="st">&quot;CH4dry_ppb&quot;</span>, <span class="st">&quot;flag&quot;</span>, <span class="st">&quot;Etime&quot;</span>)])</span>
 <span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="co">#&gt; &#39;data.frame&#39;:    1207 obs. of  7 variables:</span></span>
-<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="co">#&gt;  $ UniqueID  : chr  &quot;2021-05-18_5086_I_7.0&quot; &quot;2021-05-18_5086_I_7.0&quot; &quot;2021-05-18_5086_I_7.0&quot; &quot;2021-05-18_5086_I_7.0&quot; ...</span></span>
-<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a><span class="co">#&gt;  $ POSIX.time: POSIXct, format: &quot;2021-05-18 13:31:00&quot; &quot;2021-05-18 13:31:01&quot; &quot;2021-05-18 13:31:02&quot; ...</span></span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="co">#&gt;  $ UniqueID  : chr  &quot;emission_stem_semirigid&quot; &quot;emission_stem_semirigid&quot; &quot;emission_stem_semirigid&quot; &quot;emission_stem_semirigid&quot; ...</span></span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a><span class="co">#&gt;  $ POSIX.time: POSIXct, format: &quot;2000-01-01 00:55:00&quot; &quot;2000-01-01 00:55:01&quot; &quot;2000-01-01 00:55:02&quot; ...</span></span>
 <span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="co">#&gt;  $ t_s       : num  -300 -299 -298 -297 -296 -295 -294 -293 -292 -291 ...</span></span>
 <span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a><span class="co">#&gt;  $ CO2dry_ppm: num  576 576 578 577 578 ...</span></span>
 <span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a><span class="co">#&gt;  $ CH4dry_ppb: num  2064 2063 2070 2066 2063 ...</span></span>
@@ -829,19 +830,19 @@ campaign the median is taken over all closures.</p>
 <span id="cb16-13"><a href="#cb16-13" tabindex="-1"></a>  <span class="at">CO2_flux_umol_m2_s =</span> <span class="fu">signif</span>(best_co2<span class="sc">$</span>best.flux, <span class="dv">4</span>),</span>
 <span id="cb16-14"><a href="#cb16-14" tabindex="-1"></a>  <span class="at">qc_any     =</span> rep_ch4<span class="sc">$</span>qc_any)</span>
 <span id="cb16-15"><a href="#cb16-15" tabindex="-1"></a><span class="fu">t</span>(report)</span>
-<span id="cb16-16"><a href="#cb16-16" tabindex="-1"></a><span class="co">#&gt;                    [,1]                   </span></span>
-<span id="cb16-17"><a href="#cb16-17" tabindex="-1"></a><span class="co">#&gt; UniqueID           &quot;2021-05-18_5086_I_7.0&quot;</span></span>
-<span id="cb16-18"><a href="#cb16-18" tabindex="-1"></a><span class="co">#&gt; n_obs              &quot;770&quot;                  </span></span>
-<span id="cb16-19"><a href="#cb16-19" tabindex="-1"></a><span class="co">#&gt; model              &quot;HM&quot;                   </span></span>
-<span id="cb16-20"><a href="#cb16-20" tabindex="-1"></a><span class="co">#&gt; CH4_flux_nmol_m2_s &quot;0.2537&quot;               </span></span>
-<span id="cb16-21"><a href="#cb16-21" tabindex="-1"></a><span class="co">#&gt; CH4_LM_SE          &quot;0.000409&quot;             </span></span>
-<span id="cb16-22"><a href="#cb16-22" tabindex="-1"></a><span class="co">#&gt; MDF_goFlux         &quot;0.0007894&quot;            </span></span>
-<span id="cb16-23"><a href="#cb16-23" tabindex="-1"></a><span class="co">#&gt; sigma_emp_ppb      &quot;2.21&quot;                 </span></span>
-<span id="cb16-24"><a href="#cb16-24" tabindex="-1"></a><span class="co">#&gt; MDF_emp            &quot;0.00377&quot;              </span></span>
-<span id="cb16-25"><a href="#cb16-25" tabindex="-1"></a><span class="co">#&gt; MDF_emp_method     &quot;wassmann | mad | 0.95&quot;</span></span>
-<span id="cb16-26"><a href="#cb16-26" tabindex="-1"></a><span class="co">#&gt; detected_emp       &quot;TRUE&quot;                 </span></span>
-<span id="cb16-27"><a href="#cb16-27" tabindex="-1"></a><span class="co">#&gt; class              &quot;emission&quot;             </span></span>
-<span id="cb16-28"><a href="#cb16-28" tabindex="-1"></a><span class="co">#&gt; CO2_flux_umol_m2_s &quot;0.6671&quot;               </span></span>
+<span id="cb16-16"><a href="#cb16-16" tabindex="-1"></a><span class="co">#&gt;                    [,1]                     </span></span>
+<span id="cb16-17"><a href="#cb16-17" tabindex="-1"></a><span class="co">#&gt; UniqueID           &quot;emission_stem_semirigid&quot;</span></span>
+<span id="cb16-18"><a href="#cb16-18" tabindex="-1"></a><span class="co">#&gt; n_obs              &quot;770&quot;                    </span></span>
+<span id="cb16-19"><a href="#cb16-19" tabindex="-1"></a><span class="co">#&gt; model              &quot;HM&quot;                     </span></span>
+<span id="cb16-20"><a href="#cb16-20" tabindex="-1"></a><span class="co">#&gt; CH4_flux_nmol_m2_s &quot;0.2537&quot;                 </span></span>
+<span id="cb16-21"><a href="#cb16-21" tabindex="-1"></a><span class="co">#&gt; CH4_LM_SE          &quot;0.000409&quot;               </span></span>
+<span id="cb16-22"><a href="#cb16-22" tabindex="-1"></a><span class="co">#&gt; MDF_goFlux         &quot;0.0007894&quot;              </span></span>
+<span id="cb16-23"><a href="#cb16-23" tabindex="-1"></a><span class="co">#&gt; sigma_emp_ppb      &quot;2.21&quot;                   </span></span>
+<span id="cb16-24"><a href="#cb16-24" tabindex="-1"></a><span class="co">#&gt; MDF_emp            &quot;0.00377&quot;                </span></span>
+<span id="cb16-25"><a href="#cb16-25" tabindex="-1"></a><span class="co">#&gt; MDF_emp_method     &quot;wassmann | mad | 0.95&quot;  </span></span>
+<span id="cb16-26"><a href="#cb16-26" tabindex="-1"></a><span class="co">#&gt; detected_emp       &quot;TRUE&quot;                   </span></span>
+<span id="cb16-27"><a href="#cb16-27" tabindex="-1"></a><span class="co">#&gt; class              &quot;emission&quot;               </span></span>
+<span id="cb16-28"><a href="#cb16-28" tabindex="-1"></a><span class="co">#&gt; CO2_flux_umol_m2_s &quot;0.6671&quot;                 </span></span>
 <span id="cb16-29"><a href="#cb16-29" tabindex="-1"></a><span class="co">#&gt; qc_any             &quot;FALSE&quot;</span></span></code></pre></div>
 <p>The same row comes out of the one-call wrapper:</p>
 <div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a><span class="fu">invisible</span>(<span class="fu">capture.output</span>(       <span class="co"># goFlux&#39;s progress bar is captured</span></span>

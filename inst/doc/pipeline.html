@@ -472,51 +472,49 @@ it:</p>
 </div>
 <div id="b.-the-four-teaching-cases-evaluated" class="section level2">
 <h2>4b. The four teaching cases (evaluated)</h2>
-<p>This is the logic of Figure 4 of the guidelines paper: four real
-closures that look alike in a flux table until the detection flag and
-the QC screens are applied. <code>stemflux_examples()</code> ships them
-with their real geometry (plus a synthetic uptake, <code>f</code>).</p>
+<p>This is the logic of Figure 4 of the guidelines paper: real closures
+that look alike in a flux table until the detection flag and the QC
+screens are applied. <code>stemflux_examples()</code> ships them,
+anonymized, with their real geometry and the operator-clicked windows
+(see <code>?stemflux_examples</code> for the full curated set and its
+diagnostics).</p>
 <div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">library</span>(stemflux)</span>
-<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>ex <span class="ot">&lt;-</span> <span class="fu">stemflux_examples</span>(<span class="fu">c</span>(<span class="st">&quot;a&quot;</span>, <span class="st">&quot;b&quot;</span>, <span class="st">&quot;c&quot;</span>, <span class="st">&quot;d&quot;</span>, <span class="st">&quot;f&quot;</span>))</span>
-<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>ex<span class="sc">$</span>aux[, <span class="fu">c</span>(<span class="st">&quot;example&quot;</span>, <span class="st">&quot;UniqueID&quot;</span>, <span class="st">&quot;what&quot;</span>)]</span>
-<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="co">#&gt;   example              UniqueID</span></span>
-<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a><span class="co">#&gt; 1       a 2021-05-18_5086_I_7.0</span></span>
-<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a><span class="co">#&gt; 2       b   2020-09-23_5092_I_6</span></span>
-<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a><span class="co">#&gt; 3       c 2021-02-25_1885_I_5_1</span></span>
-<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a><span class="co">#&gt; 4       d   2020-12-09_5091_I_5</span></span>
-<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a><span class="co">#&gt; 5       f     SYN_uptake_from_a</span></span>
-<span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a><span class="co">#&gt;                                                                                                      what</span></span>
-<span id="cb9-11"><a href="#cb9-11" tabindex="-1"></a><span class="co">#&gt; 1                                 high-signal valid closure: CO2 and CH4 both rise (flux_FINAL: emission)</span></span>
-<span id="cb9-12"><a href="#cb9-12" tabindex="-1"></a><span class="co">#&gt; 2           valid closure, CH4 below detection: CO2 rises clearly, CH4 flat (flux_FINAL: below detection)</span></span>
-<span id="cb9-13"><a href="#cb9-13" tabindex="-1"></a><span class="co">#&gt; 3    failed closure: CO2 not rising (slightly falling), CH4 below detection (flux_FINAL: below detection)</span></span>
-<span id="cb9-14"><a href="#cb9-14" tabindex="-1"></a><span class="co">#&gt; 4                   ambiguous: CH4 detected (marginal uptake) over a flat CO2 tracer (flux_FINAL: uptake)</span></span>
-<span id="cb9-15"><a href="#cb9-15" tabindex="-1"></a><span class="co">#&gt; 5 synthetic CH4 uptake (-0.08 ppb/s) with positive CO2; Gaussian noise at the measured Allan sigma of (a)</span></span>
-<span id="cb9-16"><a href="#cb9-16" tabindex="-1"></a><span class="fu">invisible</span>(<span class="fu">capture.output</span>(</span>
-<span id="cb9-17"><a href="#cb9-17" tabindex="-1"></a>  res <span class="ot">&lt;-</span> <span class="fu">suppressWarnings</span>(<span class="fu">process_fluxes</span>(ex<span class="sc">$</span>data, <span class="at">gastype =</span> <span class="st">&quot;CH4dry_ppb&quot;</span>,</span>
-<span id="cb9-18"><a href="#cb9-18" tabindex="-1"></a>                          <span class="at">qc =</span> <span class="fu">list</span>(<span class="at">c0 =</span> <span class="cn">TRUE</span>, <span class="at">co2_tracer =</span> <span class="cn">TRUE</span>, <span class="at">convex =</span> <span class="cn">TRUE</span>, <span class="at">min_window =</span> <span class="fu">list</span>(<span class="at">secs =</span> <span class="dv">120</span>))))))</span>
-<span id="cb9-19"><a href="#cb9-19" tabindex="-1"></a>out <span class="ot">&lt;-</span> <span class="fu">merge</span>(ex<span class="sc">$</span>aux[, <span class="fu">c</span>(<span class="st">&quot;UniqueID&quot;</span>, <span class="st">&quot;example&quot;</span>)], res<span class="sc">$</span>fluxes, <span class="at">by =</span> <span class="st">&quot;UniqueID&quot;</span>)</span>
-<span id="cb9-20"><a href="#cb9-20" tabindex="-1"></a>out <span class="ot">&lt;-</span> out[<span class="fu">order</span>(out<span class="sc">$</span>example), ]</span>
-<span id="cb9-21"><a href="#cb9-21" tabindex="-1"></a>out[, <span class="fu">c</span>(<span class="st">&quot;example&quot;</span>, <span class="st">&quot;best.flux&quot;</span>, <span class="st">&quot;sigma_emp&quot;</span>, <span class="st">&quot;MDF_emp&quot;</span>, <span class="st">&quot;det_class_emp&quot;</span>, <span class="st">&quot;qc_co2_slope&quot;</span>, <span class="st">&quot;qc_co2_tracer&quot;</span>,</span>
-<span id="cb9-22"><a href="#cb9-22" tabindex="-1"></a>        <span class="st">&quot;qc_convex&quot;</span>, <span class="st">&quot;qc_any&quot;</span>)]</span>
-<span id="cb9-23"><a href="#cb9-23" tabindex="-1"></a><span class="co">#&gt;   example   best.flux sigma_emp    MDF_emp   det_class_emp qc_co2_slope qc_co2_tracer</span></span>
-<span id="cb9-24"><a href="#cb9-24" tabindex="-1"></a><span class="co">#&gt; 4       a  0.25372243   1.79269 0.00306581        emission  0.824404166         FALSE</span></span>
-<span id="cb9-25"><a href="#cb9-25" tabindex="-1"></a><span class="co">#&gt; 1       b -0.00118348   1.79269 0.00355078 below detection  0.716895088         FALSE</span></span>
-<span id="cb9-26"><a href="#cb9-26" tabindex="-1"></a><span class="co">#&gt; 3       c  0.00180580   1.79269 0.00736131 below detection -0.025343866          TRUE</span></span>
-<span id="cb9-27"><a href="#cb9-27" tabindex="-1"></a><span class="co">#&gt; 2       d -0.00463082   1.79269 0.00451317          uptake -0.000289521          TRUE</span></span>
-<span id="cb9-28"><a href="#cb9-28" tabindex="-1"></a><span class="co">#&gt; 5       f -0.05520605   1.79269 0.00439675          uptake  0.600336598         FALSE</span></span>
-<span id="cb9-29"><a href="#cb9-29" tabindex="-1"></a><span class="co">#&gt;   qc_convex qc_any</span></span>
-<span id="cb9-30"><a href="#cb9-30" tabindex="-1"></a><span class="co">#&gt; 4     FALSE  FALSE</span></span>
-<span id="cb9-31"><a href="#cb9-31" tabindex="-1"></a><span class="co">#&gt; 1      TRUE   TRUE</span></span>
-<span id="cb9-32"><a href="#cb9-32" tabindex="-1"></a><span class="co">#&gt; 3      TRUE   TRUE</span></span>
-<span id="cb9-33"><a href="#cb9-33" tabindex="-1"></a><span class="co">#&gt; 2      TRUE   TRUE</span></span>
-<span id="cb9-34"><a href="#cb9-34" tabindex="-1"></a><span class="co">#&gt; 5     FALSE  FALSE</span></span></code></pre></div>
-<p>Reading the rows: <code>a</code> is detected and passes;
-<code>b</code> is a good closure whose CH4 flux is below the detection
-limit (kept, flagged); <code>c</code> fails the CO2 tracer screen
-because the chamber never sealed, so its CH4 number is meaningless
-whatever its size; <code>d</code> has a clear CH4 rise but no CO2 rise,
-which the tracer screen flags for a look (a leak-free chamber on live
-tissue should accumulate CO2); <code>f</code> is an uptake. No row was
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>ex <span class="ot">&lt;-</span> <span class="fu">stemflux_examples</span>(<span class="fu">c</span>(<span class="st">&quot;emission_stem_semirigid&quot;</span>, <span class="st">&quot;below_detection_stem&quot;</span>, <span class="st">&quot;failed_closure_stem&quot;</span>,</span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>                          <span class="st">&quot;ambiguous_stem&quot;</span>, <span class="st">&quot;uptake_stem&quot;</span>))</span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>ex<span class="sc">$</span>aux[, <span class="fu">c</span>(<span class="st">&quot;UniqueID&quot;</span>, <span class="st">&quot;campaign_type&quot;</span>, <span class="st">&quot;season_year&quot;</span>)]</span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a><span class="co">#&gt;                  UniqueID                     campaign_type season_year</span></span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a><span class="co">#&gt; 1 emission_stem_semirigid  upland tree stem, monthly survey spring 2021</span></span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a><span class="co">#&gt; 2    below_detection_stem upland tree stem, height campaign summer 2021</span></span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a><span class="co">#&gt; 3     failed_closure_stem  upland tree stem, monthly survey winter 2021</span></span>
+<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a><span class="co">#&gt; 4          ambiguous_stem  upland tree stem, monthly survey winter 2020</span></span>
+<span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a><span class="co">#&gt; 5             uptake_stem  upland tree stem, monthly survey summer 2020</span></span>
+<span id="cb9-11"><a href="#cb9-11" tabindex="-1"></a><span class="fu">invisible</span>(<span class="fu">capture.output</span>(</span>
+<span id="cb9-12"><a href="#cb9-12" tabindex="-1"></a>  res <span class="ot">&lt;-</span> <span class="fu">suppressWarnings</span>(<span class="fu">process_fluxes</span>(ex<span class="sc">$</span>data, <span class="at">gastype =</span> <span class="st">&quot;CH4dry_ppb&quot;</span>,</span>
+<span id="cb9-13"><a href="#cb9-13" tabindex="-1"></a>                          <span class="at">qc =</span> <span class="fu">list</span>(<span class="at">c0 =</span> <span class="cn">TRUE</span>, <span class="at">co2_tracer =</span> <span class="cn">TRUE</span>, <span class="at">convex =</span> <span class="cn">TRUE</span>, <span class="at">min_window =</span> <span class="fu">list</span>(<span class="at">secs =</span> <span class="dv">120</span>))))))</span>
+<span id="cb9-14"><a href="#cb9-14" tabindex="-1"></a>out <span class="ot">&lt;-</span> res<span class="sc">$</span>fluxes[<span class="fu">match</span>(ex<span class="sc">$</span>aux<span class="sc">$</span>UniqueID, res<span class="sc">$</span>fluxes<span class="sc">$</span>UniqueID), ]</span>
+<span id="cb9-15"><a href="#cb9-15" tabindex="-1"></a>out[, <span class="fu">c</span>(<span class="st">&quot;UniqueID&quot;</span>, <span class="st">&quot;best.flux&quot;</span>, <span class="st">&quot;sigma_emp&quot;</span>, <span class="st">&quot;MDF_emp&quot;</span>, <span class="st">&quot;det_class_emp&quot;</span>, <span class="st">&quot;qc_co2_slope&quot;</span>, <span class="st">&quot;qc_co2_tracer&quot;</span>,</span>
+<span id="cb9-16"><a href="#cb9-16" tabindex="-1"></a>        <span class="st">&quot;qc_convex&quot;</span>, <span class="st">&quot;qc_any&quot;</span>)]</span>
+<span id="cb9-17"><a href="#cb9-17" tabindex="-1"></a><span class="co">#&gt;                  UniqueID   best.flux sigma_emp    MDF_emp   det_class_emp qc_co2_slope</span></span>
+<span id="cb9-18"><a href="#cb9-18" tabindex="-1"></a><span class="co">#&gt; 3 emission_stem_semirigid  0.25372243   1.69834 0.00290446        emission  0.824404166</span></span>
+<span id="cb9-19"><a href="#cb9-19" tabindex="-1"></a><span class="co">#&gt; 2    below_detection_stem  0.00176419   1.69834 0.03102304 below detection  0.627678282</span></span>
+<span id="cb9-20"><a href="#cb9-20" tabindex="-1"></a><span class="co">#&gt; 4     failed_closure_stem  0.00180580   1.69834 0.00697388 below detection -0.025343866</span></span>
+<span id="cb9-21"><a href="#cb9-21" tabindex="-1"></a><span class="co">#&gt; 1          ambiguous_stem -0.00463082   1.69834 0.00427564          uptake -0.000289521</span></span>
+<span id="cb9-22"><a href="#cb9-22" tabindex="-1"></a><span class="co">#&gt; 5             uptake_stem -0.17570494   1.69834 0.00725821          uptake  0.729574518</span></span>
+<span id="cb9-23"><a href="#cb9-23" tabindex="-1"></a><span class="co">#&gt;   qc_co2_tracer qc_convex qc_any</span></span>
+<span id="cb9-24"><a href="#cb9-24" tabindex="-1"></a><span class="co">#&gt; 3         FALSE     FALSE  FALSE</span></span>
+<span id="cb9-25"><a href="#cb9-25" tabindex="-1"></a><span class="co">#&gt; 2         FALSE      TRUE   TRUE</span></span>
+<span id="cb9-26"><a href="#cb9-26" tabindex="-1"></a><span class="co">#&gt; 4          TRUE      TRUE   TRUE</span></span>
+<span id="cb9-27"><a href="#cb9-27" tabindex="-1"></a><span class="co">#&gt; 1          TRUE      TRUE   TRUE</span></span>
+<span id="cb9-28"><a href="#cb9-28" tabindex="-1"></a><span class="co">#&gt; 5         FALSE      TRUE   TRUE</span></span></code></pre></div>
+<p>Reading the rows: <code>emission_stem_semirigid</code> is detected
+and passes; <code>below_detection_stem</code> is a good closure whose
+CH4 flux is below the detection limit (kept, flagged);
+<code>failed_closure_stem</code> fails the CO2 tracer screen because the
+chamber never sealed, so its CH4 number is meaningless whatever its
+size; <code>ambiguous_stem</code> has a marginally detected CH4 change
+but no CO2 rise, which the tracer screen flags for a look (a leak-free
+chamber on live tissue should accumulate CO2); <code>uptake_stem</code>
+is a real, detected uptake with a healthy CO2 tracer. No row was
 removed.</p>
 </div>
 <div id="where-the-outputs-go" class="section level2">

@@ -2,90 +2,90 @@
 % Please edit documentation in R/examples.R
 \name{stemflux_examples}
 \alias{stemflux_examples}
-\title{Bundled example closures with real chamber geometry}
+\title{Curated, anonymized example closures with real chamber geometry}
 \usage{
-stemflux_examples(
-  which = c("a", "b", "c", "d", "e", "f"),
-  dead.band = NULL,
-  prec = c(0.35, 0.9, 200)
-)
+stemflux_examples(which = NULL, dead.band = NULL, prec = c(0.35, 0.9, 200))
 }
 \arguments{
-\item{which}{character vector of example ids (\code{"a"} .. \code{"f"}) or
-\code{UniqueID}s; default all six.}
+\item{which}{character vector of keys (see the table); default all ten.}
 
 \item{dead.band}{\code{NULL} (default) keeps the shipped \code{flag} column (the
-clicked window for \code{a}-\code{d}, the whole trimmed trace for \code{e}, 60 s for
-\code{f}). A number re-flags every closure as \code{start.time + dead.band} to the
-end of its segment, ignoring the clicked windows.}
+clicked window). A number re-flags every closure as \code{start.time + dead.band} to the end of its segment, ignoring the clicked windows.}
 
-\item{prec}{manufacturer precision \verb{c(CO2 ppm, CH4 ppb, H2O ppm)}.}
+\item{prec}{manufacturer precision \verb{c(CO2 ppm, CH4 ppb, H2O ppm)} written
+to the \verb{*_prec} columns.}
 }
 \value{
 list with \code{data} (one goFlux-shaped data.frame, all closures bound
 together, with \code{flag}, \code{Etime}, \code{start.time_corr}, \code{end.time_corr},
 \code{obs.length_corr}) and \code{aux} (data.frame: \code{UniqueID}, \code{start.time},
 \code{obs.length}, \code{Area}, \code{Vtot}, \code{Tcham}, \code{Pcham}, \code{start.time_corr},
-\code{end.time_corr}, \code{example}, \code{kind}, \code{what}, \code{site}, \code{geometry_source}).
+\code{end.time_corr}, \code{kind}, \code{campaign_type}, \code{season_year}, \code{analyzer},
+\code{chamber_family}).
 }
 \description{
-Six chamber closures shipped in \verb{inst/extdata/}, returned in goFlux shape
-(the structure of \code{\link[goFlux:click.peak2]{goFlux::click.peak2()}} output) together with an auxfile
-that carries the real geometry of each closure. They are the teaching cases
-of the companion guidelines paper (Figure 4 logic): the detection flags and
-QC screens of \code{\link[=process_fluxes]{process_fluxes()}} separate them.
+Ten real chamber closures from the author's campaigns, shipped in
+\verb{inst/extdata/} and returned in goFlux shape (the structure of
+\code{\link[goFlux:click.peak2]{goFlux::click.peak2()}} output) together with an auxfile carrying the real
+geometry of each. Every closure is the campaign's own goFlux manID output:
+the full \code{obs.win()} segment (context rows \code{flag = 0}, operator-clicked
+fitting window \code{flag = 1}; the ebullition closure has no clicked window and
+is the campaign-segmented trace). They are the teaching cases of the
+companion guidelines paper (Figure 4 logic).
 }
 \details{
-Closures \code{a}-\code{d} are the campaign's own \emph{clicked} goFlux windows
-(\code{semirigid_tree_manID_clicked.rds}, the manID output of the Yale-Myers
-processing): each is shipped as the full \code{obs.win()} segment, i.e. the
-surrounding context rows with \code{flag = 0} and the operator-clicked fitting
-window with \code{flag = 1}, so the dead band actually applied is visible.
-Geometry comes from the same rows. They were chosen by auditable criteria
-against the campaign's final flux table (\code{flux_FINAL.csv}) and a linear fit
-of CO2 on the flagged rows:\tabular{llllll}{
-   id \tab UniqueID \tab window (s after \code{start.time}, length) \tab CO2 slope (ppm/s), p \tab CH4 flux, MDF (nmol m-2 s-1), class in flux_FINAL \tab what it shows \cr
-   \code{a} \tab \verb{2021-05-18_5086_I_7.0} \tab +91 s, 765 s, n = 770 \tab 0.824, p < 1e-300 \tab 0.254, 0.00313, emission \tab high-signal valid closure: CO2 and CH4 both rise \cr
-   \code{b} \tab \verb{2020-09-23_5092_I_6} \tab +49 s, 668 s, n = 673 \tab 0.717, p < 1e-300 \tab -0.00118, 0.00363, below detection \tab valid closure, CH4 below detection \cr
-   \code{c} \tab \verb{2021-02-25_1885_I_5_1} \tab +64 s, 348 s, n = 351 \tab -0.0253, p = 1.4e-13 \tab 0.00181, 0.00752, below detection \tab failed closure: CO2 not rising (the only stem closure in the archive with CO2 not clearly positive and CH4 below detection) \cr
-   \code{d} \tab \verb{2020-12-09_5091_I_5} \tab +103 s, 583 s, n = 587 \tab -0.00029, p = 0.69 \tab -0.00463, 0.00461, uptake \tab ambiguous: CH4 detected (a marginal uptake, just past the MDF) over a flat CO2 tracer (the only closure with CH4 detected and CO2 flat) \cr
+\strong{Anonymization.} \code{UniqueID}s are descriptive keys; tree tags, plot codes,
+species, operators, file names and dates are removed; the time axis is a
+synthetic calendar (2000-01-01 + one day per closure) that preserves every
+sampling interval; analyzer model, chamber family, geometry (\code{Area},
+\code{Vtot}, \code{Tcham}, \code{Pcham}), season and year are kept. The extraction is
+documented, reproducibly from the author's drive, in
+\code{system.file("extdata", "build_examples.R", package = "stemflux")}, and the
+audit numbers below are in \code{stemflux_examples_diagnostics.csv} next to it.\tabular{lllllll}{
+   key \tab shows \tab campaign type, season \tab analyzer, sampling \tab window (s), n \tab CO2 slope ppm/s, p \tab CH4 flux, MDF95 (nmol m-2 s-1), class \cr
+   \code{emission_stem_semirigid} \tab clean emission (the worked-example closure) \tab upland tree stem, monthly survey, spring 2021 \tab ABB/LGR UGGA, 1 s \tab 765, 770 \tab 0.824, ~0 \tab 0.254, 0.0031, emission \cr
+   \code{emission_upland_stem} \tab clean mid-range emission \tab upland tree stem, height campaign, summer 2021 \tab ABB/LGR UGGA, 5 s \tab 1209, 244 \tab 0.678, 1e-304 \tab 0.171, 0.018, emission \cr
+   \code{below_detection_stem} \tab CO2 rises cleanly, CH4 flat \tab upland tree stem, height campaign, summer 2021 \tab ABB/LGR UGGA, 5 s \tab 1124, 227 \tab 0.628, 3e-256 \tab 0.0018, 0.019, below detection \cr
+   \code{failed_closure_stem} \tab CO2 not rising (slightly falling), CH4 below detection \tab upland tree stem, monthly survey, winter 2021 \tab ABB/LGR UGGA, 1 s \tab 348, 351 \tab -0.0253, 1.4e-13 \tab 0.0018, 0.0075, below detection \cr
+   \code{ambiguous_stem} \tab CH4 marginally detected (uptake just past MDF95) over a flat CO2 tracer \tab upland tree stem, monthly survey, winter 2020 \tab ABB/LGR UGGA, 1 s \tab 583, 587 \tab -0.0003, 0.69 \tab -0.0046, 0.0046, uptake \cr
+   \code{uptake_stem} \tab strongest coherent stem uptake, CO2 rising, headspace drawn ~70 ppb below start \tab upland tree stem, monthly survey, summer 2020 \tab ABB/LGR UGGA, 1 s \tab 291, 293 \tab 0.730, ~0 \tab -0.176, 0.0078, uptake \cr
+   \code{uptake_soil} \tab strong, clean soil CH4 uptake \tab forest soil collar, summer 2020 \tab ABB/LGR UGGA, 1 s \tab 387, 390 \tab 0.611, ~0 \tab -2.25, 0.060, uptake \cr
+   \code{high_flux_wetland_stem} \tab large diffusive mangrove-stem emission \tab coastal wetland tree stem, dry season 2022 \tab Picarro G4301, 3 s \tab 472, 149 \tab 0.242, 2e-135 \tab 23.1, 0.0006, emission \cr
+   \code{ebullition_floating} \tab one bubble burst (5 consecutive samples at 42-46 s, ~675 ppb) inside a sealed floating-chamber closure \tab open water, ghost-forest mangrove site, wet season 2022 \tab ABB/LGR GLA131, 1 s \tab 276, 278 \tab 0.114, ~0 \tab not processed for MDF \cr
+   \code{emission_li7810_stem} \tab clean emission, third analyzer format; \code{Tcham} is the campaign default (24 C) \tab tree stem, Santa Fe 2026, spring \tab LI-COR LI-7810, 1 s \tab 367, 368 \tab 0.565, ~0 \tab 0.414, 0.0031, emission \cr
 }
 
 
-The full diagnostics table is shipped as
-\code{system.file("extdata", "stemflux_examples_diagnostics.csv", package = "stemflux")}.\tabular{lllll}{
-   id \tab UniqueID \tab what it shows \tab kind \tab source / geometry \cr
-   \code{e} \tab \verb{BF_CP40_2022-10-23_P06} \tab aquatic floating chamber with one bubble burst (5 consecutive 1 Hz samples at 42-46 s, ~675 ppb) inside a sealed closure \tab real \tab NASA BlueFlux campaign, Everglades (FL, USA), site CP40, ABB/LGR GLA131 (LGR2), 276 s; Area 324.3 cm2, Vtot 4.318 L from the campaign's chamber parameters, Tcham = mean air temperature of that site-day's water measurements (28.7 C); the trace is as segmented by the campaign's ebullition script (clock offset applied, 20 s trimmed at each end) \cr
-   \code{f} \tab \code{SYN_uptake_from_a} \tab \strong{synthetic} CH4 uptake (-0.08 ppb s-1) with positive CO2 (+0.6 ppm s-1), Gaussian noise at the measured Allan precision of closure \code{a} (2.2 ppb CH4, 0.8 ppm CO2), seed 42 \tab synthetic \tab geometry copied from \code{a}; 60 s dead band \cr
-}
+\code{MDF95} and \code{class} come from each campaign's own processed table
+(\code{flux_FINAL.csv}, \code{flux_after_tier1.csv}, the BlueFlux Picarro best-flux
+table, the Santa Fe flux table); the CO2 slope is a linear fit on the
+flagged rows made while building the set. The UGGA closures carry the
+campaign's water column (\code{H2O_ppm}); the Picarro, GLA131 (ebullition) and
+LI-7810 rows use the values present in their manID (0 where none was
+logged). The \verb{*_prec} columns hold \code{prec} (\code{c(0.35, 0.9, 200)} by default).
 }
 \section{Data release and citation}{
 
-The real closures are released with the package under its MIT license,
-with the permission of the data owner. \code{a}-\code{d} come from the Yale-Myers
-Forest tree-stem methane record (2020-2021; J. Gewirtzman and colleagues,
-Yale School of the Environment); cite them as "Gewirtzman et al.,
-Yale-Myers Forest stem-flux record 2020-2021, distributed with the
-stemflux R package". \code{e} comes from the ground component of the NASA
-Carbon Monitoring System BlueFlux field campaign (site CP40, Christian
-Point, a ghost-forest mangrove site in south Florida; ABB/LGR GLA131); cite
-Poulter, B., et al. (2023), Multi-scale observations of mangrove blue
-carbon ecosystem fluxes: The NASA Carbon Monitoring System BlueFlux field
-campaign, Environmental Research Letters 18, 075009,
-\doi{10.1088/1748-9326/acdae6}, and the blueflux-ground repository (MIT
-license). \code{f} is synthetic and carries no data rights.
-
-\code{a}-\code{d} carry the campaign's water column (\code{H2O_ppm}); \code{e} and \code{f} have
-none and use 0. The \verb{*_prec} columns hold the UGGA/GLA131 datasheet value
-used by the source campaigns (\code{c(0.35, 0.9, 200)} for CO2 ppm, CH4 ppb,
-H2O ppm).
+The closures are released with the package under its MIT license, with
+the permission of the data owner. Upland stem and soil closures: the
+Yale-Myers Forest (CT, USA) chamber-flux record 2020-2021 (J. Gewirtzman
+and colleagues, Yale School of the Environment); cite as "Gewirtzman et
+al., Yale-Myers Forest chamber-flux record 2020-2021, distributed with the
+stemflux R package". Wetland closures (\code{high_flux_wetland_stem},
+\code{ebullition_floating}): the ground component of the NASA Carbon Monitoring
+System BlueFlux field campaign, south Florida; cite Poulter, B., et al.
+(2023), Multi-scale observations of mangrove blue carbon ecosystem fluxes:
+The NASA Carbon Monitoring System BlueFlux field campaign, Environmental
+Research Letters 18, 075009, \doi{10.1088/1748-9326/acdae6}, and the
+blueflux-ground repository (MIT license). \code{emission_li7810_stem}: the
+author's Santa Fe 2026 campaign.
 }
 
 \examples{
 ex <- stemflux_examples()
-ex$aux[, c("example", "UniqueID", "kind", "what")]
+ex$aux[, c("UniqueID", "campaign_type", "analyzer")]
 table(ex$data$UniqueID, ex$data$flag)
-one <- stemflux_examples("c")$data
+one <- stemflux_examples("failed_closure_stem")$data
 plot(one$Etime, one$CO2dry_ppm, pch = 16, cex = 0.4, col = one$flag + 1)
 }
 \seealso{

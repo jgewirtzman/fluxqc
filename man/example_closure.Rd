@@ -8,21 +8,21 @@ example_closure(dead.band = NULL, prec = c(0.35, 0.9, 200))
 }
 \arguments{
 \item{dead.band}{\code{NULL} (default) keeps the shipped \code{flag} column (the
-clicked window for \code{a}-\code{d}, the whole trimmed trace for \code{e}, 60 s for
-\code{f}). A number re-flags every closure as \code{start.time + dead.band} to the
-end of its segment, ignoring the clicked windows.}
+clicked window). A number re-flags every closure as \code{start.time + dead.band} to the end of its segment, ignoring the clicked windows.}
 
-\item{prec}{manufacturer precision \verb{c(CO2 ppm, CH4 ppb, H2O ppm)}.}
+\item{prec}{manufacturer precision \verb{c(CO2 ppm, CH4 ppb, H2O ppm)} written
+to the \verb{*_prec} columns.}
 }
 \value{
 goFlux-shaped data.frame for the one closure.
 }
 \description{
-Alias for \code{stemflux_examples("a")$data}: closure \verb{2021-05-18_5086_I_7.0},
-a clean high-signal tree-stem closure (Yale-Myers Forest, ABB/LGR UGGA)
-with the campaign's clicked window (765 s starting 91 s after the
-recorded \code{start.time}, 770 flagged rows) and its obs.win context. See
-\code{\link[=stemflux_examples]{stemflux_examples()}} for the geometry and the other bundled closures.
+Alias for \code{stemflux_examples("emission_stem_semirigid")$data}: a clean
+high-signal tree-stem closure (Yale-Myers Forest monthly survey, spring
+2021, ABB/LGR UGGA at 1 Hz) with the campaign's clicked window (765 s
+starting 91 s after the recorded \code{start.time}, 770 flagged rows) and its
+obs.win context. See \code{\link[=stemflux_examples]{stemflux_examples()}} for the geometry and the other
+bundled closures.
 }
 \examples{
 d <- example_closure()

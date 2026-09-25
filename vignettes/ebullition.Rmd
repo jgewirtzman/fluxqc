@@ -28,11 +28,11 @@ number that is neither. This add-on is switched on with a single argument,
 
 ## A real closure with bubbles
 
-Example `e` of `stemflux_examples()` is a real 276 s floating-chamber closure
+`ebullition_floating` in `stemflux_examples()` is a real 276 s floating-chamber closure
 on open water at site CP40 (Christian Point, a ghost-forest mangrove site) of
 the NASA BlueFlux campaign (ABB/LGR GLA131, "LGR2"). Geometry: Area 324.3 cm2,
 Vtot 4.318 L, Tcham 28.7 C (site-day mean air temperature), Pcham 101.325
-kPa. We put it next to the clean tree-stem closure `a` for comparison.
+kPa. We put it next to the clean tree-stem closure `emission_stem_semirigid` for comparison.
 
 What the trace shows, checked against the campaign's own segmentation
 (`output/ebullition/placements_summary.csv`, `all_traces.rds`): CH4 rises
@@ -50,10 +50,10 @@ traces are bursts of consecutive samples), which is why this one is shipped.
 
 ```{r make}
 library(stemflux)
-ex <- stemflux_examples(c("a", "e"))
+ex <- stemflux_examples(c("emission_stem_semirigid", "ebullition_floating"))
 both <- ex$data
-ex$aux[, c("example", "UniqueID", "obs.length", "Area", "Vtot", "Tcham")]
-e <- both[both$UniqueID == "BF_CP40_2022-10-23_P06", ]
+ex$aux[, c("UniqueID", "obs.length", "Area", "Vtot", "Tcham", "analyzer")]
+e <- both[both$UniqueID == "ebullition_floating", ]
 ```
 
 ## Step 1: detect events
@@ -77,8 +77,8 @@ eb$events
 op <- par(mfrow = c(2, 1), mar = c(4, 4.5, 2.5, 1))
 plot(e$Etime, e$CH4dry_ppb, pch = 16, cex = 0.5, type = "b", xlab = "seconds since window start",
      ylab = "CH4 (ppb)", main = "BlueFlux CP40, 2022-10-23: diffusive rise with one bubble burst (red)")
-ev <- eb$events[eb$events$UniqueID == "BF_CP40_2022-10-23_P06", ]
-tr <- eb$trace[eb$trace$UniqueID == "BF_CP40_2022-10-23_P06", ]
+ev <- eb$events[eb$events$UniqueID == "ebullition_floating", ]
+tr <- eb$trace[eb$trace$UniqueID == "ebullition_floating", ]
 points(tr$Etime_eb[tr$is_outlier], tr$CH4dry_ppb[tr$is_outlier], col = "red", pch = 16, cex = 0.9)
 abline(v = ev$Etime, col = "red", lty = 2)
 text(ev$Etime, max(e$CH4dry_ppb), sprintf("event: +%.0f ppb", ev$dC), pos = 4, col = "red", cex = 0.8)
@@ -87,7 +87,7 @@ plot(e$Etime, e$CO2dry_ppm, pch = 16, cex = 0.5, type = "b", xlab = "seconds sin
 abline(v = ev$Etime, col = "red", lty = 2)
 par(op)
 camp <- detect_ebullition(both, "CH4dry_ppb", method = "threshold", jump.thresh = 100, merge.consecutive = FALSE)
-camp$summary[camp$summary$UniqueID == "BF_CP40_2022-10-23_P06", c("n_events", "total_ebullitive")]   # the campaign's count
+camp$summary[camp$summary$UniqueID == "ebullition_floating", c("n_events", "total_ebullitive")]   # the campaign's count
 ```
 
 Two alternatives are available: `method = "threshold"` (a fixed jump size in
@@ -114,7 +114,7 @@ points(sp$diffusive$Etime, sp$diffusive$CH4dry_ppb, pch = 16, cex = 0.4,
 `sp$diffusive` has goFlux's shape: the gas column now holds the de-ebulliated
 trace, the raw values are kept in `CH4dry_ppb_raw`, and the equilibration
 buffer around each event has `flag = 0`, so goFlux ignores it. (The clean
-closure `a` is untouched: no events, all rows keep `flag = 1`.)
+closure `emission_stem_semirigid` is untouched: no events, all rows keep `flag = 1`.)
 
 ## Step 3: diffusive term with goFlux, then merge
 
@@ -143,7 +143,7 @@ logical `ebullition` column in the auxfile, so flooded stems can be split
 while upland stems in the same call run the core path.
 
 ```{r process}
-aux <- data.frame(UniqueID = c("2021-05-18_5086_I_7.0", "BF_CP40_2022-10-23_P06"), ebullition = c(FALSE, TRUE))
+aux <- data.frame(UniqueID = c("emission_stem_semirigid", "ebullition_floating"), ebullition = c(FALSE, TRUE))
 invisible(capture.output(       # goFlux's progress bar is captured
   res <- suppressWarnings(process_fluxes(both, aux = aux, gastype = "CH4dry_ppb",
                        qc = list(c0 = TRUE, convex = TRUE),

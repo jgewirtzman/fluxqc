@@ -49,10 +49,10 @@ test_that("process_fluxes ebullition add-on: flag and split, per-closure control
   expect_false("flux_total" %in% names(fl$fluxes))
   expect_equal(fl$fluxes$n_ebullition_events[fl$fluxes$UniqueID == "bubbly"], 1)
   expect_equal(nrow(fl$events), 1)
-  aux <- data.frame(UniqueID = c("2021-05-18_5086_I_7.0", "bubbly"), ebullition = c(FALSE, TRUE))
+  aux <- data.frame(UniqueID = c("emission_stem_semirigid", "bubbly"), ebullition = c(FALSE, TRUE))
   sp <- suppressWarnings(process_fluxes(both, aux = aux, gastype = "CH4dry_ppb", qc = FALSE, ebullition = "split"))
   fx <- sp$fluxes
-  expect_equal(fx$ebullition_handling[order(fx$UniqueID)], c("none", "split"))
+  expect_equal(fx$ebullition_handling[match(c("emission_stem_semirigid", "bubbly"), fx$UniqueID)], c("none", "split"))
   expect_true(all(c("flux_diffusive", "flux_ebullitive", "flux_total", "ebullition_method") %in% names(fx)))
   b <- fx[fx$UniqueID == "bubbly", ]; o <- fx[fx$UniqueID != "bubbly", ]
   expect_gt(b$flux_ebullitive, 0); expect_equal(o$flux_ebullitive, 0)

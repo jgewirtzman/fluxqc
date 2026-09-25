@@ -23,10 +23,11 @@ with `rmarkdown::render()`.
 
 ## The closure
 
-`stemflux` ships one closure, `2021-05-18_5086_I_7.0`: a 600 s tree-stem
-measurement at Yale-Myers Forest (Connecticut) with a semi-rigid sleeve chamber
-and an ABB/LGR micro-portable UGGA logging at 1 Hz. The chamber geometry comes
-from the campaign auxfile and is stored by `example_closure()`:
+`example_closure()` returns `emission_stem_semirigid` from the bundled set
+(`?stemflux_examples`): a tree-stem closure from the Yale-Myers Forest
+(Connecticut) monthly survey, spring 2021, semi-rigid sleeve chamber, ABB/LGR
+micro-portable UGGA logging at 1 Hz, shipped anonymized (synthetic calendar,
+no tree or plot identifiers) with the campaign's clicked window and geometry:
 
 | auxfile column | value | meaning |
 |---|---|---|
