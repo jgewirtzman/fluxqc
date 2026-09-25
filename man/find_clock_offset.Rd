@@ -62,11 +62,6 @@ non-interactive replacement for the slider-based Shiny alignment app used
 in the BlueFlux rescue (\code{offset_finder_app.R}), which relied on visual
 alignment. It works with any goFlux importer's output.
 }
-\details{
-Tools for a rarer problem, analyzer clock \emph{resets} that interleave two
-time streams in one raw LGR file, are shipped as unexported scripts in
-\code{system.file("rescue", package = "fluxqc")}.
-}
 \examples{
 set.seed(7)
 t0 <- as.POSIXct("2023-03-15 10:00:00", tz = "UTC")

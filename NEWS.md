@@ -1,3 +1,17 @@
+# fluxqc 0.2.1
+
+Pruning, now that goFlux 0.4.0 covers the ground and the general pieces are
+being submitted to goFlux as pull requests (see the README status section):
+
+* `flux_pdf()` deleted: goFlux 0.4.0's `flux2pdf()` works with ggplot2 >= 3.5;
+  `write_outputs()` uses it.
+* The ebullition add-on (`detect_ebullition()`, `process_fluxes(ebullition =)`,
+  `ebullition_events.csv`, `vignette("ebullition")`) deleted: closures over
+  water or saturated surfaces go to `goFlux::goAquaFlux()` directly. The
+  `ebullition_floating` example closure stays as data.
+* The one-off rescue scripts (`inst/rescue/`) deleted.
+* `grid` and `gridExtra` dropped from Imports.
+
 # fluxqc 0.2.0
 
 Now depends on goFlux >= 0.4.0. The ebullition add-on is a thin adapter over

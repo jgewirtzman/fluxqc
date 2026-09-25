@@ -1,13 +1,12 @@
 # fluxqc
 
 Extensions to [goFlux](https://github.com/Qepanna/goFlux) (Rheault et al.
-2024) for chamber fluxes from any surface (soil, water, tree stems, leaves;
-diffusive or ebullitive): multi-gas stacked window
-selection, non-interactive window detection, empirical per-measurement
-precision, minimum detectable flux by several published methods with detection
-flags, toggleable physical QC screens, a one-call pipeline with explicit
-outputs, a `ggplot2 >= 3.5`-safe PDF exporter, import helpers for very large
-LI-7810 files, clock utilities, and an opt-in ebullition add-on.
+2024) for chamber fluxes from any surface (soil, water, tree stems, leaves):
+empirical precision, minimum detectable flux by several published methods
+with detection flags, toggleable physical QC screens, multi-gas stacked window
+selection, non-interactive window detection, a one-call pipeline with
+explicit outputs, a date subset for very large LI-7810 files and a
+notebook-to-analyzer clock-offset utility.
 
 ## Status: staging ground for goFlux
 
@@ -25,13 +24,25 @@ fluxqc function is retired in favour of the goFlux one:
 | `feat/click-peak2-stacked` | `click.peak2(gases = )` | `click_peak2_stacked()` |
 | `feat/import-li7810-dates` | `import.LI7810(dates = )` | `import_li7810_subset()` shim |
 | `fix/crop-meas-aux-obslength` | `crop.meas(max.obs.length = "aux")` | per-closure workaround in `windows_from_table()` |
-| `feat/aqua-diffusive-deebulliated` | `goAquaFlux(diffusion.window = "deebulliated")` | nothing (new capability; `detect_ebullition()` passes it through once released) |
+| `feat/aqua-diffusive-deebulliated` | `goAquaFlux(diffusion.window = "deebulliated")` | nothing (new capability) |
 
-What stays here for now: `process_fluxes()`/`write_outputs()` (the one-call
-pipeline), `mdf_multi()` (method comparison), `flux_pdf()`, `find_clock_offset()`,
-`auto_id_rise()` (rise detection is a different approach from goFlux's
-`autoID()` window construction and does not fit it cleanly), the bundled
-example closures and the rescue tools in `inst/rescue/`.
+Already retired (fluxqc 0.2.1): `flux_pdf()` (goFlux 0.4.0's `flux2pdf()`
+works), the ebullition add-on (`goFlux::goAquaFlux()` does the job; call it
+directly) and the one-off rescue scripts.
+
+What remains, what it is for and where it is used:
+
+| function | what it is for | where it is used |
+|---|---|---|
+| `process_fluxes()`, `write_outputs()` | the one-call pipeline (`goFlux` -> `best.flux` -> `flag_detection` -> `qc_screens`) with every setting written to `settings.json`, plus `fluxes.csv` and the plot PDF | the pipeline vignette; the ten-closure table behind Fig S1 of the guidelines paper |
+| `flag_detection()`, `precision_*()`, `flux_term()` | empirical precision and MDF appended as `sigma_emp`, `MDF_emp`, `below_MDF_emp`, `det_class_emp` | the worked-example vignette and the numbers of Methods S2 (companion manuscript method: record-wide MAD sigma, Wassmann form, 95 percent two-sided) |
+| `mdf_multi()` | the same closure under every precision estimator x MDF method x confidence level, side by side | the MDF comparison table of the guidelines paper (Table 2.5 logic) |
+| `qc_screens()`, `qc_c0_screen()` | plain-toggle physical screens (C0, CO2 tracer, convex, min window, ambient start, noisy, leak) that only append `qc_*` columns | the pipeline vignette (Figure 4 logic) |
+| `click_peak2_stacked()`, `windows_from_table()`, `flag_window()` | window selection with all gases on one time axis; windows from a table of times (over `goFlux::crop.meas()`) | day-to-day manID work until the goFlux branches land |
+| `auto_id_rise()`, `find_rise()` | non-interactive window from the sustained CO2 rise, with a diagnostic PNG per closure | the Santa Fe 2026 LI-7810 campaign (auto-ID of the closures); stays in fluxqc because goFlux's `autoID()` builds windows from the auxfile, a different approach |
+| `find_clock_offset()` | constant offset between notebook closure times and the analyzer clock, from the CO2 rise onsets | clock-offset utility for campaigns whose notebook and analyzer disagree (BlueFlux ground data) |
+| `import_li7810_subset()`, `import2RData_flat()` | date subset of a campaign-long LI-7810 `.data` file; recursive per-file import without goFlux's `muffleError` wrapper | the Santa Fe 2026 campaign import |
+| `fluxqc_examples()`, `example_closure()` | ten real, anonymized closures with real geometry and the operator-clicked windows | the worked example (`emission_stem_semirigid`), Fig S1, the vignettes and the tests |
 
 Everything keeps goFlux's column conventions (`UniqueID`, `start.time`,
 `obs.length`, `Vtot`, `Area`, `Pcham`, `Tcham`, `flag`, `Etime`,
@@ -90,7 +101,7 @@ write_outputs(CH4, "results/CH4")
 Vignettes: `vignette("worked-example", "fluxqc")` (every intermediate number
 of one closure, and how to choose precision and MDF), `vignette("pipeline",
 "fluxqc")` (the end-to-end pipeline and where every output column comes
-from), `vignette("ebullition", "fluxqc")` (the opt-in add-on).
+from).
 
 ## Choosing precision and MDF
 
@@ -136,8 +147,8 @@ and the rest. Gas columns are always named through the `gastype` / `gases` /
 `detect.gas` arguments; the only goFlux column name used implicitly is
 `CO2dry_ppm` in the `co2_tracer` screen, because that screen *is* about CO2.
 The analyzer-specific pieces are `import_li7810_subset()` (LI-7810 `.data`
-files), the shipped example closures (UGGA / GLA131) and the unexported
-rescue scripts (raw LGR text-file layout). This was verified by grepping the
+files) and the shipped example closures (UGGA / GLA131 / LI-7810). This was
+verified by grepping the
 core sources for gas-column and file-format literals.
 
 ## Function map
@@ -154,13 +165,10 @@ core sources for gas-column and file-format literals.
 | Empirical precision + MDF appended as `sigma_emp`, `MDF_emp`, `below_MDF_emp`, `MDF_emp_method` (comparison columns via `extra`) | `flag_detection()`, `mdf_multi()` | `MDF()`, `best.flux()` (`MDF` criterion) |
 | (V/A)(P/RT) with goFlux unit conventions | `flux_term()` | `flux.term()` (unexported) |
 | Toggleable physical QC screens (C0, CO2 tracer, convex, min window, ambient start, noisy closure, leak), flags only; switch `co2_tracer` off for surfaces without respiratory CO2 | `qc_screens()` (`qc_c0_screen()` wrapper) | -- |
-| Multi-page PDF of `flux.plot()` output, ggplot2 >= 3.5 safe | `flux_pdf()` | `flux2pdf()` |
 | Date subset of huge LI-7810 `.data` files (shim: forwards to `import.LI7810(dates=)` once the upstream patch in `inst/upstream/patches/` is merged) | `import_li7810_subset()` | `import.LI7810()` |
 | Recursive per-file import without the `muffleError` wrapper or `getwd()/RData` writes | `import2RData_flat()` | `import2RData()` |
 | Utility: notebook-to-analyzer clock offset by cross-correlating notebook starts with rise onsets | `find_clock_offset()` | -- |
-| **Ebullition add-on (opt-in)**: thin adapter over goFlux's bubble detection and diffusion/ebullition partition, appended to the flux table | `detect_ebullition()`; `process_fluxes(ebullition = "flag"|"split")` | `goAquaFlux()` (goFlux >= 0.3.0, C. Minaudo) |
-| Six bundled closures with real geometry (see Data) | `fluxqc_examples()`, `example_closure()` | `manID.UGGA` (example data) |
-| One-off rescue scripts for LGR clock resets and interleaved streams (unexported: `detect_clock_streams()`, `write_stream_files()`, `separate_window_streams()`, `obs_win_deinterleave()`, `click_flux_2d()`) | `system.file("rescue", package = "fluxqc")` | -- |
+| Ten bundled closures with real geometry (see Data) | `fluxqc_examples()`, `example_closure()` | `manID.UGGA` (example data) |
 
 ## Data
 

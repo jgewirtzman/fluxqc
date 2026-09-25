@@ -29,10 +29,9 @@ import -> auxfile -> obs.win -> window selection -> process_fluxes()
 ```
 
 Ebullition (bubbles under floating chambers, from saturated soils or flooded
-vegetation) is an opt-in add-on switched on with `process_fluxes(ebullition =
-...)`, which hands the closures to goFlux's own `goAquaFlux()` partition
-(goFlux >= 0.3.0); see `vignette("ebullition", "fluxqc")`. Users of
-unsaturated surfaces never need it.
+vegetation) is goFlux's own business: send those closures to
+`goFlux::goAquaFlux()`, which detects the bubbles and partitions the flux.
+fluxqc does not wrap it.
 
 ## 1. Import
 
@@ -194,7 +193,7 @@ live tissue should accumulate CO2); `uptake_stem` and `uptake_soil` are real,
 detected uptakes with healthy CO2 tracers; `high_flux_wetland_stem` and the
 LI-7810 closure are large clean emissions; `ebullition_floating` is open water,
 processed with the CO2-tracer screen switched off (no respiratory CO2), and
-its bubbles are the add-on's business. No row was removed.
+its bubbles are `goFlux::goAquaFlux()`'s business. No row was removed.
 
 ## 5. Where the outputs go
 
@@ -202,21 +201,17 @@ its bubbles are the add-on's business. No row was removed.
 write_outputs(CH4, "results/CH4")
 #> results/CH4/fluxes.csv        one row per UniqueID
 #> results/CH4/settings.json     every option used (methods section)
-#> results/CH4/flux_plots.pdf    one page per closure (goFlux::flux.plot via flux_pdf)
-#> results/CH4/ebullition_events.csv   only when the ebullition add-on ran
+#> results/CH4/flux_plots.pdf    one page per closure (goFlux::flux.plot via goFlux::flux2pdf)
 ```
 
-`process_fluxes()` returns a list: `fluxes`, `events` (`NULL` unless the
-ebullition add-on ran), `traces` (the concentration data actually fitted),
-`gastype`, `settings`.
+`process_fluxes()` returns a list: `fluxes`, `traces` (the concentration
+data actually fitted), `gastype`, `settings`.
 
 **goFlux columns are never modified; fluxqc adds columns; nothing is
 removed.** `fluxes` starts as the exact `best.flux()` table (same names, same
 values) and fluxqc appends columns with distinguishable names (`*_emp`,
-`qc_*`, `flux_ebullitive`, ...), so `goFlux::flux.plot()` and any other goFlux
-function run on it unchanged. `flux_pdf()` replaces `flux2pdf()` only because
-the latter fails with ggplot2 >= 3.5; it writes the same plots produced by
-`flux.plot()`. Every column of `fluxes`, with its origin:
+`qc_*`), so `goFlux::flux.plot()` and any other goFlux function run on it
+unchanged. Every column of `fluxes`, with its origin:
 
 | column(s) | origin | produced by | meaning |
 |---|---|---|---|
@@ -238,13 +233,10 @@ the latter fails with ggplot2 >= 3.5; it writes the same plots produced by
 | `qc_noisy`, `qc_noisy_sigma`, `qc_noisy_ratio` | fluxqc (added) | `qc_screens()` | closure sigma > k x campaign sigma (disturbed closure?) |
 | `qc_leak`, `qc_leak_apparent_flux` | fluxqc (added) | `qc_screens()` | leak-equivalent flux >= `MDF_emp` |
 | `qc_any`, `qc_note` | fluxqc (added) | `qc_screens()` | any screen fired; which |
-| `ebullition_handling`, `n_ebullition_events`, `ebullition_flag` | fluxqc add-on (added only with `ebullition = "flag"`/`"split"`) | `detect_ebullition()` over `goFlux::goAquaFlux()` | bubble events per closure |
-| `flux_diffusive`, `SE_diffusive`, `n_obs_diffusive`, `flux_ebullitive`, `SE_ebullitive`, `flux_total`, `SE_total`, `first_bubble_time`, `ebullition_method` | goFlux `goAquaFlux()` via the add-on (added only with `"split"`) | `goFlux::goAquaFlux()` | goFlux's partition: diffusive term on the pre-bubble window, summed bubble steps, total; `best.flux` itself stays the whole-trace fit |
 
-`events` (add-on only): goFlux's bubble table (`UniqueID`, `start`, `end`,
-`magnitude`, `SE`, `slope`, `n_used`, `overshoot`, `tau`, ...). `settings`: `fluxqc_version`, `goFlux_version`,
+`settings`: `fluxqc_version`, `goFlux_version`,
 `gastype`, `precision`, `mdf`, `conf`, `extra`, `sigma_global`, `qc`
-(parameters of each screen), `group`, `surface`, `ebullition*`, `goFlux_args`,
+(parameters of each screen), `group`, `goFlux_args`,
 `best.flux_args`, `n_closures`, `date`.
 
 ## 6. Plots by hand
@@ -253,5 +245,5 @@ the latter fails with ggplot2 >= 3.5; it writes the same plots produced by
 CH4_plots <- flux.plot(CH4$fluxes, CH4$traces, "CH4dry_ppb", shoulder = 20,
                        plot.display = c("MDF", "prec", "nb.obs", "flux.term"))
 CO2_plots <- flux.plot(CO2$fluxes, CO2$traces, "CO2dry_ppm", shoulder = 20)
-flux_pdf(c(CO2_plots, CH4_plots), "plots/flux_results.pdf")   # ggplot2 >= 3.5 safe
+flux2pdf(c(CO2_plots, CH4_plots), "plots/flux_results.pdf")
 ```

@@ -4,7 +4,7 @@
 \name{fluxqc-package}
 \alias{fluxqc}
 \alias{fluxqc-package}
-\title{fluxqc: detection limits, quality screens and ebullition on top of goFlux}
+\title{fluxqc: detection limits and quality screens on top of goFlux}
 \description{
 \code{fluxqc} works on any closure processed with the \pkg{goFlux} package (see
 \code{\link[goFlux:goFlux]{goFlux::goFlux()}}), whatever the surface enclosed (soil, water, tree
@@ -36,14 +36,10 @@ goFlux column: fluxqc only appends.
 \code{\link[=precision_rolling]{precision_rolling()}}, \code{\link[=precision_by_id]{precision_by_id()}}}
 \item{Detection limits}{\code{\link[=flag_detection]{flag_detection()}}, \code{\link[=mdf_multi]{mdf_multi()}}, \code{\link[=flux_term]{flux_term()}}}
 \item{Quality screens}{\code{\link[=qc_screens]{qc_screens()}}, \code{\link[=qc_c0_screen]{qc_c0_screen()}}}
-\item{Pipeline and outputs}{\code{\link[=process_fluxes]{process_fluxes()}}, \code{\link[=write_outputs]{write_outputs()}}, \code{\link[=flux_pdf]{flux_pdf()}}}
+\item{Pipeline and outputs}{\code{\link[=process_fluxes]{process_fluxes()}}, \code{\link[=write_outputs]{write_outputs()}}}
 \item{Import helpers}{\code{\link[=import_li7810_subset]{import_li7810_subset()}}, \code{\link[=import2RData_flat]{import2RData_flat()}}}
 \item{Utility (not on the default path)}{\code{\link[=find_clock_offset]{find_clock_offset()}}}
-\item{Ebullition add-on (opt-in)}{\code{\link[=detect_ebullition]{detect_ebullition()}}, a thin adapter over
-\code{\link[goFlux:goAquaFlux]{goFlux::goAquaFlux()}} (goFlux >= 0.3.0); \code{vignette("ebullition")}}
 \item{Example data}{\code{\link[=fluxqc_examples]{fluxqc_examples()}}, \code{\link[=example_closure]{example_closure()}}}
-\item{Unexported one-off rescue scripts}{\code{system.file("rescue", package = "fluxqc")}
-(LGR clock-reset detection and interleaved-stream tools)}
 }
 }
 
@@ -60,11 +56,6 @@ Forest Meteorology, 211-212, 48-57. \doi{10.1016/j.agrformet.2015.06.004}
 Wassmann, R., et al. (2018). Increasing sensitivity of methane emission
 measurements in rice through deployment of 'closed chambers' at nighttime.
 PLoS ONE, 13(2), e0191352. \doi{10.1371/journal.pone.0191352}
-
-Hoffmann, M., et al. (2017). A simple calculation algorithm to separate
-high-resolution CH4 flux measurements into ebullition- and diffusion-derived
-components. Atmospheric Measurement Techniques, 10, 109-118.
-\doi{10.5194/amt-10-109-2017}
 }
 \seealso{
 Useful links:

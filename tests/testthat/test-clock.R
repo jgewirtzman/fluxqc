@@ -1,28 +1,5 @@
 t0 <- as.POSIXct("2023-03-15 10:00:00", tz = "UTC")
 
-test_that("rescue scripts (including detect_clock_streams) source and work", {
-  src <- system.file("rescue", "rescue_tools.R", package = "fluxqc")
-  skip_if(!nzchar(src), "rescue scripts not installed")
-  e <- new.env(); sys.source(src, envir = e)
-  expect_true(all(c("detect_clock_streams", "write_stream_files", "separate_window_streams",
-                    "obs_win_deinterleave", "click_flux_2d") %in% ls(e)))
-  expect_false("detect_clock_streams" %in% getNamespaceExports("fluxqc"))
-  f <- tempfile(fileext = ".txt")
-  hdr <- c("SN: 123", "SysTime, [CH4]d_ppm, [CO2]d_ppm")
-  good <- sprintf("%s, 2.0, 400", format(t0 + 0:19, "%m/%d/%Y %H:%M:%S"))
-  reset <- sprintf("%s, 2.1, 401", format(t0 - 600 + 0:9, "%m/%d/%Y %H:%M:%S"))
-  writeLines(c(hdr, as.vector(rbind(good[1:10], reset)), good[11:20]), f)
-  cs <- e$detect_clock_streams(f)
-  expect_true(cs$has_reset)
-  expect_equal(as.vector(table(cs$streams)[c("ahead", "behind")]), c(20L, 10L))
-  out <- e$write_stream_files(cs, "micro_f0001.txt", tempfile())
-  expect_equal(names(out), c("ahead", "behind"))
-  a <- 400 + 0.2 * (0:199); b <- 900 + 0.2 * (0:199)
-  d <- data.frame(POSIX.time = t0 + rep(0:199, each = 2), CO2dry_ppm = as.vector(rbind(a, b)))
-  s <- e$separate_window_streams(d, threshold = 100)
-  expect_equal(as.vector(table(s$stream_id)), c(200L, 200L))
-})
-
 test_that("find_clock_offset recovers a known offset and corrects an auxfile", {
   set.seed(7)
   tt <- t0 + 0:3599

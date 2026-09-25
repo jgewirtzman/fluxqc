@@ -1,8 +1,8 @@
 Package: fluxqc
 Type: Package
-Title: Detection Limits, Quality Screens and Ebullition for Chamber Flux
-    Measurements, on Top of 'goFlux'
-Version: 0.2.0
+Title: Detection Limits and Quality Screens for Chamber Flux Measurements,
+    on Top of 'goFlux'
+Version: 0.2.1
 Authors@R: person("Jonathan", "Gewirtzman", email = "jongewirtzman@gmail.com",
     role = c("aut", "cre"))
 Description: Works on any closure processed with the 'goFlux' package
@@ -10,11 +10,10 @@ Description: Works on any closure processed with the 'goFlux' package
     soil, water, tree stems, branches, leaves or any other chamber
     enclosure, diffusive or ebullitive. Adds empirical precision and minimum
     detectable flux by several published methods with detection flags,
-    toggleable physical quality screens that only append columns, an opt-in
-    ebullition (bubble) add-on, multi-gas window selection, non-interactive
-    window detection, a one-call pipeline with explicit outputs, a PDF
-    exporter compatible with 'ggplot2' >= 3.5, import helpers for very large
-    LI-7810 files and clock utilities. All functions keep 'goFlux' column
+    toggleable physical quality screens that only append columns, multi-gas
+    window selection, non-interactive window detection, a one-call pipeline
+    with explicit outputs, import helpers for very large LI-7810 files and a
+    clock-offset utility. All functions keep 'goFlux' column
     conventions and never modify a 'goFlux' column. The bundled examples come
     from the author's tree-stem, soil and open-water campaigns; tree stems
     are one application, not the scope.
@@ -28,8 +27,6 @@ Depends:
 Imports:
     graphics,
     grDevices,
-    grid,
-    gridExtra,
     stats,
     utils
 Suggests:

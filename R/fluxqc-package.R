@@ -1,4 +1,4 @@
-#' fluxqc: detection limits, quality screens and ebullition on top of goFlux
+#' fluxqc: detection limits and quality screens on top of goFlux
 #'
 #' `fluxqc` works on any closure processed with the \pkg{goFlux} package (see
 #' [goFlux::goFlux()]), whatever the surface enclosed (soil, water, tree
@@ -26,14 +26,10 @@
 #'     [precision_rolling()], [precision_by_id()]}
 #'   \item{Detection limits}{[flag_detection()], [mdf_multi()], [flux_term()]}
 #'   \item{Quality screens}{[qc_screens()], [qc_c0_screen()]}
-#'   \item{Pipeline and outputs}{[process_fluxes()], [write_outputs()], [flux_pdf()]}
+#'   \item{Pipeline and outputs}{[process_fluxes()], [write_outputs()]}
 #'   \item{Import helpers}{[import_li7810_subset()], [import2RData_flat()]}
 #'   \item{Utility (not on the default path)}{[find_clock_offset()]}
-#'   \item{Ebullition add-on (opt-in)}{[detect_ebullition()], a thin adapter over
-#'     [goFlux::goAquaFlux()] (goFlux >= 0.3.0); `vignette("ebullition")`}
 #'   \item{Example data}{[fluxqc_examples()], [example_closure()]}
-#'   \item{Unexported one-off rescue scripts}{`system.file("rescue", package = "fluxqc")`
-#'     (LGR clock-reset detection and interleaved-stream tools)}
 #' }
 #'
 #' @references
@@ -49,11 +45,6 @@
 #' Wassmann, R., et al. (2018). Increasing sensitivity of methane emission
 #' measurements in rice through deployment of 'closed chambers' at nighttime.
 #' PLoS ONE, 13(2), e0191352. \doi{10.1371/journal.pone.0191352}
-#'
-#' Hoffmann, M., et al. (2017). A simple calculation algorithm to separate
-#' high-resolution CH4 flux measurements into ebullition- and diffusion-derived
-#' components. Atmospheric Measurement Techniques, 10, 109-118.
-#' \doi{10.5194/amt-10-109-2017}
 #'
 #' @keywords internal
 "_PACKAGE"

@@ -19,10 +19,6 @@
 #' in the BlueFlux rescue (`offset_finder_app.R`), which relied on visual
 #' alignment. It works with any goFlux importer's output.
 #'
-#' Tools for a rarer problem, analyzer clock *resets* that interleave two
-#' time streams in one raw LGR file, are shipped as unexported scripts in
-#' `system.file("rescue", package = "fluxqc")`.
-#'
 #' @param traces data.frame with `POSIX.time` and the `gas` column (a whole
 #'   imported record, e.g. from [goFlux::import.UGGA()]).
 #' @param notebook_times POSIXct vector of notebook closure start times, or a

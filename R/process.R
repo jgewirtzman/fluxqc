@@ -1,29 +1,20 @@
 #' Run the core chamber-flux pipeline for one gas in one call
 #'
-#' The core path is `goFlux::goFlux()` -> `goFlux::best.flux()` ->
+#' The path is `goFlux::goFlux()` -> `goFlux::best.flux()` ->
 #' [flag_detection()] -> [qc_screens()], with every option recorded in a
 #' `settings` element for the methods section. goFlux's columns are returned
 #' exactly as `best.flux()` produced them; fluxqc only appends columns
 #' (`sigma_emp`, `MDF_emp`, `below_MDF_emp`, `MDF_emp_method`,
-#' `detected_emp`, `det_class_emp`, `qc_*`). That is all that runs by
-#' default. The ebullition add-on (for water surfaces, saturated soils and
-#' flooded vegetation) is
-#' opt-in through the single `ebullition` switch, which hands the closures to
-#' goFlux's own partition ([goFlux::goAquaFlux()], C. Minaudo, goFlux >= 0.3.0):
-#' `"flag"` keeps the whole-trace `best.flux` and adds `n_ebullition_events` /
-#' `ebullition_flag`; `"split"` additionally appends goFlux's `flux_diffusive`,
-#' `flux_ebullitive`, `flux_total` (with their SEs), `n_obs_diffusive`,
-#' `first_bubble_time` and `ebullition_method = "goAquaFlux"` (see
-#' [detect_ebullition()] and `vignette("ebullition", "fluxqc")`). `ebullition_ids` (or a logical
-#' `ebullition` column in `aux`) selects the closures that get the add-on; the
-#' rest run the core path.
+#' `detected_emp`, `det_class_emp`, `qc_*`). Ebullition is not handled here:
+#' closures over water or saturated surfaces go to [goFlux::goAquaFlux()]
+#' directly.
 #'
 #' @param manID_data flagged concentration data for all closures (output of
 #'   [goFlux::click.peak2()], [click_peak2_stacked()], [auto_id_rise()] or
 #'   [windows_from_table()]).
 #' @param aux optional auxfile (one row per `UniqueID`); used for the
-#'   `ebullition` logical column and for the `group` column of the QC
-#'   screens, which are merged into the flux table by `UniqueID`.
+#'   `group` column of the QC screens, which is merged into the flux table
+#'   by `UniqueID`.
 #' @param gastype gas column to process (one gas per call).
 #' @param precision,mdf,conf,extra passed to [flag_detection()]; the defaults are the
 #'   companion manuscript's method (record-wide MAD precision per `group`, Wassmann
@@ -37,23 +28,14 @@
 #'   periods for the record-wide `"mad"` precision in [flag_detection()] and the
 #'   `c0` median in [qc_screens()].
 #' @param co2 optional CO2 flux table for the `co2_tracer` screen.
-#' @param ebullition `"none"` (default, core path only), `"flag"` or `"split"`.
-#' @param ebullition_method kept for the API; only `"goAquaFlux"` exists since
-#'   goFlux 0.3.0 provides the partition (the former in-package `iqr`,
-#'   `threshold` and `runvar` detectors were removed as duplicates).
-#' @param ebullition_ids optional `UniqueID`s that get the add-on; default all
-#'   (or the `aux$ebullition` column).
-#' @param ebullition_args further arguments to [goFlux::goAquaFlux()] (e.g.
-#'   `bubble.window.size`, `bubble.args = list(k = 4)`).
 #' @param H2O_col water column passed to `goFlux()`; a zero column is added if
 #'   absent.
 #' @param best.flux_args list of arguments to [goFlux::best.flux()].
 #' @param ... further arguments to [goFlux::goFlux()] (e.g. `warn.length`,
 #'   `k.min`).
 #' @return list of class `fluxqc_result` with `fluxes` (one row per
-#'   `UniqueID`), `events` (`NULL` on the core path; goFlux's bubble table,
-#'   one row per event, when the add-on ran), `traces` (the concentration data
-#'   fitted), `gastype` and `settings` (every option used).
+#'   `UniqueID`), `traces` (the concentration data fitted), `gastype` and
+#'   `settings` (every option used).
 #' @seealso [write_outputs()]
 #' @examples
 #' d <- example_closure()
@@ -67,47 +49,26 @@ process_fluxes <- function(manID_data, aux = NULL, gastype = "CH4dry_ppb",
                            qc = list(c0 = TRUE, co2_tracer = TRUE, convex = TRUE,
                                      min_window = TRUE, ambient_start = TRUE, noisy = TRUE),
                            group = NULL, co2 = NULL,
-                           ebullition = c("none", "flag", "split"),
-                           ebullition_method = "goAquaFlux",
-                           ebullition_ids = NULL, ebullition_args = list(),
                            H2O_col = "H2O_ppm", best.flux_args = list(), ...) {
-  ebullition <- match.arg(ebullition); ebullition_method <- "goAquaFlux"
   d <- as.data.frame(manID_data)
   if (!gastype %in% names(d)) stop("column '", gastype, "' not in 'manID_data'")
   if (!"flag" %in% names(d)) stop("'manID_data' needs a 'flag' column (run window selection first)")
   if (!H2O_col %in% names(d)) d[[H2O_col]] <- 0
   ids <- unique(as.character(d$UniqueID))
 
-  # ---- optional add-on: ebullition (only when asked for) --------------------
-  fit_data <- d; ebres <- NULL; eb_ids <- character(0)
-  if (ebullition != "none") {
-    eb_ids <- if (!is.null(ebullition_ids)) as.character(ebullition_ids)
-              else if (!is.null(aux) && "ebullition" %in% names(aux))
-                as.character(aux$UniqueID[!is.na(aux$ebullition) & as.logical(aux$ebullition)])
-              else ids
-    eb_ids <- intersect(eb_ids, ids)
-    if (length(eb_ids)) {
-      ebres <- apply_ebullition(d, gastype, eb_ids, ebullition_args, H2O_col)
-    }
-  }
-
-  # ---- core path -------------------------------------------------------------
-  gf <- goFlux::goFlux(fit_data, gastype, H2O_col = H2O_col, ...)
+  gf <- goFlux::goFlux(d, gastype, H2O_col = H2O_col, ...)
   best <- as.data.frame(do.call(goFlux::best.flux, c(list(flux.result = gf), best.flux_args)))
   if (!is.null(aux)) {
     extra_cols <- setdiff(intersect(group, names(aux)), names(best))
     i <- match(best$UniqueID, aux$UniqueID)
     for (cc in extra_cols) best[[cc]] <- aux[[cc]][i]
   }
-  best <- flag_detection(best, traces = fit_data, gastype = gastype, precision = precision,
+  best <- flag_detection(best, traces = d, gastype = gastype, precision = precision,
                          mdf = mdf, conf = conf, group = group, extra = extra)
   if (!isFALSE(qc)) {
-    best <- qc_screens(best, traces = fit_data, screens = qc, group = group, gastype = gastype,
+    best <- qc_screens(best, traces = d, screens = qc, group = group, gastype = gastype,
                        co2 = co2, verbose = FALSE)
   }
-
-  # ---- add-on columns (only when the add-on ran) -----------------------------
-  if (!is.null(ebres)) best <- append_ebullition_cols(best, ebres, eb_ids, ebullition, ebullition_method)
 
   settings <- list(
     fluxqc_version = as.character(utils::packageVersion("fluxqc")),
@@ -118,13 +79,9 @@ process_fluxes <- function(manID_data, aux = NULL, gastype = "CH4dry_ppb",
     sigma_global = attr(best, "sigma_global"),
     qc = if (isFALSE(qc)) NULL else attr(best, "qc_screens"),
     group = group,
-    ebullition = ebullition,
-    ebullition_method = if (is.null(ebres)) NA else ebullition_method,
-    ebullition_ids = eb_ids, ebullition_args = ebullition_args,
     goFlux_args = list(...), best.flux_args = best.flux_args,
     n_closures = length(ids), date = format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"))
-  structure(list(fluxes = best, events = if (is.null(ebres)) NULL else ebres$events,
-                 traces = fit_data, gastype = gastype, settings = settings),
+  structure(list(fluxes = best, traces = d, gastype = gastype, settings = settings),
             class = "fluxqc_result")
 }
 
@@ -133,18 +90,15 @@ print.fluxqc_result <- function(x, ...) {
   cat("fluxqc result:", nrow(x$fluxes), "closures,", x$gastype, "\n")
   cat("  MDF_emp:", x$fluxes$MDF_emp_method[1], "| detected:", sum(x$fluxes$detected_emp, na.rm = TRUE),
       "| qc_any:", if ("qc_any" %in% names(x$fluxes)) sum(x$fluxes$qc_any, na.rm = TRUE) else "not run", "\n")
-  if (x$settings$ebullition != "none")
-    cat("  ebullition add-on:", x$settings$ebullition, "(", x$settings$ebullition_method, ",",
-        if (is.null(x$events)) 0 else nrow(x$events), "events )\n")
   invisible(x)
 }
 
 #' Write the outputs of process_fluxes() to a folder
 #'
 #' Writes `fluxes.csv` (one row per closure), `settings.json` (every option
-#' used, for the methods section), `ebullition_events.csv` (only when the
-#' ebullition add-on ran) and, if `ggplot2` is installed, `flux_plots.pdf`
-#' with one page per closure from [goFlux::flux.plot()] via [flux_pdf()].
+#' used, for the methods section) and, if `ggplot2` is installed,
+#' `flux_plots.pdf` with one page per closure from [goFlux::flux.plot()] via
+#' [goFlux::flux2pdf()].
 #'
 #' @param result output of [process_fluxes()].
 #' @param dir output folder (created if needed).
@@ -164,14 +118,14 @@ write_outputs <- function(result, dir, plots = TRUE, ...) {
   paths <- character(0)
   f <- file.path(dir, "fluxes.csv"); utils::write.csv(fmt(result$fluxes), f, row.names = FALSE); paths["fluxes"] <- f
   f <- file.path(dir, "settings.json"); writeLines(to_json(result$settings), f); paths["settings"] <- f
-  if (!is.null(result$events)) {
-    f <- file.path(dir, "ebullition_events.csv"); utils::write.csv(fmt(result$events), f, row.names = FALSE)
-    paths["events"] <- f
-  }
   if (plots && requireNamespace("ggplot2", quietly = TRUE)) {
     pl <- tryCatch(goFlux::flux.plot(result$fluxes, result$traces, result$gastype, ...),
                    error = function(e) { message("flux.plot failed: ", conditionMessage(e)); NULL })
-    if (!is.null(pl)) { f <- file.path(dir, "flux_plots.pdf"); flux_pdf(pl, f); paths["plots"] <- f }
+    if (!is.null(pl)) {
+      f <- file.path(dir, "flux_plots.pdf")
+      invisible(utils::capture.output(goFlux::flux2pdf(pl, outfile = f)))
+      paths["plots"] <- f
+    }
   }
   invisible(paths)
 }

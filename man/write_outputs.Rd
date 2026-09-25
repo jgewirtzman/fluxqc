@@ -20,9 +20,9 @@ the paths written, invisibly (named character vector).
 }
 \description{
 Writes \code{fluxes.csv} (one row per closure), \code{settings.json} (every option
-used, for the methods section), \code{ebullition_events.csv} (only when the
-ebullition add-on ran) and, if \code{ggplot2} is installed, \code{flux_plots.pdf}
-with one page per closure from \code{\link[goFlux:flux.plot]{goFlux::flux.plot()}} via \code{\link[=flux_pdf]{flux_pdf()}}.
+used, for the methods section) and, if \code{ggplot2} is installed,
+\code{flux_plots.pdf} with one page per closure from \code{\link[goFlux:flux.plot]{goFlux::flux.plot()}} via
+\code{\link[goFlux:flux2pdf]{goFlux::flux2pdf()}}.
 }
 \examples{
 d <- example_closure()
