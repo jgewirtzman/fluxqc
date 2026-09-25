@@ -17,6 +17,13 @@ All functions keep goFlux's column conventions (\code{UniqueID}, \code{POSIX.tim
 \code{Etime}, \code{start.time_corr}, \code{end.time_corr}, \code{obs.length_corr},
 \code{flux.term}, \code{nb.obs}, \code{MDF}, \code{prec}, \code{best.flux}, ...).
 }
+\section{Core path}{
+
+\code{goFlux::goFlux()} -> \code{goFlux::best.flux()} -> \code{\link[=flag_detection]{flag_detection()}} ->
+\code{\link[=qc_screens]{qc_screens()}}, wrapped by \code{\link[=process_fluxes]{process_fluxes()}} and written out by
+\code{\link[=write_outputs]{write_outputs()}}. Nothing else runs unless asked for.
+}
+
 \section{Function map}{
 
 \describe{
@@ -24,12 +31,15 @@ All functions keep goFlux's column conventions (\code{UniqueID}, \code{POSIX.tim
 \code{\link[=windows_from_table]{windows_from_table()}}, \code{\link[=flag_window]{flag_window()}}, \code{\link[=find_rise]{find_rise()}}}
 \item{Empirical precision}{\code{\link[=precision_allan]{precision_allan()}}, \code{\link[=precision_mad]{precision_mad()}},
 \code{\link[=precision_rolling]{precision_rolling()}}, \code{\link[=precision_by_id]{precision_by_id()}}}
-\item{Detection limits}{\code{\link[=mdf_multi]{mdf_multi()}}, \code{\link[=flag_detection]{flag_detection()}}, \code{\link[=flux_term]{flux_term()}}}
-\item{Quality control}{\code{\link[=qc_c0_screen]{qc_c0_screen()}}, \code{\link[=flux_pdf]{flux_pdf()}}}
-\item{Analyzer clock problems}{\code{\link[=detect_clock_streams]{detect_clock_streams()}},
-\code{\link[=separate_window_streams]{separate_window_streams()}}, \code{\link[=obs_win_deinterleave]{obs_win_deinterleave()}}, \code{\link[=click_flux_2d]{click_flux_2d()}}}
-\item{Ebullition}{\code{\link[=detect_ebullition]{detect_ebullition()}}, \code{\link[=split_ebullition]{split_ebullition()}}}
+\item{Detection limits}{\code{\link[=flag_detection]{flag_detection()}}, \code{\link[=mdf_multi]{mdf_multi()}}, \code{\link[=flux_term]{flux_term()}}}
+\item{Quality screens}{\code{\link[=qc_screens]{qc_screens()}}, \code{\link[=qc_c0_screen]{qc_c0_screen()}}}
+\item{Pipeline and outputs}{\code{\link[=process_fluxes]{process_fluxes()}}, \code{\link[=write_outputs]{write_outputs()}}, \code{\link[=flux_pdf]{flux_pdf()}}}
 \item{Import helpers}{\code{\link[=import_li7810_subset]{import_li7810_subset()}}, \code{\link[=import2RData_flat]{import2RData_flat()}}}
+\item{Utilities (not on the default path)}{\code{\link[=detect_clock_streams]{detect_clock_streams()}},
+\code{\link[=find_clock_offset]{find_clock_offset()}}; rescue scripts in
+\code{system.file("rescue", package = "stemflux")}}
+\item{Ebullition add-on (opt-in)}{\code{\link[=detect_ebullition]{detect_ebullition()}},
+\code{\link[=split_ebullition]{split_ebullition()}}, \code{\link[=merge_ebullition]{merge_ebullition()}}; \code{vignette("ebullition")}}
 \item{Example data}{\code{\link[=example_closure]{example_closure()}}}
 }
 }
@@ -42,11 +52,16 @@ of Open Source Software, 9(96), 6393. \doi{10.21105/joss.06393}
 Christiansen, J. R., Outhwaite, J., & Smukler, S. M. (2015). Comparison of
 CO2, CH4 and N2O soil-atmosphere exchange measured in static chambers with
 cavity ring-down spectroscopy and gas chromatography. Agricultural and
-Forest Meteorology, 211-212, 48-57.
+Forest Meteorology, 211-212, 48-57. \doi{10.1016/j.agrformet.2015.06.004}
 
-Wassmann, R., et al. (2018). Introducing a new tool for greenhouse gas
-calculation tailored for cropland: rationale, operational framework and
-potential application. Carbon Management, 9(1), 79-88.
+Wassmann, R., et al. (2018). Increasing sensitivity of methane emission
+measurements in rice through deployment of 'closed chambers' at nighttime.
+PLoS ONE, 13(2), e0191352. \doi{10.1371/journal.pone.0191352}
+
+Hoffmann, M., et al. (2017). A simple calculation algorithm to separate
+high-resolution CH4 flux measurements into ebullition- and diffusion-derived
+components. Atmospheric Measurement Techniques, 10, 109-118.
+\doi{10.5194/amt-10-109-2017}
 }
 \seealso{
 Useful links:

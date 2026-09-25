@@ -2,48 +2,54 @@
 % Please edit documentation in R/ebullition.R
 \name{split_ebullition}
 \alias{split_ebullition}
-\title{Partition a closure into diffusive and ebullitive flux}
+\title{Split closures into a de-ebulliated goFlux input and an ebullitive flux}
 \usage{
-split_ebullition(eb, Vtot, Area, Tcham, Pcham, H2O_mol = 0)
+split_ebullition(eb, H2O_col = "H2O_ppm")
 }
 \arguments{
 \item{eb}{output of \code{\link[=detect_ebullition]{detect_ebullition()}}.}
 
-\item{Vtot, Area, Tcham, Pcham}{chamber volume (L), area (cm2), temperature
-(C) and pressure (kPa), as in a goFlux auxfile.}
-
-\item{H2O_mol}{water vapour mole fraction (mol mol-1) used to correct to a
-dry-air basis. Default 0 (no correction).}
+\item{H2O_col}{water column used for the flux term (mean of the flagged
+rows, ppm); 0 if absent.}
 }
 \value{
-one-row data.frame: \code{diffusive_slope} (gas units s-1),
-\code{diffusive_r2}, \code{diffusive_flux}, \code{ebullitive_rate} (gas units s-1),
-\code{ebullitive_flux}, \code{total_flux}, \code{ebullitive_fraction}, \code{n_jumps},
-\code{n_points_clean}, \code{duration_sec}, \code{flux.term}.
+list with \code{diffusive} (goFlux-ready data.frame; the raw gas is kept
+as \verb{<gastype>_raw}) and \code{ebullitive} (data.frame: \code{UniqueID}, \code{n_events},
+\code{duration_sec}, \code{total_ebullitive}, \code{ebullitive_rate}, \code{flux.term},
+\code{flux_ebullitive}).
 }
 \description{
-Takes the output of \code{\link[=detect_ebullition]{detect_ebullition()}} and computes (1) the diffusive
-flux from a linear fit to the de-ebulliated trace, excluding the
-equilibration buffer around each jump, and (2) the ebullitive flux as the
-summed jump magnitude divided by the trace duration. Both are converted to
-area fluxes with \code{\link[=flux_term]{flux_term()}}, so the units follow the gas column
-(nmol m-2 s-1 for a ppb column).
+Ebullition add-on (opt-in). Takes the output of \code{\link[=detect_ebullition]{detect_ebullition()}} and
+returns (a) a data frame in goFlux shape in which the gas column holds the
+\emph{de-ebulliated} trace (the cumulative event mass subtracted from every
+point after each event) and the equilibration buffer around each event has
+\code{flag = 0}, so that \code{goFlux::goFlux()} and \code{goFlux::best.flux()} run on it
+unchanged give the diffusive term with goFlux's own model selection; and
+(b) the per-closure ebullitive flux, the summed event mass divided by the
+closure duration and converted with \code{\link[=flux_term]{flux_term()}} from the chamber
+columns, in the same units as the diffusive flux (nmol m-2 s-1 for a ppb
+column).
 }
 \details{
-This is a deliberately simple, transparent partition. It uses a linear
-(not Hutchinson-Mosier) diffusive fit; if you need goFlux's model
-selection, build a goFlux data frame from \code{eb$trace} with \code{C_deebull} as
-the gas column, \code{flag = !near_jump}, and run \code{\link[goFlux:goFlux]{goFlux::goFlux()}} on it. The
-ebullitive rate assumes the bubbles observed during the closure are
+The ebullitive rate assumes the bubbles caught during the closure are
 representative of the sampling period, which for episodic ebullition is
 rarely true for a single 5-10 min placement.
 }
 \examples{
-set.seed(5)
-t0 <- as.POSIXct("2022-10-23 11:00:00", tz = "UTC")
-ch4 <- 2000 + 0.5 * (0:599) + rnorm(600, 0, 1)
-ch4[300:600] <- ch4[300:600] + 400
-d <- data.frame(POSIX.time = t0 + 0:599, CH4dry_ppb = ch4)
-eb <- detect_ebullition(d, "CH4dry_ppb", jump.thresh = 100)
-split_ebullition(eb, Vtot = 4.318, Area = 324.3, Tcham = 28, Pcham = 101.325)
+d <- example_closure()
+d$CH4dry_ppb[d$t_s >= 300] <- d$CH4dry_ppb[d$t_s >= 300] + 60
+eb <- detect_ebullition(d, "CH4dry_ppb")
+sp <- split_ebullition(eb)
+sp$ebullitive
+diff_best <- goFlux::best.flux(goFlux::goFlux(sp$diffusive, "CH4dry_ppb"))
+out <- merge_ebullition(diff_best, sp$ebullitive)
+out[, c("best.flux", "flux_ebullitive", "flux_total", "n_events")]
 }
+\seealso{
+\code{\link[=detect_ebullition]{detect_ebullition()}}, \code{\link[=merge_ebullition]{merge_ebullition()}}
+
+Other ebullition (add-on): 
+\code{\link{detect_ebullition}()},
+\code{\link{merge_ebullition}()}
+}
+\concept{ebullition (add-on)}

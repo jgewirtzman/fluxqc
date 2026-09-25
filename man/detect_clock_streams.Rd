@@ -27,7 +27,7 @@ comma-separated field.}
 \value{
 list with \code{has_reset} (logical), \code{streams} (character vector, one
 per data line), \code{stream_labels}, \code{header_lines}, \code{data_lines} and
-\code{timestamps} (POSIXct). Use \code{\link[=write_stream_files]{write_stream_files()}} to split the file.
+\code{timestamps} (POSIXct).
 }
 \description{
 Some ABB/LGR (UGGA, GLA131) files contain two interleaved time streams: the
@@ -40,6 +40,11 @@ data line as \code{"ahead"} (at or advancing the running maximum time stamp) or
 from the reset stream). It works whether the streams are sequential blocks
 or interspersed row by row.
 }
+\details{
+Scripts that split such files and de-interleave the streams per window
+(one-off rescue tools from the BlueFlux campaign) are shipped, unexported,
+in \code{system.file("rescue", package = "stemflux")}.
+}
 \examples{
 f <- tempfile(fileext = ".txt")
 hdr <- c("SN: 123", "SysTime, [CH4]d_ppm, [CO2]d_ppm")
@@ -51,6 +56,5 @@ cs <- detect_clock_streams(f)
 cs$has_reset; table(cs$streams)
 }
 \seealso{
-\code{\link[=write_stream_files]{write_stream_files()}}, \code{\link[=separate_window_streams]{separate_window_streams()}},
-\code{\link[=obs_win_deinterleave]{obs_win_deinterleave()}}, \code{\link[=click_flux_2d]{click_flux_2d()}}
+\code{\link[=find_clock_offset]{find_clock_offset()}}
 }
