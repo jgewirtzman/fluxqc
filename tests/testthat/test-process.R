@@ -17,7 +17,7 @@ test_that("process_fluxes core path: appends only, goFlux columns untouched, eve
   expect_true(all(c("sigma_emp", "MDF_emp", "below_MDF_emp", "MDF_emp_method", "detected_emp",
                     "det_class_emp", "qc_c0", "qc_convex", "qc_any") %in% names(fx)))
   expect_false(any(grepl("ebullition|flux_total|flux_ebullitive|MDF_goflux_orig", names(fx))))
-  expect_equal(fx$MDF_emp_method, "christiansen | allan | 0.95")
+  expect_equal(fx$MDF_emp_method, "wassmann | mad | 0.9")
   expect_equal(res$settings$ebullition, "none")
   expect_null(res$settings$extra)
   expect_output(print(res), "stemflux result")
@@ -76,7 +76,7 @@ test_that("write_outputs writes the documented files", {
   expect_true(file.exists(file.path(dir, "fluxes.csv")))
   js <- readLines(file.path(dir, "settings.json"))
   expect_true(any(grepl("\"ebullition\": \"none\"", js)))
-  expect_true(any(grepl("\"mdf\": \"christiansen\"", js)))
+  expect_true(any(grepl("\"mdf\": \"wassmann\"", js)))
   if (requireNamespace("ggplot2", quietly = TRUE)) expect_true(file.exists(file.path(dir, "flux_plots.pdf")))
   expect_equal(nrow(read.csv(file.path(dir, "fluxes.csv"))), 1)
   d2 <- d; d2$CH4dry_ppb[d2$t_s >= 300] <- d2$CH4dry_ppb[d2$t_s >= 300] + 60

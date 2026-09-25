@@ -30,10 +30,23 @@ number that is neither. This add-on is switched on with a single argument,
 
 Example `e` of `stemflux_examples()` is a real 276 s floating-chamber closure
 on open water at site CP40 (Christian Point, a ghost-forest mangrove site) of
-the NASA BlueFlux campaign (ABB/LGR GLA131, "LGR2"), in which the campaign's
-processing found five bubble events. Geometry: Area 324.3 cm2, Vtot 4.318 L,
-Tcham 28.7 C (site-day mean air temperature), Pcham 101.325 kPa. We put it
-next to the clean tree-stem closure `a` for comparison.
+the NASA BlueFlux campaign (ABB/LGR GLA131, "LGR2"). Geometry: Area 324.3 cm2,
+Vtot 4.318 L, Tcham 28.7 C (site-day mean air temperature), Pcham 101.325
+kPa. We put it next to the clean tree-stem closure `a` for comparison.
+
+What the trace shows, checked against the campaign's own segmentation
+(`output/ebullition/placements_summary.csv`, `all_traces.rds`): CH4 rises
+diffusively from the first sample (about 11 ppb s-1) while CO2 rises cleanly
+from t = 0, so the chamber was already sealed when this window starts (the
+placement overlaps the campaign's processed flux `44857_CP40_Water_78`). At
+42-46 s the CH4 jumps by about 675 ppb in five consecutive 1 Hz samples
+(112-160 ppb each), then resumes a steady rise to 4600 ppb. The campaign
+script, which tests single samples against a 100 ppb step, recorded those
+five samples as "5 jumps". They are one bubble burst, not five bubbles and
+not the closure onset; stemflux merges consecutive flagged samples into one
+event by default (`merge.consecutive = TRUE`). No closure in the campaign's
+archive shows several isolated steps on a clean baseline (all its flagged
+traces are bursts of consecutive samples), which is why this one is shipped.
 
 ```{r make}
 library(stemflux)
@@ -41,8 +54,6 @@ ex <- stemflux_examples(c("a", "e"))
 both <- ex$data
 ex$aux[, c("example", "UniqueID", "obs.length", "Area", "Vtot", "Tcham")]
 e <- both[both$UniqueID == "BF_CP40_2022-10-23_P06", ]
-plot(e$Etime, e$CH4dry_ppb, pch = 16, cex = 0.5, type = "b",
-     xlab = "seconds since closure", ylab = "CH4 (ppb)", main = "BlueFlux CP40, 2022-10-23: diffusive rise with bubbles")
 ```
 
 ## Step 1: detect events
@@ -52,13 +63,31 @@ default method follows Hoffmann et al. (2017): the point-to-point changes are
 compared with quartile fences `Q3 + k * IQR`; stemflux's default `k = 3` keeps
 Gaussian noise below the fence on 600-point closures (`k = 0.25` reproduces
 Hoffmann's own fences, which were used to select fitting windows rather than
-to sum bubbles).
+to sum bubbles). Detected events are overlaid on the trace. On this closure
+the IQR fences (threshold about 17 ppb per sample, set by the closure's own
+noise) also catch the shoulders of the burst, so the merged event carries
+about 1100 ppb; the campaign's fixed 100 ppb criterion gives 676 ppb in five
+samples (shown last).
 
-```{r detect}
+```{r detect, fig.height = 5}
 eb <- detect_ebullition(both, "CH4dry_ppb", method = "iqr")
 eb$summary[, c("UniqueID", "n_points", "n_events", "total_ebullitive", "total_rise",
                "ebullitive_fraction", "threshold_used")]
 eb$events
+op <- par(mfrow = c(2, 1), mar = c(4, 4.5, 2.5, 1))
+plot(e$Etime, e$CH4dry_ppb, pch = 16, cex = 0.5, type = "b", xlab = "seconds since window start",
+     ylab = "CH4 (ppb)", main = "BlueFlux CP40, 2022-10-23: diffusive rise with one bubble burst (red)")
+ev <- eb$events[eb$events$UniqueID == "BF_CP40_2022-10-23_P06", ]
+tr <- eb$trace[eb$trace$UniqueID == "BF_CP40_2022-10-23_P06", ]
+points(tr$Etime_eb[tr$is_outlier], tr$CH4dry_ppb[tr$is_outlier], col = "red", pch = 16, cex = 0.9)
+abline(v = ev$Etime, col = "red", lty = 2)
+text(ev$Etime, max(e$CH4dry_ppb), sprintf("event: +%.0f ppb", ev$dC), pos = 4, col = "red", cex = 0.8)
+plot(e$Etime, e$CO2dry_ppm, pch = 16, cex = 0.5, type = "b", xlab = "seconds since window start",
+     ylab = "CO2 (ppm)", main = "CO2 rises from t = 0: the chamber was sealed before the burst")
+abline(v = ev$Etime, col = "red", lty = 2)
+par(op)
+camp <- detect_ebullition(both, "CH4dry_ppb", method = "threshold", jump.thresh = 100, merge.consecutive = FALSE)
+camp$summary[camp$summary$UniqueID == "BF_CP40_2022-10-23_P06", c("n_events", "total_ebullitive")]   # the campaign's count
 ```
 
 Two alternatives are available: `method = "threshold"` (a fixed jump size in
@@ -101,9 +130,9 @@ out[, c("UniqueID", "best.flux", "model", "flux_ebullitive", "flux_total", "n_ev
 For the BlueFlux closure the ebullitive term is the summed bubble mass
 divided by the closure duration, converted with that chamber's `flux.term`;
 `ebullitive_fraction` says how much of the total came from bubbles. (The
-campaign's own threshold-based processing found 5 events totalling 676 ppb in
-this closure; the IQR fences find a similar set, and `method = "threshold",
-jump.thresh = 100` reproduces the campaign criterion.)
+campaign's own processing counted 5 single-sample jumps totalling 676 ppb in
+this closure; `method = "threshold", jump.thresh = 100, merge.consecutive =
+FALSE` reproduces that count exactly.)
 
 ## The same through `process_fluxes()`
 

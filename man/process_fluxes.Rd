@@ -8,9 +8,9 @@ process_fluxes(
   manID_data,
   aux = NULL,
   gastype = "CH4dry_ppb",
-  precision = "allan",
-  mdf = "christiansen",
-  conf = 0.95,
+  precision = "mad",
+  mdf = "wassmann",
+  conf = 0.9,
   extra = NULL,
   qc = list(c0 = TRUE, co2_tracer = TRUE, convex = TRUE, min_window = TRUE, ambient_start
     = TRUE),
@@ -37,13 +37,16 @@ screens, which are merged into the flux table by \code{UniqueID}.}
 
 \item{gastype}{gas column to process (one gas per call).}
 
-\item{precision, mdf, conf, extra}{passed to \code{\link[=flag_detection]{flag_detection()}}.}
+\item{precision, mdf, conf, extra}{passed to \code{\link[=flag_detection]{flag_detection()}}; the defaults are the
+companion manuscript's method (record-wide MAD precision per \code{group}, Wassmann
+z = qnorm(0.95), labelled 90 percent two-sided).}
 
 \item{qc}{list of screens passed to \code{\link[=qc_screens]{qc_screens()}} (\code{screens} argument), or
 \code{FALSE} to skip QC.}
 
-\item{group, tissue}{column names (in \code{aux} or the flux table) passed to
-\code{\link[=qc_screens]{qc_screens()}}.}
+\item{group, tissue}{column names (in \code{aux} or the flux table); \code{group} defines the
+field periods for the record-wide \code{"mad"} precision in \code{\link[=flag_detection]{flag_detection()}} and the
+\code{c0} median in \code{\link[=qc_screens]{qc_screens()}}; \code{tissue} is passed to \code{\link[=qc_screens]{qc_screens()}}.}
 
 \item{co2}{optional CO2 flux table for the \code{co2_tracer} screen.}
 

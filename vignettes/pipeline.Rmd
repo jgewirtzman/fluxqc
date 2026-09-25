@@ -114,12 +114,12 @@ manID <- rbind(manID[manID$UniqueID != "T26_Base_r1", ], manID_c)
 ```{r process}
 CH4 <- process_fluxes(
   manID, aux = aux, gastype = "CH4dry_ppb",
-  precision = "allan", mdf = "christiansen", conf = 0.95,   # -> sigma_emp, MDF_emp, below_MDF_emp, MDF_emp_method
+  precision = "mad", mdf = "wassmann", conf = 0.90,        # the defaults (companion manuscript): record-wide MAD, z = qnorm(0.95)
   extra     = NULL,                                         # or list(precision=..., mdf=..., conf=...) / "all"
   qc        = list(c0 = list(k = 1.5), co2_tracer = list(min_slope = 0), convex = TRUE,
                    min_window = list(secs = 120), ambient_start = list(sigma = 3, secs = 10),
                    leak = list(rate = 2e-5)),               # bench leak rate, s-1; omit to skip
-  group = "campaign", tissue = "tissue")
+  group = "campaign", tissue = "tissue")                 # group = field period for the MAD sigma and the C0 median
 CO2 <- process_fluxes(manID, aux = aux, gastype = "CO2dry_ppm", mdf = "two_sigma")
 CH4
 table(CH4$fluxes$det_class_emp); table(CH4$fluxes$qc_any)
@@ -131,7 +131,7 @@ The same steps by hand, if you want them one at a time:
 CH4_flux <- goFlux(manID, "CH4dry_ppb")
 CH4_best <- best.flux(CH4_flux)
 CH4_best <- flag_detection(CH4_best, traces = manID, gastype = "CH4dry_ppb",
-                           precision = "allan", mdf = "christiansen", conf = 0.95)
+                           precision = "mad", mdf = "wassmann", conf = 0.90, group = "campaign")
 CH4_best <- qc_screens(CH4_best, traces = manID, gastype = "CH4dry_ppb", co2 = CO2$fluxes,
                        screens = list(c0 = TRUE, co2_tracer = TRUE, convex = TRUE))
 ```

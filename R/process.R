@@ -23,11 +23,14 @@
 #'   `ebullition` logical column and for `group` / `tissue` columns of the QC
 #'   screens, which are merged into the flux table by `UniqueID`.
 #' @param gastype gas column to process (one gas per call).
-#' @param precision,mdf,conf,extra passed to [flag_detection()].
+#' @param precision,mdf,conf,extra passed to [flag_detection()]; the defaults are the
+#'   companion manuscript's method (record-wide MAD precision per `group`, Wassmann
+#'   z = qnorm(0.95), labelled 90 percent two-sided).
 #' @param qc list of screens passed to [qc_screens()] (`screens` argument), or
 #'   `FALSE` to skip QC.
-#' @param group,tissue column names (in `aux` or the flux table) passed to
-#'   [qc_screens()].
+#' @param group,tissue column names (in `aux` or the flux table); `group` defines the
+#'   field periods for the record-wide `"mad"` precision in [flag_detection()] and the
+#'   `c0` median in [qc_screens()]; `tissue` is passed to [qc_screens()].
 #' @param co2 optional CO2 flux table for the `co2_tracer` screen.
 #' @param ebullition `"none"` (default, core path only), `"flag"` or `"split"`.
 #' @param ebullition_method method passed to [detect_ebullition()] (add-on only).
@@ -52,7 +55,7 @@
 #'                "det_class_emp", "qc_any")]
 #' @export
 process_fluxes <- function(manID_data, aux = NULL, gastype = "CH4dry_ppb",
-                           precision = "allan", mdf = "christiansen", conf = 0.95, extra = NULL,
+                           precision = "mad", mdf = "wassmann", conf = 0.90, extra = NULL,
                            qc = list(c0 = TRUE, co2_tracer = TRUE, convex = TRUE,
                                      min_window = TRUE, ambient_start = TRUE),
                            group = NULL, tissue = NULL, co2 = NULL,
@@ -90,7 +93,7 @@ process_fluxes <- function(manID_data, aux = NULL, gastype = "CH4dry_ppb",
     for (cc in extra_cols) best[[cc]] <- aux[[cc]][i]
   }
   best <- flag_detection(best, traces = fit_data, gastype = gastype, precision = precision,
-                         mdf = mdf, conf = conf, extra = extra)
+                         mdf = mdf, conf = conf, group = group, extra = extra)
   if (!isFALSE(qc)) {
     best <- qc_screens(best, traces = fit_data, screens = qc, group = group, gastype = gastype,
                        co2 = co2, tissue = tissue, verbose = FALSE)

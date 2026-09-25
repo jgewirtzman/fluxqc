@@ -31,14 +31,14 @@ library(stemflux)
 
 d <- example_closure(dead.band = 60)     # one real 600 s UGGA tree-stem closure
 
-res <- process_fluxes(d, gastype = "CH4dry_ppb",                  # defaults: allan / christiansen / 0.95
+res <- process_fluxes(d, gastype = "CH4dry_ppb",                  # defaults: mad / wassmann / 0.90
                       qc = list(c0 = TRUE, convex = TRUE, min_window = list(secs = 120)))
 res
 #> stemflux result: 1 closures, CH4dry_ppb
-#>   MDF_emp: christiansen | allan | 0.95 | detected: 1 | qc_any: 0
+#>   MDF_emp: wassmann | mad | 0.9 | detected: 1 | qc_any: 0
 res$fluxes[, c("best.flux", "model", "MDF", "sigma_emp", "MDF_emp", "MDF_emp_method", "det_class_emp", "qc_any")]
-#>   best.flux model        MDF sigma_emp   MDF_emp              MDF_emp_method det_class_emp qc_any
-#> 1  0.255676    HM 0.00113087    2.2253 0.0137646 christiansen | allan | 0.95      emission  FALSE
+#>   best.flux model        MDF sigma_emp    MDF_emp       MDF_emp_method det_class_emp qc_any
+#> 1  0.255676    HM 0.00113087    2.2094 0.00455604 wassmann | mad | 0.9      emission  FALSE
 write_outputs(res, "results/CH4")        # fluxes.csv, settings.json, flux_plots.pdf
 ```
 
@@ -70,29 +70,33 @@ from), `vignette("ebullition", "stemflux")` (the opt-in add-on).
 ## Choosing precision and MDF
 
 `flag_detection()` (called by `process_fluxes()`) takes one precision
-estimator, one MDF method and one confidence level (defaults `"allan"`,
-`"christiansen"`, `0.95`) and appends `sigma_emp`, `MDF_emp`,
-`below_MDF_emp`, `MDF_emp_method`. The multi-method comparison
-(`sigma_<precision>`, `MDF_<mdf>_<precision>[_<conf>]`) is appended only
-with `extra = list(...)` or `extra = "all"`.
+estimator, one MDF method and one two-sided confidence level and appends
+`sigma_emp`, `MDF_emp`, `below_MDF_emp`, `MDF_emp_method`. The default is the
+companion data-processing manuscript's method: `precision = "mad"` (sigma =
+MAD(dx)/sqrt 2 over the entire 1 Hz record of each field period, `group`),
+`mdf = "wassmann"` (MDF = z sigma / t flux.term) and `conf = 0.90` (z =
+qnorm(0.95) = 1.645, "90% confidence" in that manuscript's wording).
 
-| precision | use when |
-|---|---|
-| bench sigma (Box 2 of the guidelines paper), passed as `sigma =` (`custom`) | you ran a sealed/standard-gas test on the same analyzer |
-| `allan` (per closure, SD(diff x)/sqrt 2) | default; tracks the analyzer's state on the day |
-| `mad` (record-wide, MAD(diff x)/sqrt 2) | records with breaths, moves, chamber swaps |
-| `rolling` (quietest windows) | comparison only; biased low |
-| `datasheet` (goFlux `prec`) | comparability with goFlux only; too optimistic on field analyzers |
+| precision | formula | over |
+|---|---|---|
+| `mad` (default) | MAD(dx) x 1.4826 / sqrt 2 | whole record per `group` |
+| `allan` | SD(dx) / sqrt 2 | flagged rows per closure |
+| `rolling` | quietest-window residual SD | flagged rows per closure (comparison only) |
+| `datasheet` | goFlux `prec` | -- |
+| `custom` | user `sigma` (bench test, Box 2) | -- |
 
-| question | MDF method |
-|---|---|
-| means / budgets / upscaling | keep every flux, flag with `two_sigma` or `christiansen`; never delete |
-| is this flux non-zero? | `christiansen` at a stated confidence (per-closure sigma, t-quantile) |
-| cross-study comparison | report all four (`goflux`, `wassmann`, `christiansen`, `two_sigma`) |
+| MDF (`dC_min / t x flux.term`) | `dC_min` | origin |
+|---|---|---|
+| `wassmann` (default) | z sigma_global, z two-sided | Wassmann et al. 2018 |
+| `goflux` | `prec` | goFlux `MDF()`, which cites Christiansen et al. 2015 |
+| `christiansen` | sigma_i x 3 x t_crit(nb.obs - 2) | as implemented in the author's scripts; the x3 is their safety factor |
+| `two_sigma` | 2 sigma_i | guidelines paper Table 2.5 illustration |
 
-The `prec` argument of `goFlux::import.*()` feeds only goFlux's own `MDF`
-column; stemflux's estimators are applied after `best.flux()`. Nothing is
-deleted at any step, only flagged.
+Comparison columns (`sigma_<precision>`, `MDF_<mdf>_<precision>[_<conf>]`)
+are appended only with `extra = list(...)` or `extra = "all"`. The `prec`
+argument of `goFlux::import.*()` feeds only goFlux's own `MDF` column;
+stemflux's estimators are applied after `best.flux()`. Nothing is deleted at
+any step, only flagged.
 
 ## Analyzer independence
 

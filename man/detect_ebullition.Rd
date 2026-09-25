@@ -15,6 +15,7 @@ detect_ebullition(
   runvar_cutoff = 0.5,
   direction = c("up", "both"),
   buffer.secs = 15,
+  merge.consecutive = TRUE,
   flag.only = TRUE,
   scale.by.dt = TRUE,
   time.col = "POSIX.time"
@@ -43,6 +44,11 @@ removes downward outliers from the diffusive fit.}
 
 \item{buffer.secs}{half-width of the equilibration window marked
 \code{near_jump} around each event (excluded from the diffusive fit).}
+
+\item{merge.consecutive}{treat a run of consecutive flagged samples as one
+event (its mass is the summed change, its time the first sample); a
+bubble burst often spans 2-10 samples at 1 Hz. \code{FALSE} reports every
+sample separately, as the BlueFlux campaign script did.}
 
 \item{flag.only}{use only rows with \code{flag == 1} (default).}
 

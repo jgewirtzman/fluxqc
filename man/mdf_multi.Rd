@@ -22,21 +22,21 @@ unit mole fraction).}
 \item{t}{numeric vector; closure length in seconds (goFlux uses
 \code{max(Etime) + 1}, which equals \code{nb.obs} at 1 Hz).}
 
-\item{prec}{manufacturer precision (goFlux \code{prec}), same units as the gas.}
+\item{prec}{instrument precision (goFlux \code{prec}), same units as the gas.}
 
 \item{sigma}{per-measurement empirical precision (from \code{\link[=precision_allan]{precision_allan()}}
 or \code{\link[=precision_by_id]{precision_by_id()}}), same units as the gas.}
 
-\item{sigma.global}{global (instrument-level) empirical precision, e.g. the
-campaign median of \code{sigma} or the output of \code{\link[=precision_mad]{precision_mad()}} on a whole
-record.}
+\item{sigma.global}{global (instrument-level) empirical precision, e.g.
+\code{\link[=precision_mad]{precision_mad()}} over a whole record.}
 
 \item{nb.obs}{number of observations in the fit (for the t quantile);
 defaults to \code{t}.}
 
-\item{conf}{confidence levels for the Wassmann and Christiansen variants.}
+\item{conf}{two-sided confidence levels for the Wassmann and
+Christiansen-style variants.}
 
-\item{chr.mult}{multiplier in the Christiansen variant (3).}
+\item{chr.mult}{multiplier in the Christiansen-style variant (3).}
 }
 \value{
 data.frame with one row per input element and one column per
@@ -54,17 +54,26 @@ what counts as the minimum detectable concentration change
 }
 \details{
 \describe{
-\item{\code{goflux}}{\eqn{\Delta C_{min} = p}, the manufacturer precision
-(goFlux's \code{\link[goFlux:MDF]{goFlux::MDF()}} with \code{prec}). No confidence level.}
-\item{\verb{wass\{90,95,99\}}}{Wassmann et al. (2018): \eqn{z_{\alpha} \sigma_{global}},
-a \emph{global} empirical precision for the instrument times a normal
-quantile (one-sided 90/95/99 percent).}
-\item{\verb{chr\{90,95,99\}}}{Christiansen et al. (2015) style:
-\eqn{3 \sigma_i t_{\alpha, n-2}}, the \emph{per-measurement} empirical
-precision times 3 times a Student-t quantile with \code{nb.obs - 2} degrees
-of freedom.}
-\item{\verb{2sigma}}{the simple criterion used in the companion guidelines
-paper (Table 2.5): \eqn{\mathrm{MDF} = (2\sigma_i / t)(V/A)(P/RT)}.}
+\item{\code{goflux}}{\eqn{p / t \cdot \mathrm{flux.term}} with \code{p} = the
+instrument precision given to goFlux at import (\code{prec}). This is
+goFlux's built-in \code{\link[goFlux:MDF]{goFlux::MDF()}}, whose documentation cites
+Christiansen et al. (2015) for it.}
+\item{\verb{wass\{90,95,99\}}}{\eqn{z \, \sigma_{global} / t \cdot \mathrm{flux.term}},
+Wassmann et al. (2018), with a \emph{global} (instrument-level) empirical
+precision and a two-sided normal quantile: \code{wass90} uses
+\code{qnorm(0.95)} = 1.645, \code{wass95} \code{qnorm(0.975)}, \code{wass99}
+\code{qnorm(0.995)}. \code{wass90} with a record-wide MAD sigma is the method of
+the companion data-processing manuscript.}
+\item{\verb{chr\{90,95,99\}}}{\eqn{\sigma_i \cdot 3 \cdot t_{crit}(df) / t \cdot
+    \mathrm{flux.term}} with the \emph{per-measurement} precision
+\eqn{\sigma_i}, \code{df = nb.obs - 2} and a two-sided t quantile, as
+implemented in the author's processing scripts (there labelled
+"Christiansen"); the factor 3 is those scripts' safety factor. What
+Christiansen et al. (2015) and Nickerson (2016) define could not be
+checked against the papers' text here, so the factor is not attributed
+to them.}
+\item{\verb{2sigma}}{\eqn{2 \sigma_i / t \cdot \mathrm{flux.term}}, the
+illustration used in Table 2.5 of the guidelines paper.}
 }
 
 All these single-sample criteria are conservative: they ignore the averaging

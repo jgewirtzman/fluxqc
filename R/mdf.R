@@ -7,17 +7,26 @@
 #' \eqn{\Delta C_{min}}:
 #'
 #' \describe{
-#'   \item{`goflux`}{\eqn{\Delta C_{min} = p}, the manufacturer precision
-#'     (goFlux's [goFlux::MDF()] with `prec`). No confidence level.}
-#'   \item{`wass{90,95,99}`}{Wassmann et al. (2018): \eqn{z_{\alpha} \sigma_{global}},
-#'     a *global* empirical precision for the instrument times a normal
-#'     quantile (one-sided 90/95/99 percent).}
-#'   \item{`chr{90,95,99}`}{Christiansen et al. (2015) style:
-#'     \eqn{3 \sigma_i t_{\alpha, n-2}}, the *per-measurement* empirical
-#'     precision times 3 times a Student-t quantile with `nb.obs - 2` degrees
-#'     of freedom.}
-#'   \item{`2sigma`}{the simple criterion used in the companion guidelines
-#'     paper (Table 2.5): \eqn{\mathrm{MDF} = (2\sigma_i / t)(V/A)(P/RT)}.}
+#'   \item{`goflux`}{\eqn{p / t \cdot \mathrm{flux.term}} with `p` = the
+#'     instrument precision given to goFlux at import (`prec`). This is
+#'     goFlux's built-in [goFlux::MDF()], whose documentation cites
+#'     Christiansen et al. (2015) for it.}
+#'   \item{`wass{90,95,99}`}{\eqn{z \, \sigma_{global} / t \cdot \mathrm{flux.term}},
+#'     Wassmann et al. (2018), with a *global* (instrument-level) empirical
+#'     precision and a two-sided normal quantile: `wass90` uses
+#'     `qnorm(0.95)` = 1.645, `wass95` `qnorm(0.975)`, `wass99`
+#'     `qnorm(0.995)`. `wass90` with a record-wide MAD sigma is the method of
+#'     the companion data-processing manuscript.}
+#'   \item{`chr{90,95,99}`}{\eqn{\sigma_i \cdot 3 \cdot t_{crit}(df) / t \cdot
+#'     \mathrm{flux.term}} with the *per-measurement* precision
+#'     \eqn{\sigma_i}, `df = nb.obs - 2` and a two-sided t quantile, as
+#'     implemented in the author's processing scripts (there labelled
+#'     "Christiansen"); the factor 3 is those scripts' safety factor. What
+#'     Christiansen et al. (2015) and Nickerson (2016) define could not be
+#'     checked against the papers' text here, so the factor is not attributed
+#'     to them.}
+#'   \item{`2sigma`}{\eqn{2 \sigma_i / t \cdot \mathrm{flux.term}}, the
+#'     illustration used in Table 2.5 of the guidelines paper.}
 #' }
 #'
 #' All these single-sample criteria are conservative: they ignore the averaging
@@ -29,16 +38,16 @@
 #'   unit mole fraction).
 #' @param t numeric vector; closure length in seconds (goFlux uses
 #'   `max(Etime) + 1`, which equals `nb.obs` at 1 Hz).
-#' @param prec manufacturer precision (goFlux `prec`), same units as the gas.
+#' @param prec instrument precision (goFlux `prec`), same units as the gas.
 #' @param sigma per-measurement empirical precision (from [precision_allan()]
 #'   or [precision_by_id()]), same units as the gas.
-#' @param sigma.global global (instrument-level) empirical precision, e.g. the
-#'   campaign median of `sigma` or the output of [precision_mad()] on a whole
-#'   record.
+#' @param sigma.global global (instrument-level) empirical precision, e.g.
+#'   [precision_mad()] over a whole record.
 #' @param nb.obs number of observations in the fit (for the t quantile);
 #'   defaults to `t`.
-#' @param conf confidence levels for the Wassmann and Christiansen variants.
-#' @param chr.mult multiplier in the Christiansen variant (3).
+#' @param conf two-sided confidence levels for the Wassmann and
+#'   Christiansen-style variants.
+#' @param chr.mult multiplier in the Christiansen-style variant (3).
 #' @return data.frame with one row per input element and one column per
 #'   method: `MDF_goflux`, `MDF_wass90`, ..., `MDF_chr99`, `MDF_2sigma`.
 #'   Methods whose inputs were not supplied are `NA`. Fluxes and MDFs are in
@@ -68,12 +77,12 @@ mdf_multi <- function(flux.term, t, prec = NULL, sigma = NULL, sigma.global = NU
   out <- data.frame(MDF_goflux = prec / t * flux.term)
   lab <- function(c) sprintf("%02d", round(100 * c))
   for (c in conf) {
-    z <- stats::qnorm(c)
+    z <- stats::qnorm(1 - (1 - c) / 2)
     out[[paste0("MDF_wass", lab(c))]] <- z * sigma.global / t * flux.term
   }
   df <- pmax(nb.obs - 2, 1)
   for (c in conf) {
-    tc <- stats::qt(c, df = df)
+    tc <- stats::qt(1 - (1 - c) / 2, df = df)
     out[[paste0("MDF_chr", lab(c))]] <- chr.mult * sigma * tc / t * flux.term
   }
   out$MDF_2sigma <- 2 * sigma / t * flux.term
@@ -84,26 +93,38 @@ mdf_multi <- function(flux.term, t, prec = NULL, sigma = NULL, sigma.global = NU
 #' Append an empirical precision, MDF and detection flag to a best.flux table
 #'
 #' Adds exactly four columns to a [goFlux::best.flux()] (or
-#' [goFlux::goFlux()]) table: `sigma_emp` (the per-closure precision by the
-#' chosen estimator), `MDF_emp` (the minimum detectable flux by the chosen
-#' method), `below_MDF_emp` (logical) and `MDF_emp_method` (a string such as
-#' `"christiansen | allan | 0.95"`), plus `detected_emp` and `det_class_emp`
+#' [goFlux::goFlux()]) table: `sigma_emp` (the precision by the chosen
+#' estimator), `MDF_emp` (the minimum detectable flux by the chosen method),
+#' `below_MDF_emp` (logical) and `MDF_emp_method` (a string such as
+#' `"wassmann | mad | 0.9"`), plus `detected_emp` and `det_class_emp`
 #' (`"emission"`, `"uptake"`, `"below detection"`). goFlux's own columns
 #' (`MDF`, `prec`, `best.flux`, `quality.check`, ...) are never modified or
 #' duplicated; stemflux only appends. Nothing is deleted: rows are flagged.
 #'
-#' This is applied *after* `best.flux()`. The `prec` argument given to goFlux's
+#' The default is the method of the companion data-processing manuscript
+#' (`mdf_FINAL_precision_and_detection.R`): \eqn{\sigma} = MAD(\eqn{\Delta x})/\eqn{\sqrt 2}
+#' over the *entire* 1 Hz record of each field period, and
+#' \eqn{\mathrm{MDF} = z \, \sigma / t \cdot \mathrm{flux.term}} with
+#' `z = qnorm(0.95)` = 1.645, which that script labels "90% confidence"
+#' (two-sided). Hence `precision = "mad"`, `mdf = "wassmann"`, `conf = 0.90`.
+#' This is applied *after* `best.flux()`; the `prec` argument given to goFlux's
 #' `import.*()` functions feeds only goFlux's own `MDF` column.
 #'
 #' @section Precision estimators (`precision`):
 #' \describe{
+#'   \item{`"mad"` (default)}{\eqn{\sigma = MAD(\Delta x)/\sqrt{2}}
+#'     ([precision_mad()]) over *all* rows of `traces` (shoulders and dead
+#'     bands included), computed once per `group` (or once for the whole
+#'     table when `group = NULL`). At 1 Hz every second-to-second difference
+#'     is instrument-dominated, a constant flux shifts all differences equally
+#'     and cancels, and MAD ignores the isolated large differences from
+#'     moves, breaths and chamber changes. Every closure in a group gets the
+#'     same `sigma_emp`.}
 #'   \item{`"allan"`}{per closure, \eqn{\sigma = SD(\Delta x)/\sqrt{2}} on the
-#'     flagged rows of `traces` ([precision_allan()]). Default.}
-#'   \item{`"mad"`}{per closure, \eqn{\sigma = MAD(\Delta x)/\sqrt{2}}
-#'     ([precision_mad()]); robust to isolated jumps.}
+#'     flagged rows ([precision_allan()]).}
 #'   \item{`"rolling"`}{per closure, quietest-window scan of the flagged rows
 #'     ([precision_rolling()]).}
-#'   \item{`"datasheet"`}{the manufacturer precision goFlux carries in its
+#'   \item{`"datasheet"`}{the instrument precision goFlux carries in its
 #'     `prec` column.}
 #'   \item{`"custom"`}{a per-closure value supplied through `sigma` (e.g. a
 #'     bench sigma from a closed-loop test, Box 2 of the guidelines paper).}
@@ -111,40 +132,51 @@ mdf_multi <- function(flux.term, t, prec = NULL, sigma = NULL, sigma.global = NU
 #'
 #' @section MDF methods (`mdf`):
 #' \describe{
-#'   \item{`"christiansen"`}{Christiansen et al. (2015):
-#'     \eqn{3 \, \sigma_i \, t_{conf, n-2} / t \cdot \mathrm{flux.term}}. Default.}
-#'   \item{`"wassmann"`}{Wassmann et al. (2018):
-#'     \eqn{z_{conf} \, \sigma_{global} / t \cdot \mathrm{flux.term}}, with
-#'     \eqn{\sigma_{global}} = `sigma.global` if given, else the median of the
-#'     per-closure estimate across the table.}
-#'   \item{`"two_sigma"`}{\eqn{2 \sigma_i / t \cdot \mathrm{flux.term}}
-#'     (guidelines paper, Table 2.5).}
+#'   \item{`"wassmann"` (default)}{Wassmann et al. (2018):
+#'     \eqn{z \, \sigma_{global} / t \cdot \mathrm{flux.term}} with the two-sided
+#'     normal quantile `z = qnorm(1 - (1 - conf)/2)` and
+#'     \eqn{\sigma_{global}} = `sigma.global` if given, else the median of
+#'     the chosen estimator across the table (for `"mad"` that is the
+#'     record-wide value itself).}
+#'   \item{`"christiansen"`}{\eqn{\sigma_i \cdot 3 \cdot t_{crit}(df) / t
+#'     \cdot \mathrm{flux.term}}, per closure, `df = nb.obs - 2`, two-sided t
+#'     quantile: the variant implemented in the author's processing scripts
+#'     under that name. The factor 3 (`chr.mult`) is those scripts' safety
+#'     factor; it is not attributed here to Christiansen et al. (2015) or
+#'     Nickerson (2016), whose text could not be checked.}
+#'   \item{`"two_sigma"`}{\eqn{2 \sigma_i / t \cdot \mathrm{flux.term}}, the
+#'     illustration of Table 2.5 of the guidelines paper.}
 #'   \item{`"goflux"`}{\eqn{\sigma / t \cdot \mathrm{flux.term}}; with
-#'     `precision = "datasheet"` this equals goFlux's own `MDF` column.}
+#'     `precision = "datasheet"` this equals goFlux's own `MDF` column
+#'     (`p / t * flux.term`, goFlux citing Christiansen et al. 2015).}
 #' }
-#' `conf` applies to `christiansen` and `wassmann` only.
+#' `conf` applies to `wassmann` and `christiansen` only and is two-sided
+#' (0.90 -> `qnorm(0.95)`).
 #'
 #' @section Extras:
 #' `extra = list(precision = ..., mdf = ..., conf = ...)` (or `extra = "all"`
 #' for every estimator, method and 0.90/0.95/0.99) additionally appends
 #' `sigma_<precision>` for each extra estimator and
 #' `MDF_<mdf>_<precision>[_<conf>]` (two-digit percentage) for each
-#' combination, e.g. `MDF_wassmann_mad_95`, for cross-study comparison. These
-#' are comparison columns only; the reported values stay in the `*_emp`
+#' combination, e.g. `MDF_christiansen_allan_95`, for cross-study comparison.
+#' These are comparison columns only; the reported values stay in the `*_emp`
 #' columns.
 #'
 #' @param flux.result data.frame from [goFlux::best.flux()] or
 #'   [goFlux::goFlux()]; needs `UniqueID`, `flux.term`, `nb.obs` and the flux
 #'   column.
-#' @param traces the flagged concentration data the fluxes were computed from
+#' @param traces the concentration data the fluxes were computed from
 #'   (output of [goFlux::click.peak2()], [click_peak2_stacked()],
-#'   [auto_id_rise()] or [windows_from_table()]); required for `allan`,
-#'   `mad` and `rolling`.
+#'   [auto_id_rise()] or [windows_from_table()]); for `"mad"` the whole record
+#'   is used, for `allan`/`rolling` its flagged rows.
 #' @param gastype gas column of `traces`; inferred when `traces` holds exactly
 #'   one recognised gas column.
 #' @param precision one estimator (see Details).
 #' @param mdf one MDF method (see Details).
-#' @param conf confidence level for `christiansen` / `wassmann`.
+#' @param conf two-sided confidence level for `wassmann` / `christiansen`.
+#' @param group name of a column in `flux.result` defining the field periods
+#'   over which `"mad"` is computed (campaign, day, instrument); `NULL` = one
+#'   record. Trace rows are assigned to groups through their `UniqueID`.
 #' @param extra `NULL` (default), `"all"`, or a list with any of `precision`,
 #'   `mdf`, `conf` (character/numeric vectors) for comparison columns.
 #' @param sigma optional custom per-closure precision: a data.frame with
@@ -155,7 +187,7 @@ mdf_multi <- function(flux.term, t, prec = NULL, sigma = NULL, sigma.global = NU
 #' @param t closure length in seconds; default `nb.obs` (1 Hz).
 #' @param flux.col flux column to test.
 #' @param rolling.window window (samples) for `"rolling"`.
-#' @param chr.mult multiplier in the Christiansen method (3).
+#' @param chr.mult multiplier in the Christiansen-style method (3).
 #' @return `flux.result` with `sigma_emp`, `MDF_emp`, `below_MDF_emp`,
 #'   `MDF_emp_method`, `detected_emp`, `det_class_emp` appended (and the
 #'   `extra` columns if requested). The global precisions used are stored in
@@ -174,22 +206,21 @@ mdf_multi <- function(flux.term, t, prec = NULL, sigma = NULL, sigma.global = NU
 #'         "MDF_emp_method", "det_class_emp")]
 #' # comparison columns
 #' cmp <- flag_detection(best, traces = d, gastype = "CH4dry_ppb",
-#'                       extra = list(precision = c("mad", "datasheet"),
-#'                                    mdf = c("goflux", "two_sigma")))
+#'                       extra = list(precision = c("allan", "datasheet"),
+#'                                    mdf = c("goflux", "christiansen", "two_sigma")))
 #' grep("^MDF_", names(cmp), value = TRUE)
 #' @export
 flag_detection <- function(flux.result, traces = NULL, gastype = NULL,
-                           precision = "allan", mdf = "christiansen", conf = 0.95,
+                           precision = "mad", mdf = "wassmann", conf = 0.90, group = NULL,
                            extra = NULL, sigma = NULL, sigma.global = NULL, t = NULL,
                            flux.col = "best.flux", rolling.window = 30, chr.mult = 3) {
   fr <- as.data.frame(flux.result)
   for (col in c("UniqueID", "flux.term", "nb.obs", flux.col))
     if (!col %in% names(fr)) stop("'flux.result' has no column '", col, "'")
-  prec_ok <- c("allan", "mad", "rolling", "datasheet", "custom")
-  mdf_ok <- c("christiansen", "wassmann", "two_sigma", "goflux")
+  prec_ok <- c("mad", "allan", "rolling", "datasheet", "custom")
+  mdf_ok <- c("wassmann", "christiansen", "two_sigma", "goflux")
   precision <- match.arg(precision, prec_ok); mdf <- match.arg(mdf, mdf_ok)
   if (length(conf) != 1) stop("'conf' must be a single number; use 'extra' for several")
-  # extras
   ex <- NULL
   if (identical(extra, "all")) ex <- list(precision = setdiff(prec_ok, if (is.null(sigma)) "custom" else character(0)),
                                           mdf = mdf_ok, conf = c(0.90, 0.95, 0.99))
@@ -199,7 +230,7 @@ flag_detection <- function(flux.result, traces = NULL, gastype = NULL,
                conf = if (is.null(extra$conf)) conf else extra$conf)
   } else if (!is.null(extra)) stop("'extra' must be NULL, \"all\" or a list")
   all_prec <- unique(c(precision, ex$precision))
-  needs_traces <- intersect(all_prec, c("allan", "mad", "rolling"))
+  needs_traces <- intersect(all_prec, c("mad", "allan", "rolling"))
   if (is.null(traces) && length(needs_traces))
     stop("precision estimator(s) ", paste(needs_traces, collapse = ", "), " need 'traces'")
   if ("custom" %in% all_prec && is.null(sigma)) stop("precision = \"custom\" needs 'sigma'")
@@ -211,19 +242,29 @@ flag_detection <- function(flux.result, traces = NULL, gastype = NULL,
     }
     if (!gastype %in% names(traces)) stop("column '", gastype, "' not in 'traces'")
   }
+  if (!is.null(group) && !group %in% names(fr)) stop("'group' column '", group, "' not in 'flux.result'")
   if (is.null(t)) t <- fr$nb.obs
   n <- nrow(fr)
 
-  # ---- per-closure sigma for every estimator used -------------------------
   sig <- list()
   for (p in all_prec) {
     sig[[p]] <- switch(p,
+      mad = {
+        # whole record per group (the FINAL-script method), not per closure
+        if (is.null(group)) rep(precision_mad(traces[[gastype]]), n)
+        else {
+          gv <- as.character(fr[[group]])
+          tg <- gv[match(traces$UniqueID, fr$UniqueID)]
+          s <- vapply(unique(gv), function(g) precision_mad(traces[[gastype]][!is.na(tg) & tg == g]), numeric(1))
+          unname(s[gv])
+        }
+      },
       datasheet = {
         if (!"prec" %in% names(fr)) stop("'datasheet' precision needs a 'prec' column")
         fr$prec
       },
-      allan = , mad = {
-        s <- precision_by_id(traces, gastype, method = p)
+      allan = {
+        s <- precision_by_id(traces, gastype, method = "allan")
         s$sigma[match(fr$UniqueID, s$UniqueID)]
       },
       rolling = {
@@ -243,14 +284,15 @@ flag_detection <- function(flux.result, traces = NULL, gastype = NULL,
                  else stats::median(sig[[p]], na.rm = TRUE)
   }
   df <- pmax(fr$nb.obs - 2, 1)
+  q2 <- function(c) 1 - (1 - c) / 2                          # two-sided level -> upper quantile
   one_mdf <- function(m, p, c) abs(switch(m,
     goflux = sig[[p]] / t * fr$flux.term,
     two_sigma = 2 * sig[[p]] / t * fr$flux.term,
-    wassmann = stats::qnorm(c) * glob[[p]] / t * fr$flux.term,
-    christiansen = chr.mult * sig[[p]] * stats::qt(c, df = df) / t * fr$flux.term))
+    wassmann = if (is.null(group) || p != "mad") stats::qnorm(q2(c)) * glob[[p]] / t * fr$flux.term
+               else stats::qnorm(q2(c)) * sig[[p]] / t * fr$flux.term,   # per-group record-wide sigma
+    christiansen = chr.mult * sig[[p]] * stats::qt(q2(c), df = df) / t * fr$flux.term))
   flux <- fr[[flux.col]]
 
-  # ---- the four reported columns --------------------------------------------
   m <- one_mdf(mdf, precision, conf)
   fr$sigma_emp <- sig[[precision]]
   fr$MDF_emp <- m
@@ -261,7 +303,6 @@ flag_detection <- function(flux.result, traces = NULL, gastype = NULL,
   fr$det_class_emp <- ifelse(is.na(m), NA_character_,
                              ifelse(flux > m, "emission", ifelse(flux < -m, "uptake", "below detection")))
 
-  # ---- comparison columns ----------------------------------------------------
   if (!is.null(ex)) {
     lab <- function(c) sprintf("%02d", round(100 * c))
     for (p in ex$precision) fr[[paste0("sigma_", p)]] <- sig[[p]]

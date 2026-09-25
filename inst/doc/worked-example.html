@@ -563,12 +563,12 @@ detection limits.</p>
 <span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a><span class="fu">t</span>(<span class="fu">round</span>(mdf, <span class="dv">6</span>))</span>
 <span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a><span class="co">#&gt;                [,1]</span></span>
 <span id="cb12-8"><a href="#cb12-8" tabindex="-1"></a><span class="co">#&gt; MDF_goflux 0.001131</span></span>
-<span id="cb12-9"><a href="#cb12-9" tabindex="-1"></a><span class="co">#&gt; MDF_wass90 0.003583</span></span>
-<span id="cb12-10"><a href="#cb12-10" tabindex="-1"></a><span class="co">#&gt; MDF_wass95 0.004599</span></span>
-<span id="cb12-11"><a href="#cb12-11" tabindex="-1"></a><span class="co">#&gt; MDF_wass99 0.006505</span></span>
-<span id="cb12-12"><a href="#cb12-12" tabindex="-1"></a><span class="co">#&gt; MDF_chr90  0.010764</span></span>
-<span id="cb12-13"><a href="#cb12-13" tabindex="-1"></a><span class="co">#&gt; MDF_chr95  0.013822</span></span>
-<span id="cb12-14"><a href="#cb12-14" tabindex="-1"></a><span class="co">#&gt; MDF_chr99  0.019573</span></span>
+<span id="cb12-9"><a href="#cb12-9" tabindex="-1"></a><span class="co">#&gt; MDF_wass90 0.004599</span></span>
+<span id="cb12-10"><a href="#cb12-10" tabindex="-1"></a><span class="co">#&gt; MDF_wass95 0.005480</span></span>
+<span id="cb12-11"><a href="#cb12-11" tabindex="-1"></a><span class="co">#&gt; MDF_wass99 0.007202</span></span>
+<span id="cb12-12"><a href="#cb12-12" tabindex="-1"></a><span class="co">#&gt; MDF_chr90  0.013822</span></span>
+<span id="cb12-13"><a href="#cb12-13" tabindex="-1"></a><span class="co">#&gt; MDF_chr95  0.016478</span></span>
+<span id="cb12-14"><a href="#cb12-14" tabindex="-1"></a><span class="co">#&gt; MDF_chr99  0.021684</span></span>
 <span id="cb12-15"><a href="#cb12-15" tabindex="-1"></a><span class="co">#&gt; MDF_2sigma 0.005592</span></span>
 <span id="cb12-16"><a href="#cb12-16" tabindex="-1"></a><span class="co"># by hand, Table 2.5 criterion: (2 sigma / t) (V/A) (P/RT)</span></span>
 <span id="cb12-17"><a href="#cb12-17" tabindex="-1"></a><span class="fu">c</span>(<span class="at">MDF_2sigma_by_hand =</span> (<span class="dv">2</span> <span class="sc">*</span> sigma_ch4 <span class="sc">*</span> <span class="fl">1e-9</span> <span class="sc">/</span> t_used) <span class="sc">*</span> VA <span class="sc">*</span> PRT <span class="sc">*</span> <span class="fl">1e9</span>)</span>
@@ -584,28 +584,32 @@ criteria.</p>
 <code>flag_detection()</code></h2>
 <p><code>flag_detection()</code> does steps 6-7 for every row of a
 <code>best.flux()</code> table with <em>one</em> precision estimator and
-<em>one</em> MDF method (defaults: per-closure Allan precision,
-Christiansen criterion at 95 percent) and appends exactly six columns:
+<em>one</em> MDF method and appends exactly six columns:
 <code>sigma_emp</code>, <code>MDF_emp</code>,
 <code>below_MDF_emp</code>, <code>MDF_emp_method</code>,
-<code>detected_emp</code>, <code>det_class_emp</code>. goFlux’s own
-columns (<code>MDF</code>, <code>prec</code>, <code>best.flux</code>, …)
-are left exactly as <code>best.flux()</code> produced them. Nothing is
+<code>detected_emp</code>, <code>det_class_emp</code>. The default is
+the method of the companion data-processing manuscript: sigma = MAD(diff
+x)/sqrt(2) over the <em>entire</em> 1 Hz record of the field period
+(here: this closure’s whole trace, dead band included), and MDF = z
+sigma / t flux.term with z = qnorm(0.95) = 1.645, which that manuscript
+labels “90% confidence” (two-sided). goFlux’s own columns
+(<code>MDF</code>, <code>prec</code>, <code>best.flux</code>, …) are
+left exactly as <code>best.flux()</code> produced them. Nothing is
 deleted; rows are flagged.</p>
 <div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a>rep_ch4 <span class="ot">&lt;-</span> <span class="fu">flag_detection</span>(best_ch4, <span class="at">traces =</span> d, <span class="at">gastype =</span> <span class="st">&quot;CH4dry_ppb&quot;</span>,</span>
-<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>                          <span class="at">precision =</span> <span class="st">&quot;allan&quot;</span>, <span class="at">mdf =</span> <span class="st">&quot;christiansen&quot;</span>, <span class="at">conf =</span> <span class="fl">0.95</span>)</span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>                          <span class="at">precision =</span> <span class="st">&quot;mad&quot;</span>, <span class="at">mdf =</span> <span class="st">&quot;wassmann&quot;</span>, <span class="at">conf =</span> <span class="fl">0.90</span>)   <span class="co"># the defaults, spelled out</span></span>
 <span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a><span class="fu">setdiff</span>(<span class="fu">names</span>(rep_ch4), <span class="fu">names</span>(best_ch4))</span>
 <span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a><span class="co">#&gt; [1] &quot;sigma_emp&quot;      &quot;MDF_emp&quot;        &quot;below_MDF_emp&quot;  &quot;MDF_emp_method&quot; &quot;detected_emp&quot;  </span></span>
 <span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a><span class="co">#&gt; [6] &quot;det_class_emp&quot;</span></span>
 <span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a><span class="fu">t</span>(<span class="fu">as.data.frame</span>(rep_ch4[, <span class="fu">c</span>(<span class="st">&quot;MDF&quot;</span>, <span class="st">&quot;sigma_emp&quot;</span>, <span class="st">&quot;MDF_emp&quot;</span>, <span class="st">&quot;MDF_emp_method&quot;</span>, <span class="st">&quot;below_MDF_emp&quot;</span>,</span>
 <span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a>                            <span class="st">&quot;detected_emp&quot;</span>, <span class="st">&quot;det_class_emp&quot;</span>)]))</span>
-<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a><span class="co">#&gt;                [,1]                         </span></span>
-<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a><span class="co">#&gt; MDF            &quot;0.00113087&quot;                 </span></span>
-<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a><span class="co">#&gt; sigma_emp      &quot;2.22532&quot;                    </span></span>
-<span id="cb13-11"><a href="#cb13-11" tabindex="-1"></a><span class="co">#&gt; MDF_emp        &quot;0.0137646&quot;                  </span></span>
-<span id="cb13-12"><a href="#cb13-12" tabindex="-1"></a><span class="co">#&gt; MDF_emp_method &quot;christiansen | allan | 0.95&quot;</span></span>
-<span id="cb13-13"><a href="#cb13-13" tabindex="-1"></a><span class="co">#&gt; below_MDF_emp  &quot;FALSE&quot;                      </span></span>
-<span id="cb13-14"><a href="#cb13-14" tabindex="-1"></a><span class="co">#&gt; detected_emp   &quot;TRUE&quot;                       </span></span>
+<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a><span class="co">#&gt;                [,1]                  </span></span>
+<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a><span class="co">#&gt; MDF            &quot;0.00113087&quot;          </span></span>
+<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a><span class="co">#&gt; sigma_emp      &quot;2.19631&quot;             </span></span>
+<span id="cb13-11"><a href="#cb13-11" tabindex="-1"></a><span class="co">#&gt; MDF_emp        &quot;0.00452062&quot;          </span></span>
+<span id="cb13-12"><a href="#cb13-12" tabindex="-1"></a><span class="co">#&gt; MDF_emp_method &quot;wassmann | mad | 0.9&quot;</span></span>
+<span id="cb13-13"><a href="#cb13-13" tabindex="-1"></a><span class="co">#&gt; below_MDF_emp  &quot;FALSE&quot;               </span></span>
+<span id="cb13-14"><a href="#cb13-14" tabindex="-1"></a><span class="co">#&gt; detected_emp   &quot;TRUE&quot;                </span></span>
 <span id="cb13-15"><a href="#cb13-15" tabindex="-1"></a><span class="co">#&gt; det_class_emp  &quot;emission&quot;</span></span></code></pre></div>
 <p>The multi-method comparison of step 7 is available as <em>extra</em>
 columns (<code>sigma_&lt;precision&gt;</code>,
@@ -620,39 +624,40 @@ columns:</p>
 <span id="cb14-6"><a href="#cb14-6" tabindex="-1"></a><span class="fu">t</span>(<span class="fu">round</span>(<span class="fu">as.data.frame</span>(cmp[, mdf_cols]), <span class="dv">6</span>))</span>
 <span id="cb14-7"><a href="#cb14-7" tabindex="-1"></a><span class="co">#&gt;                                   [,1]</span></span>
 <span id="cb14-8"><a href="#cb14-8" tabindex="-1"></a><span class="co">#&gt; MDF_goflux_allan              0.002785</span></span>
-<span id="cb14-9"><a href="#cb14-9" tabindex="-1"></a><span class="co">#&gt; MDF_goflux_mad                0.002755</span></span>
+<span id="cb14-9"><a href="#cb14-9" tabindex="-1"></a><span class="co">#&gt; MDF_goflux_mad                0.002748</span></span>
 <span id="cb14-10"><a href="#cb14-10" tabindex="-1"></a><span class="co">#&gt; MDF_goflux_datasheet          0.001126</span></span>
-<span id="cb14-11"><a href="#cb14-11" tabindex="-1"></a><span class="co">#&gt; MDF_wassmann_allan_90         0.003569</span></span>
-<span id="cb14-12"><a href="#cb14-12" tabindex="-1"></a><span class="co">#&gt; MDF_wassmann_allan_95         0.004580</span></span>
-<span id="cb14-13"><a href="#cb14-13" tabindex="-1"></a><span class="co">#&gt; MDF_wassmann_allan_99         0.006478</span></span>
-<span id="cb14-14"><a href="#cb14-14" tabindex="-1"></a><span class="co">#&gt; MDF_wassmann_mad_90           0.003531</span></span>
-<span id="cb14-15"><a href="#cb14-15" tabindex="-1"></a><span class="co">#&gt; MDF_wassmann_mad_95           0.004531</span></span>
-<span id="cb14-16"><a href="#cb14-16" tabindex="-1"></a><span class="co">#&gt; MDF_wassmann_mad_99           0.006409</span></span>
-<span id="cb14-17"><a href="#cb14-17" tabindex="-1"></a><span class="co">#&gt; MDF_wassmann_datasheet_90     0.001443</span></span>
-<span id="cb14-18"><a href="#cb14-18" tabindex="-1"></a><span class="co">#&gt; MDF_wassmann_datasheet_95     0.001852</span></span>
-<span id="cb14-19"><a href="#cb14-19" tabindex="-1"></a><span class="co">#&gt; MDF_wassmann_datasheet_99     0.002620</span></span>
-<span id="cb14-20"><a href="#cb14-20" tabindex="-1"></a><span class="co">#&gt; MDF_christiansen_allan_90     0.010719</span></span>
-<span id="cb14-21"><a href="#cb14-21" tabindex="-1"></a><span class="co">#&gt; MDF_christiansen_allan_95     0.013765</span></span>
-<span id="cb14-22"><a href="#cb14-22" tabindex="-1"></a><span class="co">#&gt; MDF_christiansen_allan_99     0.019492</span></span>
-<span id="cb14-23"><a href="#cb14-23" tabindex="-1"></a><span class="co">#&gt; MDF_christiansen_mad_90       0.010605</span></span>
-<span id="cb14-24"><a href="#cb14-24" tabindex="-1"></a><span class="co">#&gt; MDF_christiansen_mad_95       0.013618</span></span>
-<span id="cb14-25"><a href="#cb14-25" tabindex="-1"></a><span class="co">#&gt; MDF_christiansen_mad_99       0.019284</span></span>
-<span id="cb14-26"><a href="#cb14-26" tabindex="-1"></a><span class="co">#&gt; MDF_christiansen_datasheet_90 0.004335</span></span>
-<span id="cb14-27"><a href="#cb14-27" tabindex="-1"></a><span class="co">#&gt; MDF_christiansen_datasheet_95 0.005567</span></span>
-<span id="cb14-28"><a href="#cb14-28" tabindex="-1"></a><span class="co">#&gt; MDF_christiansen_datasheet_99 0.007883</span></span>
+<span id="cb14-11"><a href="#cb14-11" tabindex="-1"></a><span class="co">#&gt; MDF_wassmann_allan_90         0.004580</span></span>
+<span id="cb14-12"><a href="#cb14-12" tabindex="-1"></a><span class="co">#&gt; MDF_wassmann_allan_95         0.005458</span></span>
+<span id="cb14-13"><a href="#cb14-13" tabindex="-1"></a><span class="co">#&gt; MDF_wassmann_allan_99         0.007173</span></span>
+<span id="cb14-14"><a href="#cb14-14" tabindex="-1"></a><span class="co">#&gt; MDF_wassmann_mad_90           0.004521</span></span>
+<span id="cb14-15"><a href="#cb14-15" tabindex="-1"></a><span class="co">#&gt; MDF_wassmann_mad_95           0.005387</span></span>
+<span id="cb14-16"><a href="#cb14-16" tabindex="-1"></a><span class="co">#&gt; MDF_wassmann_mad_99           0.007079</span></span>
+<span id="cb14-17"><a href="#cb14-17" tabindex="-1"></a><span class="co">#&gt; MDF_wassmann_datasheet_90     0.001852</span></span>
+<span id="cb14-18"><a href="#cb14-18" tabindex="-1"></a><span class="co">#&gt; MDF_wassmann_datasheet_95     0.002207</span></span>
+<span id="cb14-19"><a href="#cb14-19" tabindex="-1"></a><span class="co">#&gt; MDF_wassmann_datasheet_99     0.002901</span></span>
+<span id="cb14-20"><a href="#cb14-20" tabindex="-1"></a><span class="co">#&gt; MDF_christiansen_allan_90     0.013765</span></span>
+<span id="cb14-21"><a href="#cb14-21" tabindex="-1"></a><span class="co">#&gt; MDF_christiansen_allan_95     0.016410</span></span>
+<span id="cb14-22"><a href="#cb14-22" tabindex="-1"></a><span class="co">#&gt; MDF_christiansen_allan_99     0.021595</span></span>
+<span id="cb14-23"><a href="#cb14-23" tabindex="-1"></a><span class="co">#&gt; MDF_christiansen_mad_90       0.013585</span></span>
+<span id="cb14-24"><a href="#cb14-24" tabindex="-1"></a><span class="co">#&gt; MDF_christiansen_mad_95       0.016196</span></span>
+<span id="cb14-25"><a href="#cb14-25" tabindex="-1"></a><span class="co">#&gt; MDF_christiansen_mad_99       0.021313</span></span>
+<span id="cb14-26"><a href="#cb14-26" tabindex="-1"></a><span class="co">#&gt; MDF_christiansen_datasheet_90 0.005567</span></span>
+<span id="cb14-27"><a href="#cb14-27" tabindex="-1"></a><span class="co">#&gt; MDF_christiansen_datasheet_95 0.006637</span></span>
+<span id="cb14-28"><a href="#cb14-28" tabindex="-1"></a><span class="co">#&gt; MDF_christiansen_datasheet_99 0.008734</span></span>
 <span id="cb14-29"><a href="#cb14-29" tabindex="-1"></a><span class="co">#&gt; MDF_two_sigma_allan           0.005569</span></span>
-<span id="cb14-30"><a href="#cb14-30" tabindex="-1"></a><span class="co">#&gt; MDF_two_sigma_mad             0.005510</span></span>
+<span id="cb14-30"><a href="#cb14-30" tabindex="-1"></a><span class="co">#&gt; MDF_two_sigma_mad             0.005497</span></span>
 <span id="cb14-31"><a href="#cb14-31" tabindex="-1"></a><span class="co">#&gt; MDF_two_sigma_datasheet       0.002252</span></span></code></pre></div>
 <p><code>MDF_goflux_datasheet</code> reproduces goFlux’s own
 <code>MDF</code> column (same formula, <code>t = nb.obs</code> instead
-of <code>max(Etime) + 1</code>).</p>
+of <code>max(Etime) + 1</code>); <code>MDF_wassmann_mad_90</code> is the
+default <code>MDF_emp</code>.</p>
 </div>
 <div id="choosing-precision-and-mdf" class="section level2">
 <h2>Choosing precision and MDF</h2>
-<p>There is no single right choice; the point of computing several is
-that the report can say which one it used and readers can convert. The
-decision depends on what the number is for.</p>
-<p><strong>Which precision estimate?</strong></p>
+<p>The default is fixed by the companion data-processing manuscript; the
+others are there so a report can state which one it used and readers can
+convert. Each method by its actual formula and origin:</p>
+<p><strong>Precision estimators</strong></p>
 <table>
 <colgroup>
 <col width="25%" />
@@ -663,54 +668,50 @@ decision depends on what the number is for.</p>
 <thead>
 <tr class="header">
 <th>estimator</th>
-<th>what it is</th>
-<th>use when</th>
-<th>where it comes from</th>
+<th>formula</th>
+<th>computed over</th>
+<th>origin / use</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td>bench sigma (Box 2 of the guidelines paper)</td>
-<td>SD of a sealed, spiked or standard-gas run on the <em>same</em>
-analyzer</td>
-<td>you ran the bench test; best single number for the instrument</td>
-<td><code>flag_detection(sigma = ...)</code> (labelled
-<code>custom</code>)</td>
+<td><code>mad</code> (default)</td>
+<td>MAD(diff x) x 1.4826 / sqrt(2)</td>
+<td>the entire 1 Hz record of a field period (<code>group</code>)</td>
+<td>companion manuscript
+(<code>mdf_FINAL_precision_and_detection.R</code>): instrument-dominated
+at 1 s, a constant flux cancels, robust to moves and breaths</td>
 </tr>
 <tr class="even">
-<td>per-closure Allan (<code>allan</code>)</td>
-<td>SD(diff x)/sqrt(2) on each closure’s flagged rows</td>
-<td>default; tracks day-to-day analyzer state, cell fouling,
-temperature</td>
-<td><code>precision_by_id()</code>,
-<code>flag_detection(precision = &quot;allan&quot;)</code></td>
+<td><code>allan</code></td>
+<td>SD(diff x)/sqrt(2)</td>
+<td>flagged rows of each closure</td>
+<td>Allan deviation at tau = 1 s; per-closure noise</td>
 </tr>
 <tr class="odd">
-<td>record-wide MAD (<code>mad</code>)</td>
-<td>MAD(diff x)/sqrt(2) over a whole record or closure</td>
-<td>records with breaths, moves, chamber swaps; robust global
-number</td>
-<td><code>precision_mad()</code>,
-<code>flag_detection(precision = &quot;mad&quot;)</code></td>
+<td><code>rolling</code></td>
+<td>median residual SD of the quietest 5 percent of 30-sample
+windows</td>
+<td>flagged rows of each closure</td>
+<td>comparison only; biased low on white noise</td>
 </tr>
 <tr class="even">
-<td>rolling quietest windows (<code>rolling</code>)</td>
-<td>median residual SD of the flattest 5 percent of 30-s windows</td>
-<td>comparison only; biased low ~20 percent on white noise</td>
-<td><code>precision_rolling()</code>,
-<code>flag_detection(precision = &quot;rolling&quot;)</code></td>
+<td><code>datasheet</code></td>
+<td>the <code>prec</code> value given to
+<code>goFlux::import.*()</code></td>
+<td>–</td>
+<td>manufacturer 1-s specification (2.5x too optimistic here)</td>
 </tr>
 <tr class="odd">
-<td>datasheet (<code>datasheet</code>)</td>
-<td>manufacturer 1-s precision</td>
-<td>never for detection limits on field-worn analyzers (2.5x too
-optimistic here); kept for comparability with goFlux</td>
-<td><code>prec</code> argument of <code>goFlux::import.*()</code>,
-<code>flag_detection(precision = &quot;datasheet&quot;)</code></td>
+<td><code>custom</code></td>
+<td>user-supplied <code>sigma</code></td>
+<td>bench test</td>
+<td>Box 2 of the guidelines paper (sealed / standard-gas run)</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Which MDF method?</strong></p>
+<p><strong>MDF methods</strong> (all
+<code>= dC_min / t x flux.term</code>)</p>
 <table>
 <colgroup>
 <col width="33%" />
@@ -719,43 +720,48 @@ optimistic here); kept for comparability with goFlux</td>
 </colgroup>
 <thead>
 <tr class="header">
-<th>question</th>
-<th>recommended</th>
-<th>reason</th>
+<th>method</th>
+<th>dC_min</th>
+<th>origin</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td>campaign means, budgets, upscaling</td>
-<td>keep every flux; flag with <code>two_sigma</code> or
-<code>christiansen</code>; do not delete</td>
-<td>removing below-MDF values biases means upward; the flag documents
-the fraction below detection</td>
+<td><code>wassmann</code> (default)</td>
+<td>z x sigma_global, z = qnorm(1 - (1 - conf)/2);
+<code>conf = 0.90</code> gives z = qnorm(0.95) = 1.645</td>
+<td>Wassmann et al. (2018), PLoS ONE 13, e0191352; with the record-wide
+MAD sigma this is the companion manuscript’s MDF (“90% confidence” in
+its wording)</td>
 </tr>
 <tr class="even">
-<td>is this individual flux non-zero?</td>
-<td><code>christiansen</code> at a stated confidence (per-measurement
-sigma, t-quantile)</td>
-<td>a per-closure test with the closure’s own noise and degrees of
-freedom</td>
+<td><code>goflux</code></td>
+<td>p, the <code>prec</code> given at import</td>
+<td>goFlux’s built-in <code>MDF()</code>; goFlux’s documentation cites
+Christiansen et al. (2015) for it</td>
 </tr>
 <tr class="odd">
-<td>comparing with other studies</td>
-<td>report all: <code>goflux</code> (datasheet), <code>wassmann</code>
-(global, z), <code>christiansen</code> (per closure, t),
-<code>two_sigma</code></td>
-<td>each literature uses a different one; the table lets readers
-convert</td>
+<td><code>christiansen</code></td>
+<td>sigma_i x 3 x t_crit(df = nb.obs - 2), two-sided</td>
+<td>as implemented in the author’s processing scripts under that name;
+the factor 3 is those scripts’ safety factor and is not attributed here
+to Christiansen et al. (2015) or Nickerson (2016), whose text was not
+checked</td>
 </tr>
 <tr class="even">
-<td>instrument-level statement (“our system detects X”)</td>
-<td><code>wassmann</code> with a global sigma (campaign median or
-bench)</td>
-<td>designed as an instrument/protocol limit rather than a per-closure
-one</td>
+<td><code>two_sigma</code></td>
+<td>2 sigma_i</td>
+<td>the illustration of Table 2.5 of the guidelines paper</td>
 </tr>
 </tbody>
 </table>
+<p><strong>Which to use for what.</strong> Campaign means, budgets and
+upscaling: keep every flux and report the fraction below
+<code>MDF_emp</code>; removing values biases means. “Is this one flux
+non-zero?”: the per-closure variants (<code>christiansen</code>,
+<code>two_sigma</code> with <code>allan</code>) use the closure’s own
+noise. Cross-study comparison: <code>extra = &quot;all&quot;</code> and report the
+table.</p>
 <p><strong>Where each is set in the pipeline.</strong> The
 <code>prec</code> argument given to <code>goFlux::import.*()</code> (or
 the <code>*_prec</code> columns) only feeds goFlux’s own
@@ -811,44 +817,41 @@ campaign the median is taken over all closures.</p>
 <span id="cb16-13"><a href="#cb16-13" tabindex="-1"></a>  <span class="at">CO2_flux_umol_m2_s =</span> <span class="fu">signif</span>(best_co2<span class="sc">$</span>best.flux, <span class="dv">4</span>),</span>
 <span id="cb16-14"><a href="#cb16-14" tabindex="-1"></a>  <span class="at">qc_any     =</span> rep_ch4<span class="sc">$</span>qc_any)</span>
 <span id="cb16-15"><a href="#cb16-15" tabindex="-1"></a><span class="fu">t</span>(report)</span>
-<span id="cb16-16"><a href="#cb16-16" tabindex="-1"></a><span class="co">#&gt;                    [,1]                         </span></span>
-<span id="cb16-17"><a href="#cb16-17" tabindex="-1"></a><span class="co">#&gt; UniqueID           &quot;2021-05-18_5086_I_7.0&quot;      </span></span>
-<span id="cb16-18"><a href="#cb16-18" tabindex="-1"></a><span class="co">#&gt; n_obs              &quot;542&quot;                        </span></span>
-<span id="cb16-19"><a href="#cb16-19" tabindex="-1"></a><span class="co">#&gt; model              &quot;HM&quot;                         </span></span>
-<span id="cb16-20"><a href="#cb16-20" tabindex="-1"></a><span class="co">#&gt; CH4_flux_nmol_m2_s &quot;0.2557&quot;                     </span></span>
-<span id="cb16-21"><a href="#cb16-21" tabindex="-1"></a><span class="co">#&gt; CH4_LM_SE          &quot;0.000538&quot;                   </span></span>
-<span id="cb16-22"><a href="#cb16-22" tabindex="-1"></a><span class="co">#&gt; MDF_goFlux         &quot;0.001131&quot;                   </span></span>
-<span id="cb16-23"><a href="#cb16-23" tabindex="-1"></a><span class="co">#&gt; sigma_emp_ppb      &quot;2.23&quot;                       </span></span>
-<span id="cb16-24"><a href="#cb16-24" tabindex="-1"></a><span class="co">#&gt; MDF_emp            &quot;0.0138&quot;                     </span></span>
-<span id="cb16-25"><a href="#cb16-25" tabindex="-1"></a><span class="co">#&gt; MDF_emp_method     &quot;christiansen | allan | 0.95&quot;</span></span>
-<span id="cb16-26"><a href="#cb16-26" tabindex="-1"></a><span class="co">#&gt; detected_emp       &quot;TRUE&quot;                       </span></span>
-<span id="cb16-27"><a href="#cb16-27" tabindex="-1"></a><span class="co">#&gt; class              &quot;emission&quot;                   </span></span>
-<span id="cb16-28"><a href="#cb16-28" tabindex="-1"></a><span class="co">#&gt; CO2_flux_umol_m2_s &quot;0.7125&quot;                     </span></span>
+<span id="cb16-16"><a href="#cb16-16" tabindex="-1"></a><span class="co">#&gt;                    [,1]                   </span></span>
+<span id="cb16-17"><a href="#cb16-17" tabindex="-1"></a><span class="co">#&gt; UniqueID           &quot;2021-05-18_5086_I_7.0&quot;</span></span>
+<span id="cb16-18"><a href="#cb16-18" tabindex="-1"></a><span class="co">#&gt; n_obs              &quot;542&quot;                  </span></span>
+<span id="cb16-19"><a href="#cb16-19" tabindex="-1"></a><span class="co">#&gt; model              &quot;HM&quot;                   </span></span>
+<span id="cb16-20"><a href="#cb16-20" tabindex="-1"></a><span class="co">#&gt; CH4_flux_nmol_m2_s &quot;0.2557&quot;               </span></span>
+<span id="cb16-21"><a href="#cb16-21" tabindex="-1"></a><span class="co">#&gt; CH4_LM_SE          &quot;0.000538&quot;             </span></span>
+<span id="cb16-22"><a href="#cb16-22" tabindex="-1"></a><span class="co">#&gt; MDF_goFlux         &quot;0.001131&quot;             </span></span>
+<span id="cb16-23"><a href="#cb16-23" tabindex="-1"></a><span class="co">#&gt; sigma_emp_ppb      &quot;2.2&quot;                  </span></span>
+<span id="cb16-24"><a href="#cb16-24" tabindex="-1"></a><span class="co">#&gt; MDF_emp            &quot;0.00452&quot;              </span></span>
+<span id="cb16-25"><a href="#cb16-25" tabindex="-1"></a><span class="co">#&gt; MDF_emp_method     &quot;wassmann | mad | 0.9&quot; </span></span>
+<span id="cb16-26"><a href="#cb16-26" tabindex="-1"></a><span class="co">#&gt; detected_emp       &quot;TRUE&quot;                 </span></span>
+<span id="cb16-27"><a href="#cb16-27" tabindex="-1"></a><span class="co">#&gt; class              &quot;emission&quot;             </span></span>
+<span id="cb16-28"><a href="#cb16-28" tabindex="-1"></a><span class="co">#&gt; CO2_flux_umol_m2_s &quot;0.7125&quot;               </span></span>
 <span id="cb16-29"><a href="#cb16-29" tabindex="-1"></a><span class="co">#&gt; qc_any             &quot;FALSE&quot;</span></span></code></pre></div>
 <p>The same row comes out of the one-call wrapper:</p>
 <div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a><span class="fu">invisible</span>(<span class="fu">capture.output</span>(       <span class="co"># goFlux&#39;s progress bar is captured</span></span>
 <span id="cb17-2"><a href="#cb17-2" tabindex="-1"></a>  res <span class="ot">&lt;-</span> <span class="fu">suppressWarnings</span>(<span class="fu">process_fluxes</span>(d, <span class="at">gastype =</span> <span class="st">&quot;CH4dry_ppb&quot;</span>,</span>
-<span id="cb17-3"><a href="#cb17-3" tabindex="-1"></a>                       <span class="at">precision =</span> <span class="st">&quot;allan&quot;</span>, <span class="at">mdf =</span> <span class="st">&quot;christiansen&quot;</span>, <span class="at">conf =</span> <span class="fl">0.95</span>,</span>
-<span id="cb17-4"><a href="#cb17-4" tabindex="-1"></a>                       <span class="at">qc =</span> <span class="fu">list</span>(<span class="at">c0 =</span> <span class="cn">TRUE</span>, <span class="at">co2_tracer =</span> <span class="cn">TRUE</span>, <span class="at">convex =</span> <span class="cn">TRUE</span>, <span class="at">min_window =</span> <span class="fu">list</span>(<span class="at">secs =</span> <span class="dv">120</span>)),</span>
-<span id="cb17-5"><a href="#cb17-5" tabindex="-1"></a>                       <span class="at">co2 =</span> best_co2))))</span>
-<span id="cb17-6"><a href="#cb17-6" tabindex="-1"></a>res</span>
-<span id="cb17-7"><a href="#cb17-7" tabindex="-1"></a><span class="co">#&gt; stemflux result: 1 closures, CH4dry_ppb </span></span>
-<span id="cb17-8"><a href="#cb17-8" tabindex="-1"></a><span class="co">#&gt;   MDF_emp: christiansen | allan | 0.95 | detected: 1 | qc_any: 0</span></span>
-<span id="cb17-9"><a href="#cb17-9" tabindex="-1"></a><span class="fu">c</span>(<span class="at">best.flux =</span> res<span class="sc">$</span>fluxes<span class="sc">$</span>best.flux, <span class="at">MDF_goFlux =</span> res<span class="sc">$</span>fluxes<span class="sc">$</span>MDF, <span class="at">MDF_emp =</span> res<span class="sc">$</span>fluxes<span class="sc">$</span>MDF_emp,</span>
-<span id="cb17-10"><a href="#cb17-10" tabindex="-1"></a>  <span class="at">method =</span> res<span class="sc">$</span>fluxes<span class="sc">$</span>MDF_emp_method)</span>
-<span id="cb17-11"><a href="#cb17-11" tabindex="-1"></a><span class="co">#&gt;                     best.flux                    MDF_goFlux                       MDF_emp </span></span>
-<span id="cb17-12"><a href="#cb17-12" tabindex="-1"></a><span class="co">#&gt;           &quot;0.255675982607965&quot;         &quot;0.00113087237304052&quot;          &quot;0.0137646405928935&quot; </span></span>
-<span id="cb17-13"><a href="#cb17-13" tabindex="-1"></a><span class="co">#&gt;                        method </span></span>
-<span id="cb17-14"><a href="#cb17-14" tabindex="-1"></a><span class="co">#&gt; &quot;christiansen | allan | 0.95&quot;</span></span>
-<span id="cb17-15"><a href="#cb17-15" tabindex="-1"></a><span class="fu">all</span>(<span class="fu">names</span>(best_ch4) <span class="sc">%in%</span> <span class="fu">names</span>(res<span class="sc">$</span>fluxes))   <span class="co"># goFlux columns all present, unchanged</span></span>
-<span id="cb17-16"><a href="#cb17-16" tabindex="-1"></a><span class="co">#&gt; [1] TRUE</span></span></code></pre></div>
+<span id="cb17-3"><a href="#cb17-3" tabindex="-1"></a>                       <span class="at">qc =</span> <span class="fu">list</span>(<span class="at">c0 =</span> <span class="cn">TRUE</span>, <span class="at">co2_tracer =</span> <span class="cn">TRUE</span>, <span class="at">convex =</span> <span class="cn">TRUE</span>, <span class="at">min_window =</span> <span class="fu">list</span>(<span class="at">secs =</span> <span class="dv">120</span>)),</span>
+<span id="cb17-4"><a href="#cb17-4" tabindex="-1"></a>                       <span class="at">co2 =</span> best_co2))))</span>
+<span id="cb17-5"><a href="#cb17-5" tabindex="-1"></a>res</span>
+<span id="cb17-6"><a href="#cb17-6" tabindex="-1"></a><span class="co">#&gt; stemflux result: 1 closures, CH4dry_ppb </span></span>
+<span id="cb17-7"><a href="#cb17-7" tabindex="-1"></a><span class="co">#&gt;   MDF_emp: wassmann | mad | 0.9 | detected: 1 | qc_any: 0</span></span>
+<span id="cb17-8"><a href="#cb17-8" tabindex="-1"></a><span class="fu">c</span>(<span class="at">best.flux =</span> res<span class="sc">$</span>fluxes<span class="sc">$</span>best.flux, <span class="at">MDF_goFlux =</span> res<span class="sc">$</span>fluxes<span class="sc">$</span>MDF, <span class="at">MDF_emp =</span> res<span class="sc">$</span>fluxes<span class="sc">$</span>MDF_emp,</span>
+<span id="cb17-9"><a href="#cb17-9" tabindex="-1"></a>  <span class="at">method =</span> res<span class="sc">$</span>fluxes<span class="sc">$</span>MDF_emp_method)</span>
+<span id="cb17-10"><a href="#cb17-10" tabindex="-1"></a><span class="co">#&gt;              best.flux             MDF_goFlux                MDF_emp                 method </span></span>
+<span id="cb17-11"><a href="#cb17-11" tabindex="-1"></a><span class="co">#&gt;    &quot;0.255675982607965&quot;  &quot;0.00113087237304052&quot;  &quot;0.00452062424468428&quot; &quot;wassmann | mad | 0.9&quot;</span></span>
+<span id="cb17-12"><a href="#cb17-12" tabindex="-1"></a><span class="fu">all</span>(<span class="fu">names</span>(best_ch4) <span class="sc">%in%</span> <span class="fu">names</span>(res<span class="sc">$</span>fluxes))   <span class="co"># goFlux columns all present, unchanged</span></span>
+<span id="cb17-13"><a href="#cb17-13" tabindex="-1"></a><span class="co">#&gt; [1] TRUE</span></span></code></pre></div>
 </div>
 <div id="summary-of-the-numbers" class="section level2">
 <h2>Summary of the numbers</h2>
 <table>
 <colgroup>
-<col width="48%" />
-<col width="51%" />
+<col width="54%" />
+<col width="45%" />
 </colgroup>
 <thead>
 <tr class="header">
@@ -898,34 +901,38 @@ campaign the median is taken over all closures.</p>
 <td align="left">0.25568</td>
 </tr>
 <tr class="odd">
-<td align="left">sigma CH4 (ppb, Allan)</td>
+<td align="left">sigma CH4 (ppb, Allan, flagged rows)</td>
 <td align="left">2.225</td>
 </tr>
 <tr class="even">
+<td align="left">sigma CH4 (ppb, MAD, whole record) = sigma_emp</td>
+<td align="left">2.196</td>
+</tr>
+<tr class="odd">
 <td align="left">MDF goFlux (datasheet, goFlux’s own column)</td>
 <td align="left">0.001131</td>
 </tr>
+<tr class="even">
+<td align="left">MDF Wassmann 90% (mad) = MDF_emp</td>
+<td align="left">0.004521</td>
+</tr>
 <tr class="odd">
-<td align="left">MDF Wassmann 95% (allan)</td>
-<td align="left">0.00458</td>
+<td align="left">MDF Christiansen-style 95% (allan)</td>
+<td align="left">0.01641</td>
 </tr>
 <tr class="even">
-<td align="left">MDF Christiansen 95% (allan)</td>
-<td align="left">0.01376</td>
-</tr>
-<tr class="odd">
 <td align="left">MDF 2-sigma (allan)</td>
 <td align="left">0.005569</td>
 </tr>
-<tr class="even">
-<td align="left">reported MDF_emp / method</td>
-<td align="left">0.01376 christiansen | allan | 0.95</td>
-</tr>
 <tr class="odd">
+<td align="left">reported MDF_emp / method</td>
+<td align="left">0.004521 wassmann | mad | 0.9</td>
+</tr>
+<tr class="even">
 <td align="left">detected</td>
 <td align="left">emission</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">CO2 flux (umol m-2 s-1)</td>
 <td align="left">0.7125</td>
 </tr>

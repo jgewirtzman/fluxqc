@@ -6,14 +6,18 @@ Revision after author review.
   columns (`"auto"` = every recognised goFlux gas present); `auto_id_rise()`
   gained `detect.gas` and `gases` for its diagnostic plots. Replaces the
   `gastype` / `gastype2` arguments.
-* `flag_detection(flux.result, traces, precision = "allan", mdf =
-  "christiansen", conf = 0.95, extra = NULL)` appends exactly `sigma_emp`,
+* `flag_detection(flux.result, traces, precision = "mad", mdf = "wassmann",
+  conf = 0.90, group = NULL, extra = NULL)` (defaults = the companion
+  manuscript's method: record-wide MAD sigma per group, z = qnorm(0.95);
+  quantiles are two-sided) appends exactly `sigma_emp`,
   `MDF_emp`, `below_MDF_emp`, `MDF_emp_method` (plus `detected_emp`,
   `det_class_emp`). The multi-method comparison (`sigma_<precision>`,
   `MDF_<mdf>_<precision>[_<conf>]`) is appended only with `extra = list(...)`
   or `extra = "all"`. goFlux's columns (`MDF`, `best.flux`, ...) are never
   modified or duplicated; a test checks that `goFlux::flux.plot()` runs
   unchanged on `process_fluxes()$fluxes`.
+* `detect_ebullition(merge.consecutive = TRUE)`: a run of consecutive flagged
+  samples is one event (bubble bursts span several 1 Hz samples).
 * `stemflux_examples()`: six bundled closures with real geometry (four
   Yale-Myers teaching cases, one BlueFlux ebullition closure, one synthetic
   uptake), released with the package; `example_closure()` is the alias for

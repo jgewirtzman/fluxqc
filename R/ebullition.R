@@ -109,6 +109,10 @@
 #'   removes downward outliers from the diffusive fit.
 #' @param buffer.secs half-width of the equilibration window marked
 #'   `near_jump` around each event (excluded from the diffusive fit).
+#' @param merge.consecutive treat a run of consecutive flagged samples as one
+#'   event (its mass is the summed change, its time the first sample); a
+#'   bubble burst often spans 2-10 samples at 1 Hz. `FALSE` reports every
+#'   sample separately, as the BlueFlux campaign script did.
 #' @param flag.only use only rows with `flag == 1` (default).
 #' @param scale.by.dt scale `jump.thresh` by the logging interval.
 #' @param time.col POSIXct time column.
@@ -139,6 +143,7 @@ detect_ebullition <- function(dataframe, gastype = "CH4dry_ppb",
                               method = c("iqr", "threshold", "runvar"), by = "UniqueID",
                               k = 3, jump.thresh = 100, runvar_window = 5, runvar_cutoff = 0.5,
                               direction = c("up", "both"), buffer.secs = 15,
+                              merge.consecutive = TRUE,
                               flag.only = TRUE, scale.by.dt = TRUE, time.col = "POSIX.time") {
   method <- match.arg(method); direction <- match.arg(direction)
   for (col in c(gastype, time.col, by)) if (!col %in% names(dataframe)) stop("column '", col, "' not found")
@@ -187,6 +192,16 @@ detect_ebullition <- function(dataframe, gastype = "CH4dry_ppb",
           dn[a:b] <- TRUE                                 # exclude the whole stretch from the diffusive fit
         }
         x$runvar <- rv
+      }
+    }
+    # a bubble burst spans several consecutive samples: report it as ONE event
+    # whose mass is the summed change, located at its first sample
+    if (merge.consecutive && any(up) && method != "runvar") {
+      r <- rle(up); ends <- cumsum(r$lengths); starts <- ends - r$lengths + 1
+      for (j in which(r$values & r$lengths > 1)) {
+        mass[starts[j]] <- sum(mass[starts[j]:ends[j]]); mass[(starts[j] + 1):ends[j]] <- 0
+        up[(starts[j] + 1):ends[j]] <- FALSE
+        dn[(starts[j] + 1):ends[j]] <- TRUE            # still excluded from the diffusive fit
       }
     }
     x$Etime_eb <- et; x$dC <- dC

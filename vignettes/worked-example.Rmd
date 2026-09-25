@@ -183,16 +183,19 @@ them, which is the expected behaviour of these single-sample criteria.
 ## Step 8: precision, MDF and detection flag with `flag_detection()`
 
 `flag_detection()` does steps 6-7 for every row of a `best.flux()` table with
-*one* precision estimator and *one* MDF method (defaults: per-closure Allan
-precision, Christiansen criterion at 95 percent) and appends exactly six
+*one* precision estimator and *one* MDF method and appends exactly six
 columns: `sigma_emp`, `MDF_emp`, `below_MDF_emp`, `MDF_emp_method`,
-`detected_emp`, `det_class_emp`. goFlux's own columns (`MDF`, `prec`,
-`best.flux`, ...) are left exactly as `best.flux()` produced them. Nothing is
-deleted; rows are flagged.
+`detected_emp`, `det_class_emp`. The default is the method of the companion
+data-processing manuscript: sigma = MAD(diff x)/sqrt(2) over the *entire*
+1 Hz record of the field period (here: this closure's whole trace, dead band
+included), and MDF = z sigma / t flux.term with z = qnorm(0.95) = 1.645, which
+that manuscript labels "90% confidence" (two-sided). goFlux's own columns
+(`MDF`, `prec`, `best.flux`, ...) are left exactly as `best.flux()` produced
+them. Nothing is deleted; rows are flagged.
 
 ```{r flag}
 rep_ch4 <- flag_detection(best_ch4, traces = d, gastype = "CH4dry_ppb",
-                          precision = "allan", mdf = "christiansen", conf = 0.95)
+                          precision = "mad", mdf = "wassmann", conf = 0.90)   # the defaults, spelled out
 setdiff(names(rep_ch4), names(best_ch4))
 t(as.data.frame(rep_ch4[, c("MDF", "sigma_emp", "MDF_emp", "MDF_emp_method", "below_MDF_emp",
                             "detected_emp", "det_class_emp")]))
@@ -212,32 +215,39 @@ t(round(as.data.frame(cmp[, mdf_cols]), 6))
 ```
 
 `MDF_goflux_datasheet` reproduces goFlux's own `MDF` column (same formula,
-`t = nb.obs` instead of `max(Etime) + 1`).
+`t = nb.obs` instead of `max(Etime) + 1`); `MDF_wassmann_mad_90` is the
+default `MDF_emp`.
 
 ## Choosing precision and MDF
 
-There is no single right choice; the point of computing several is that the
-report can say which one it used and readers can convert. The decision
-depends on what the number is for.
+The default is fixed by the companion data-processing manuscript; the others
+are there so a report can state which one it used and readers can convert.
+Each method by its actual formula and origin:
 
-**Which precision estimate?**
+**Precision estimators**
 
-| estimator | what it is | use when | where it comes from |
+| estimator | formula | computed over | origin / use |
 |---|---|---|---|
-| bench sigma (Box 2 of the guidelines paper) | SD of a sealed, spiked or standard-gas run on the *same* analyzer | you ran the bench test; best single number for the instrument | `flag_detection(sigma = ...)` (labelled `custom`) |
-| per-closure Allan (`allan`) | SD(diff x)/sqrt(2) on each closure's flagged rows | default; tracks day-to-day analyzer state, cell fouling, temperature | `precision_by_id()`, `flag_detection(precision = "allan")` |
-| record-wide MAD (`mad`) | MAD(diff x)/sqrt(2) over a whole record or closure | records with breaths, moves, chamber swaps; robust global number | `precision_mad()`, `flag_detection(precision = "mad")` |
-| rolling quietest windows (`rolling`) | median residual SD of the flattest 5 percent of 30-s windows | comparison only; biased low ~20 percent on white noise | `precision_rolling()`, `flag_detection(precision = "rolling")` |
-| datasheet (`datasheet`) | manufacturer 1-s precision | never for detection limits on field-worn analyzers (2.5x too optimistic here); kept for comparability with goFlux | `prec` argument of `goFlux::import.*()`, `flag_detection(precision = "datasheet")` |
+| `mad` (default) | MAD(diff x) x 1.4826 / sqrt(2) | the entire 1 Hz record of a field period (`group`) | companion manuscript (`mdf_FINAL_precision_and_detection.R`): instrument-dominated at 1 s, a constant flux cancels, robust to moves and breaths |
+| `allan` | SD(diff x)/sqrt(2) | flagged rows of each closure | Allan deviation at tau = 1 s; per-closure noise |
+| `rolling` | median residual SD of the quietest 5 percent of 30-sample windows | flagged rows of each closure | comparison only; biased low on white noise |
+| `datasheet` | the `prec` value given to `goFlux::import.*()` | -- | manufacturer 1-s specification (2.5x too optimistic here) |
+| `custom` | user-supplied `sigma` | bench test | Box 2 of the guidelines paper (sealed / standard-gas run) |
 
-**Which MDF method?**
+**MDF methods** (all `= dC_min / t x flux.term`)
 
-| question | recommended | reason |
+| method | dC_min | origin |
 |---|---|---|
-| campaign means, budgets, upscaling | keep every flux; flag with `two_sigma` or `christiansen`; do not delete | removing below-MDF values biases means upward; the flag documents the fraction below detection |
-| is this individual flux non-zero? | `christiansen` at a stated confidence (per-measurement sigma, t-quantile) | a per-closure test with the closure's own noise and degrees of freedom |
-| comparing with other studies | report all: `goflux` (datasheet), `wassmann` (global, z), `christiansen` (per closure, t), `two_sigma` | each literature uses a different one; the table lets readers convert |
-| instrument-level statement ("our system detects X") | `wassmann` with a global sigma (campaign median or bench) | designed as an instrument/protocol limit rather than a per-closure one |
+| `wassmann` (default) | z x sigma_global, z = qnorm(1 - (1 - conf)/2); `conf = 0.90` gives z = qnorm(0.95) = 1.645 | Wassmann et al. (2018), PLoS ONE 13, e0191352; with the record-wide MAD sigma this is the companion manuscript's MDF ("90% confidence" in its wording) |
+| `goflux` | p, the `prec` given at import | goFlux's built-in `MDF()`; goFlux's documentation cites Christiansen et al. (2015) for it |
+| `christiansen` | sigma_i x 3 x t_crit(df = nb.obs - 2), two-sided | as implemented in the author's processing scripts under that name; the factor 3 is those scripts' safety factor and is not attributed here to Christiansen et al. (2015) or Nickerson (2016), whose text was not checked |
+| `two_sigma` | 2 sigma_i | the illustration of Table 2.5 of the guidelines paper |
+
+**Which to use for what.** Campaign means, budgets and upscaling: keep every
+flux and report the fraction below `MDF_emp`; removing values biases means.
+"Is this one flux non-zero?": the per-closure variants (`christiansen`,
+`two_sigma` with `allan`) use the closure's own noise. Cross-study
+comparison: `extra = "all"` and report the table.
 
 **Where each is set in the pipeline.** The `prec` argument given to
 `goFlux::import.*()` (or the `*_prec` columns) only feeds goFlux's own `MDF`
@@ -291,7 +301,6 @@ The same row comes out of the one-call wrapper:
 ```{r wrapper}
 invisible(capture.output(       # goFlux's progress bar is captured
   res <- suppressWarnings(process_fluxes(d, gastype = "CH4dry_ppb",
-                       precision = "allan", mdf = "christiansen", conf = 0.95,
                        qc = list(c0 = TRUE, co2_tracer = TRUE, convex = TRUE, min_window = list(secs = 120)),
                        co2 = best_co2))))
 res
@@ -307,14 +316,15 @@ knitr::kable(data.frame(
   quantity = c("observations used", "fit span (s)", "CH4 slope (ppb/s)", "CH4 LM r2",
                "V/A (m)", "P/RT (mol m-3)", "flux.term (mol m-2)",
                "CH4 flux LM (nmol m-2 s-1)", "CH4 flux HM (nmol m-2 s-1)", "CH4 flux reported",
-               "sigma CH4 (ppb, Allan)", "MDF goFlux (datasheet, goFlux's own column)",
-               "MDF Wassmann 95% (allan)", "MDF Christiansen 95% (allan)", "MDF 2-sigma (allan)",
+               "sigma CH4 (ppb, Allan, flagged rows)", "sigma CH4 (ppb, MAD, whole record) = sigma_emp",
+               "MDF goFlux (datasheet, goFlux's own column)",
+               "MDF Wassmann 90% (mad) = MDF_emp", "MDF Christiansen-style 95% (allan)", "MDF 2-sigma (allan)",
                "reported MDF_emp / method", "detected", "CO2 flux (umol m-2 s-1)"),
   value = c(n_used, t_span, signif(slope_ch4, 5), signif(summary(fit_ch4)$r.squared, 4),
             signif(VA, 5), signif(PRT, 5), signif(ft, 5),
             signif(best_ch4$LM.flux, 5), signif(best_ch4$HM.flux, 5), signif(best_ch4$best.flux, 5),
-            signif(sigma_ch4, 4), signif(best_ch4$MDF, 4),
-            signif(cmp$MDF_wassmann_allan_95, 4), signif(cmp$MDF_christiansen_allan_95, 4),
+            signif(sigma_ch4, 4), signif(rep_ch4$sigma_emp, 4), signif(best_ch4$MDF, 4),
+            signif(cmp$MDF_wassmann_mad_90, 4), signif(cmp$MDF_christiansen_allan_95, 4),
             signif(cmp$MDF_two_sigma_allan, 4),
             paste(signif(rep_ch4$MDF_emp, 4), rep_ch4$MDF_emp_method), rep_ch4$det_class_emp,
             signif(best_co2$best.flux, 5))))

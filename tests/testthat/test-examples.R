@@ -47,7 +47,14 @@ test_that("the six examples separate as intended through process_fluxes (Figure 
 
 test_that("example (e) carries real ebullition events", {
   e <- stemflux_examples("e")$data
-  eb <- detect_ebullition(e, "CH4dry_ppb")
-  expect_gte(eb$summary$n_events, 3)
+  eb <- detect_ebullition(e, "CH4dry_ppb")                       # consecutive samples merged: one burst
+  expect_equal(eb$summary$n_events, 1)
+  expect_gt(eb$summary$total_ebullitive, 500)
   expect_equal(eb$summary$n_points, 278)
+  raw <- detect_ebullition(e, "CH4dry_ppb", merge.consecutive = FALSE)
+  expect_gte(raw$summary$n_events, 3)                             # the campaign script counted 5 samples
+  expect_equal(raw$summary$total_ebullitive, eb$summary$total_ebullitive, tolerance = 1e-6)
+  camp <- detect_ebullition(e, "CH4dry_ppb", method = "threshold", jump.thresh = 100, merge.consecutive = FALSE)
+  expect_equal(camp$summary$n_events, 5)                          # reproduces the campaign's count
+  expect_equal(camp$summary$total_ebullitive, 676, tolerance = 0.01)
 })
