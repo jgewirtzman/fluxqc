@@ -60,8 +60,8 @@ PLoS ONE, 13(2), e0191352. \doi{10.1371/journal.pone.0191352}
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://github.com/jongewirtzman/fluxqc}
-  \item Report bugs at \url{https://github.com/jongewirtzman/fluxqc/issues}
+  \item \url{https://github.com/jgewirtzman/fluxqc}
+  \item Report bugs at \url{https://github.com/jgewirtzman/fluxqc/issues}
 }
 
 }

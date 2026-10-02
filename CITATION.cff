@@ -1,15 +1,15 @@
 cff-version: 1.2.0
 message: "If you use fluxqc, please cite it as below, and cite goFlux (Rheault et al. 2024) for the underlying flux calculation."
 type: software
-title: "fluxqc: Detection limits, quality screens and ebullition for chamber flux measurements, on top of goFlux"
-version: 0.1.0
-date-released: "2026-09-24"
+title: "fluxqc: Detection limits and quality screens for chamber flux measurements, on top of goFlux"
+version: 0.2.3
+date-released: "2026-10-02"
 authors:
   - family-names: Gewirtzman
     given-names: Jonathan
     email: jongewirtzman@gmail.com
 license: MIT
-repository-code: "https://github.com/jongewirtzman/fluxqc"
+repository-code: "https://github.com/jgewirtzman/fluxqc"
 keywords:
   - greenhouse gas
   - chamber flux

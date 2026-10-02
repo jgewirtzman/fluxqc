@@ -18,8 +18,8 @@ Description: Works on any closure processed with the 'goFlux' package
     from the author's tree-stem, soil and open-water campaigns; tree stems
     are one application, not the scope.
 License: MIT + file LICENSE
-URL: https://github.com/jongewirtzman/fluxqc
-BugReports: https://github.com/jongewirtzman/fluxqc/issues
+URL: https://github.com/jgewirtzman/fluxqc
+BugReports: https://github.com/jgewirtzman/fluxqc/issues
 Encoding: UTF-8
 Depends:
     R (>= 4.1.0),

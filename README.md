@@ -56,7 +56,7 @@ goFlux is on GitHub, not CRAN, so install it first.
 ```r
 # install.packages("remotes")
 remotes::install_github("Qepanna/goFlux")   # >= 0.4.0
-remotes::install_github("jongewirtzman/fluxqc", build_vignettes = TRUE)
+remotes::install_github("jgewirtzman/fluxqc", build_vignettes = TRUE)
 ```
 
 ## Quick start

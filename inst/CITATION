@@ -1,12 +1,12 @@
-citHeader("To cite fluxqc in publications use the package entry below, and cite goFlux for the underlying flux calculation. If you used the ebullition add-on, also cite the method: Hoffmann et al. (2017) for method = \"iqr\" and So et al. (2024) for method = \"runvar\". Provenance: no code was copied from Hoffmann et al.'s Zenodo script (record 53168) or from the fluxCH4 repository; the IQR filter was re-implemented from the paper and checked against the script's fence definitions.")
+citHeader("To cite fluxqc in publications use the package entry below, and cite goFlux for the underlying flux calculation.")
 
 bibentry(
   bibtype = "Manual",
-  title   = "fluxqc: Detection limits, quality screens and ebullition for chamber flux measurements, on top of goFlux",
+  title   = "fluxqc: Detection limits and quality screens for chamber flux measurements, on top of goFlux",
   author  = person("Jonathan", "Gewirtzman", email = "jongewirtzman@gmail.com"),
   year    = "2026",
-  note    = "R package version 0.2.0",
-  url     = "https://github.com/jongewirtzman/fluxqc"
+  note    = "R package version 0.2.3",
+  url     = "https://github.com/jgewirtzman/fluxqc"
 )
 
 bibentry(
@@ -20,28 +20,4 @@ bibentry(
   number  = "96",
   pages   = "6393",
   doi     = "10.21105/joss.06393"
-)
-
-bibentry(
-  bibtype = "Article",
-  header  = "For detect_ebullition(method = \"iqr\"):",
-  title   = "A simple calculation algorithm to separate high-resolution CH4 flux measurements into ebullition- and diffusion-derived components",
-  author  = c(person("Mathias", "Hoffmann"), person("Maximilian", "Schulz-Hanke"),
-              person("Juana", "Garcia Alba"), person("Nicole", "Jurisch"), person("Ulrike", "Hagemann"),
-              person("Torsten", "Sachs"), person("Michael", "Sommer"), person("Juergen", "Augustin")),
-  journal = "Atmospheric Measurement Techniques",
-  year    = "2017",
-  volume  = "10",
-  pages   = "109-118",
-  doi     = "10.5194/amt-10-109-2017"
-)
-
-bibentry(
-  bibtype = "Article",
-  header  = "For detect_ebullition(method = \"runvar\"):",
-  title   = "(running-variance ebullition detection)",
-  author  = person("J. S.", "So"),
-  journal = "Journal of Geophysical Research: Biogeosciences",
-  year    = "2024",
-  doi     = "10.1029/2024JG008035"
 )
